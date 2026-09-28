@@ -75,6 +75,7 @@ import {
   isGoogleProvider,
   isMicrosoftProvider,
 } from "@/utils/email/provider-types";
+import { getOpenInMailboxLabel } from "@/utils/url";
 import { useEmailLabels } from "@/providers/EmailLabelsProvider";
 import { undoLatestToast } from "@/components/Toast";
 import { useDisplayedEmail } from "@/hooks/useDisplayedEmail";
@@ -913,7 +914,8 @@ export function MailShell() {
       ),
       openExternalLabel:
         isReaderTarget && openExternalUrl
-          ? `Open in ${isMicrosoftProvider(readerEmailAccount?.account.provider) ? "Outlook" : "Gmail"}`
+          ? (getOpenInMailboxLabel(readerEmailAccount?.account.provider) ??
+            undefined)
           : undefined,
       target: singleActionTarget
         ? {
