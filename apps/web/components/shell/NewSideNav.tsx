@@ -44,7 +44,7 @@ export function NewSideNav({ name }: { name: string }) {
       <div className="flex h-full min-w-0">
         <nav
           aria-label="Areas"
-          className="flex w-[4.5rem] shrink-0 flex-col items-center gap-1.5 bg-primary py-4 text-primary-foreground"
+          className="flex w-[4.5rem] shrink-0 flex-col items-center gap-1.5 bg-rail py-4 text-rail-foreground"
         >
           <div className="mb-3 flex size-11 items-center justify-center">
             <AccountSwitcher
@@ -53,7 +53,7 @@ export function NewSideNav({ name }: { name: string }) {
                   type="button"
                   title="Accounts"
                   aria-label="Accounts"
-                  className="rounded-full ring-2 ring-primary-foreground/25 transition-shadow hover:ring-primary-foreground/60"
+                  className="rounded-full ring-2 ring-rail-foreground/25 transition-shadow hover:ring-rail-foreground/60"
                 >
                   <ProfileImage
                     image={emailAccount?.image ?? null}
@@ -74,8 +74,8 @@ export function NewSideNav({ name }: { name: string }) {
               className={cn(
                 "flex size-11 items-center justify-center rounded-xl transition-colors",
                 item.id === section.id
-                  ? "bg-primary-foreground/15 text-primary-foreground"
-                  : "text-primary-foreground/55 hover:bg-primary-foreground/10 hover:text-primary-foreground",
+                  ? "bg-rail-foreground/15 text-rail-foreground"
+                  : "text-rail-foreground/55 hover:bg-rail-foreground/10 hover:text-rail-foreground",
               )}
             >
               <item.icon className="size-5" />
@@ -84,7 +84,7 @@ export function NewSideNav({ name }: { name: string }) {
           <div className="flex-1" />
           <SidebarTrigger
             name={name}
-            className="size-11 rounded-xl text-primary-foreground/55 hover:bg-primary-foreground/10 hover:text-primary-foreground"
+            className="size-11 rounded-xl text-rail-foreground/55 hover:bg-rail-foreground/10 hover:text-rail-foreground"
           />
           <NavUser
             menuSide="right"
@@ -94,7 +94,7 @@ export function NewSideNav({ name }: { name: string }) {
                 type="button"
                 title="More options and settings"
                 aria-label="More options and settings"
-                className="flex size-11 items-center justify-center rounded-xl text-primary-foreground/55 transition-colors hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                className="flex size-11 items-center justify-center rounded-xl text-rail-foreground/55 transition-colors hover:bg-rail-foreground/10 hover:text-rail-foreground"
               >
                 <SettingsIcon className="size-5" />
               </button>

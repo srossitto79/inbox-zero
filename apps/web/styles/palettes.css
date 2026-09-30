@@ -12,6 +12,8 @@
 
 :root {
   --brand: 222 47% 11%;
+  --rail: 222.2 47.4% 11.2%;
+  --rail-foreground: 210 40% 98%;
   --queue-reply: 19 87% 45%;
   --queue-waiting: 221 83% 53%;
   --queue-fyi: 215 16% 47%;
@@ -250,4 +252,39 @@ html:root[data-palette="graphite"].dark {
 html:root[data-palette] .font-display {
   font-family: var(--font-display), Georgia, serif;
   letter-spacing: -0.01em;
+}
+
+/* The icon rail takes a deep shade of each palette's main color. */
+html:root[data-palette][data-palette] {
+  --rail-foreground: 0 0% 100%;
+}
+html:root[data-palette="paper"]:not(.dark) {
+  --rail: 19 78% 36%;
+}
+html:root[data-palette="paper"].dark {
+  --rail: 17 55% 24%;
+}
+html:root[data-palette="sage"]:not(.dark) {
+  --rail: 154 46% 26%;
+}
+html:root[data-palette="sage"].dark {
+  --rail: 154 38% 19%;
+}
+html:root[data-palette="ocean"]:not(.dark) {
+  --rail: 214 76% 38%;
+}
+html:root[data-palette="ocean"].dark {
+  --rail: 214 55% 25%;
+}
+html:root[data-palette="plum"]:not(.dark) {
+  --rail: 331 68% 34%;
+}
+html:root[data-palette="plum"].dark {
+  --rail: 331 45% 24%;
+}
+html:root[data-palette="graphite"]:not(.dark) {
+  --rail: 0 0% 12%;
+}
+html:root[data-palette="graphite"].dark {
+  --rail: 0 0% 15%;
 }

@@ -69,6 +69,10 @@ module.exports = {
       },
       colors: {
         brand: "hsl(var(--brand) / <alpha-value>)",
+        rail: {
+          DEFAULT: "hsl(var(--rail) / <alpha-value>)",
+          foreground: "hsl(var(--rail-foreground) / <alpha-value>)",
+        },
         queue: {
           reply: "hsl(var(--queue-reply) / <alpha-value>)",
           waiting: "hsl(var(--queue-waiting) / <alpha-value>)",
