@@ -1,9 +1,18 @@
 "use client";
 
-import { type CSSProperties, memo, useCallback, useRef } from "react";
+import { type CSSProperties, memo, useCallback, useMemo, useRef } from "react";
+import {
+  ArchiveIcon,
+  BarChartBigIcon,
+  MailsIcon,
+  MessageSquareIcon,
+  SparklesIcon,
+  TagsIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { MailAccountSwitcher } from "@/app/(app)/[emailAccountId]/mail/MailAccountSwitcher";
 import {
+  type AssistantLink,
   getMailCategories,
   getMailNavPath,
   type MailCategory,
@@ -52,6 +61,18 @@ const NO_COUNTS = new Map<string, MailboxLabelCount>();
 const NO_LABELS: EmailLabel[] = [];
 const NO_FOLDERS: OutlookFolder[] = [];
 const NO_CATEGORIES: MailCategory[] = [];
+const ASSISTANT_LINKS: {
+  name: string;
+  path: string;
+  Icon: AssistantLink["Icon"];
+}[] = [
+  { name: "Chat", path: "/assistant", Icon: MessageSquareIcon },
+  { name: "Rules", path: "/automation", Icon: SparklesIcon },
+  { name: "Sender categories", path: "/smart-categories", Icon: TagsIcon },
+  { name: "Bulk unsubscribe", path: "/bulk-unsubscribe", Icon: MailsIcon },
+  { name: "Bulk archive", path: "/bulk-archive", Icon: ArchiveIcon },
+  { name: "Analytics", path: "/stats", Icon: BarChartBigIcon },
+];
 
 /**
  * The mail screen's left column. It owns the label counts and mailbox editing
@@ -103,6 +124,16 @@ export const MailShellSidebar = memo(function MailShellSidebar({
   const hrefFor = useCallback(
     (target: MailNavTarget) =>
       prefixPath(emailAccountId, getMailNavPath(target)),
+    [emailAccountId],
+  );
+
+  const assistantLinks = useMemo(
+    () =>
+      ASSISTANT_LINKS.map(({ name, path, Icon }) => ({
+        name,
+        href: prefixPath(emailAccountId, path),
+        Icon,
+      })),
     [emailAccountId],
   );
 
@@ -209,6 +240,7 @@ export const MailShellSidebar = memo(function MailShellSidebar({
               : getMailCategories({ isGoogle, isOutlook })
           }
           categoryHeading={isOutlook ? "Inbox" : "Categories"}
+          assistantLinks={assistantLinks}
           collapsibleCategories={!isOutlook}
           labelsHeading={terminology.label.pluralCapitalized}
           labelSingular={terminology.label.singular}
