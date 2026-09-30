@@ -165,4 +165,41 @@ describe("MailSidebar", () => {
     expect(screen.queryByText("Mail")).toBeNull();
     expect(screen.getByText("All inboxes")).toBeDefined();
   });
+
+  describe("assistant links", () => {
+    const assistantLinks = [
+      { name: "Chat", href: "/acc/assistant", Icon: TagIcon },
+      {
+        name: "Sender categories",
+        href: "/acc/smart-categories",
+        Icon: TagIcon,
+      },
+    ];
+
+    it("keeps the links behind a collapsed Assistant group", () => {
+      renderSidebar({ assistantLinks });
+
+      expect(screen.queryByText("Chat")).toBeNull();
+
+      fireEvent.click(screen.getByText("Assistant"));
+
+      expect(screen.getByText("Chat").closest("a")?.getAttribute("href")).toBe(
+        "/acc/assistant",
+      );
+      expect(
+        screen
+          .getByText("Sender categories")
+          .closest("a")
+          ?.getAttribute("href"),
+      ).toBe("/acc/smart-categories");
+    });
+
+    it("leaves the group out of the combined inbox and the icon rail", () => {
+      const { rerender } = renderSidebar({ assistantLinks, unified: true });
+      expect(screen.queryByText("Assistant")).toBeNull();
+
+      rerender(sidebar({ assistantLinks, collapsed: true }));
+      expect(screen.queryByText("Assistant")).toBeNull();
+    });
+  });
 });
