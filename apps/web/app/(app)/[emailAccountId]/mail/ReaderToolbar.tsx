@@ -18,6 +18,7 @@ import { MailLabelChip } from "@/app/(app)/[emailAccountId]/mail/MailLabelChip";
 import type { EmailMessageCellLabel } from "@/components/EmailMessageCellLabels";
 import { Tooltip } from "@/components/Tooltip";
 import { Button } from "@/components/ui/button";
+import { PrintButton } from "@/app/(app)/[emailAccountId]/mail/PrintButton";
 import { SnoozeButton } from "@/app/(app)/[emailAccountId]/mail/SnoozeButton";
 import { useUiVariant } from "@/providers/UiPreferencesProvider";
 
@@ -41,6 +42,9 @@ type ReaderToolbarProps = {
   onMarkUnread: () => void;
   /** Snoozes the open thread; the Snooze button shows in the new interface only. */
   onSnooze?: (until: Date) => void;
+  onPrintMessage?: () => void;
+  /** Set when the thread holds more than one message. */
+  onPrintThread?: () => void;
   /** The ⋯ dropdown, i.e. `ThreadActionsMenu`, composed by the shell. */
   menu?: ReactNode;
   messageExpansion?: {
@@ -67,6 +71,8 @@ export function ReaderToolbar({
   onMarkRead,
   onMarkUnread,
   onSnooze,
+  onPrintMessage,
+  onPrintThread,
   menu,
   messageExpansion,
 }: ReaderToolbarProps) {
@@ -94,7 +100,15 @@ export function ReaderToolbar({
         />
       ))}
       extraActions={
-        isNext && onSnooze ? <SnoozeButton onSnooze={onSnooze} /> : undefined
+        <>
+          {isNext && onSnooze ? <SnoozeButton onSnooze={onSnooze} /> : null}
+          {onPrintMessage ? (
+            <PrintButton
+              onPrintMessage={onPrintMessage}
+              onPrintThread={onPrintThread}
+            />
+          ) : null}
+        </>
       }
       menu={menu}
       messageExpansion={messageExpansion}
