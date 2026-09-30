@@ -40,7 +40,7 @@ html:root[data-palette].dark {
 }
 
 /* Shared derived tokens so each palette only lists what is distinctive. */
-html:root[data-palette] {
+html:root[data-palette][data-palette] {
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);

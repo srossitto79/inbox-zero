@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useUiVariant } from "@/providers/UiPreferencesProvider";
 
 /**
  * Applies the Mail palette by stamping `data-theme="mail"` on the document root.
@@ -12,7 +13,12 @@ import { useEffect } from "react";
  * next-themes drives dark mode through a class, so an attribute doesn't collide.
  */
 export function MailThemeScope() {
+  const variant = useUiVariant();
+
   useEffect(() => {
+    // The new interface's palettes own the look on every route.
+    if (variant === "next") return;
+
     const { documentElement } = document;
     const previous = documentElement.dataset.theme;
     documentElement.dataset.theme = "mail";
@@ -21,7 +27,7 @@ export function MailThemeScope() {
       if (previous === undefined) delete documentElement.dataset.theme;
       else documentElement.dataset.theme = previous;
     };
-  }, []);
+  }, [variant]);
 
   return null;
 }
