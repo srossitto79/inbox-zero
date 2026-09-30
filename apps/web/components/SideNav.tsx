@@ -87,13 +87,17 @@ export const useNavigation = () => {
   const { emailAccount, emailAccountId, provider } = useAccount();
   const currentEmailAccountId = emailAccount?.id || emailAccountId;
 
+  const mailItems: NavItem[] = useMemo(
+    () =>
+      topMailLinks.map((link) => ({
+        ...link,
+        href: prefixPath(currentEmailAccountId, `/mail${link.href}`),
+      })),
+    [currentEmailAccountId],
+  );
+
   const manageItems: NavItem[] = useMemo(
     () => [
-      {
-        name: "Inbox",
-        href: prefixPath(currentEmailAccountId, "/mail"),
-        icon: InboxIcon,
-      },
       {
         name: "Chat",
         href: prefixPath(currentEmailAccountId, "/assistant"),
@@ -189,7 +193,8 @@ export const useNavigation = () => {
   );
 
   return {
-    homeHref: prefixPath(currentEmailAccountId, "/automation"),
+    homeHref: prefixPath(currentEmailAccountId, "/mail"),
+    mailItems,
     manageItems,
     cleanupItems,
     moreItems,
@@ -252,6 +257,7 @@ export function SideNav({
   ...props
 }: React.ComponentProps<typeof Sidebar> & { feedbackEnabled: boolean }) {
   const navigation = useNavigation();
+  const { onOpen: openCompose } = useComposeModal();
   const path = usePathname();
   const showMailNav = path.includes("/compose");
   const isMoreActive = navigation.moreItems.some(
@@ -305,6 +311,22 @@ export function SideNav({
             <MailNav path={path} />
           ) : (
             <>
+              <SidebarGroup>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className="h-9"
+                      onClick={openCompose}
+                      sidebarName="left-sidebar"
+                    >
+                      <PenIcon className="size-4" />
+                      <span className="truncate font-semibold">Compose</span>
+                      <CommandShortcut>C</CommandShortcut>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+                <SideNavMenu items={navigation.mailItems} activeHref={path} />
+              </SidebarGroup>
               <SidebarGroup>
                 <SidebarGroupLabel>Manage</SidebarGroupLabel>
                 <SideNavMenu items={navigation.manageItems} activeHref={path} />
