@@ -68,14 +68,14 @@ module.exports = {
         body: ["var(--font-body)", ...fontFamily.sans],
       },
       colors: {
-        brand: "hsl(var(--brand))",
+        brand: "hsl(var(--brand) / <alpha-value>)",
         queue: {
-          reply: "hsl(var(--queue-reply))",
-          waiting: "hsl(var(--queue-waiting))",
-          fyi: "hsl(var(--queue-fyi))",
-          newsletter: "hsl(var(--queue-newsletter))",
-          receipt: "hsl(var(--queue-receipt))",
-          calendar: "hsl(var(--queue-calendar))",
+          reply: "hsl(var(--queue-reply) / <alpha-value>)",
+          waiting: "hsl(var(--queue-waiting) / <alpha-value>)",
+          fyi: "hsl(var(--queue-fyi) / <alpha-value>)",
+          newsletter: "hsl(var(--queue-newsletter) / <alpha-value>)",
+          receipt: "hsl(var(--queue-receipt) / <alpha-value>)",
+          calendar: "hsl(var(--queue-calendar) / <alpha-value>)",
         },
         // shadcn/ui
         border: "hsl(var(--border))",
