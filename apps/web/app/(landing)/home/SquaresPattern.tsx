@@ -1,7 +1,7 @@
 export function SquaresPattern() {
   return (
     <svg
-      className="absolute inset-0 -z-10 h-full w-full stroke-gray-200 [mask-image:radial-gradient(100%_100%_at_top_right,white,transparent)]"
+      className="absolute inset-0 -z-10 h-full w-full stroke-border [mask-image:radial-gradient(100%_100%_at_top_right,white,transparent)]"
       aria-hidden="true"
       role="img"
     >
@@ -20,7 +20,7 @@ export function SquaresPattern() {
       <svg
         x="50%"
         y={-1}
-        className="overflow-visible fill-gray-50"
+        className="overflow-visible fill-muted"
         aria-hidden="true"
       >
         <path

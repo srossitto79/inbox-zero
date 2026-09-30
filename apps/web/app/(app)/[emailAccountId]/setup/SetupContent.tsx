@@ -217,7 +217,7 @@ const StepItem = ({
                   onClick={handleMarkDone}
                   disabled={markDoneDisabled}
                   title={markDoneText}
-                  className="flex size-6 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition-colors hover:bg-green-100 hover:text-green-600 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-green-900/50 dark:hover:text-green-400"
+                  className="flex size-6 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-brand/10 hover:text-brand"
                 >
                   {markDonePending ? (
                     <Loader2Icon size={14} className="animate-spin" />

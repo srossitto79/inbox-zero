@@ -74,7 +74,14 @@ interface ParagraphProps {
   as?: "p" | "h3" | "dt" | "dl";
   children: React.ReactNode;
   className?: string;
-  color?: "default" | "light" | "dark" | "gray-700" | "gray-500" | "gray-900";
+  color?:
+    | "default"
+    | "light"
+    | "dark"
+    | "foreground"
+    | "gray-700"
+    | "gray-500"
+    | "gray-900";
   size?: "default" | "xs" | "sm" | "md" | "lg";
 }
 
@@ -93,7 +100,8 @@ export function Paragraph({
         dark: "text-[#3D3D3D]",
         "gray-700": "text-gray-700",
         "gray-500": "text-gray-500",
-        "gray-900": "text-gray-900",
+        foreground: "text-foreground",
+        "gray-900": "text-foreground",
       },
       size: {
         default: "text-sm md:text-base",

@@ -88,7 +88,7 @@ function AccountItem({
 }) {
   return (
     <Link href={prefixPath(emailAccount.id, "/mail")} className="block">
-      <Card className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-900">
+      <Card className="cursor-pointer transition-colors hover:bg-muted">
         <AccountHeader
           emailAccount={emailAccount}
           onAccountDeleted={onAccountDeleted}

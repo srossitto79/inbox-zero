@@ -34,7 +34,7 @@ export function PricingFrequencyToggle({
       <RadioGroup
         value={frequency}
         onChange={setFrequency}
-        className="grid grid-cols-2 gap-x-1 rounded-full p-1 text-center text-xs font-semibold leading-5 ring-1 ring-inset ring-gray-200"
+        className="grid grid-cols-2 gap-x-1 rounded-full p-1 text-center text-xs font-semibold leading-5 ring-1 ring-inset ring-border"
       >
         <Label className="sr-only">Payment frequency</Label>
         {frequencies.map((option) => (
@@ -43,7 +43,9 @@ export function PricingFrequencyToggle({
             value={option}
             className={({ checked }) =>
               cn(
-                checked ? "bg-black text-white" : "text-gray-500",
+                checked
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground",
                 "cursor-pointer rounded-full px-2.5 py-1",
               )
             }

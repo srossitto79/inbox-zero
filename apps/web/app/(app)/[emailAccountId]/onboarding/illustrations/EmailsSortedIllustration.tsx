@@ -76,15 +76,15 @@ export function EmailsSortedIllustration({
             delay: index * 0.15,
             ease: [0.25, 0.46, 0.45, 0.94],
           }}
-          className="flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800"
+          className="flex items-center rounded-lg border border-border bg-card px-3 py-2.5 shadow-sm"
         >
           <div className="flex shrink-0 items-center gap-1.5 pr-3">
-            <Square className="h-4 w-4 text-gray-300 dark:text-gray-600" />
-            <Star className="h-4 w-4 text-gray-300 dark:text-gray-600" />
+            <Square className="h-4 w-4 text-muted-foreground" />
+            <Star className="h-4 w-4 text-muted-foreground" />
           </div>
 
           <div className="flex h-5 w-[90px] shrink-0 items-center">
-            <span className="truncate text-[12px] font-semibold leading-none text-gray-900 dark:text-gray-100">
+            <span className="truncate text-[12px] font-semibold leading-none text-foreground">
               {email.from}
             </span>
           </div>
@@ -107,16 +107,16 @@ export function EmailsSortedIllustration({
           </div>
 
           <div className="hidden h-5 min-w-0 flex-1 items-center truncate sm:flex">
-            <span className="text-[12px] font-medium text-gray-900 dark:text-gray-100">
+            <span className="text-[12px] font-medium text-foreground">
               {email.subject}
             </span>
-            <span className="text-[12px] text-gray-500 dark:text-gray-400">
+            <span className="text-[12px] text-muted-foreground">
               {" "}
               {email.snippet}
             </span>
           </div>
 
-          <div className="shrink-0 pl-3 text-[11px] text-gray-500 dark:text-gray-400">
+          <div className="shrink-0 pl-3 text-[11px] text-muted-foreground">
             {email.time}
           </div>
         </motion.div>
