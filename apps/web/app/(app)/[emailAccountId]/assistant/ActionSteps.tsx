@@ -437,7 +437,7 @@ function ActionCard({
                       <TooltipExplanation
                         side="right"
                         text="When enabled our AI will generate a value when processing the email. Put the prompt inside braces like so: {{your prompt here}}."
-                        className="text-gray-400"
+                        className="text-muted-foreground"
                       />
                     </div>
                   </div>
@@ -570,7 +570,7 @@ function ActionCard({
                   part.startsWith("{{") ? (
                     <span
                       key={idx}
-                      className="rounded bg-blue-100 px-1 text-blue-500 dark:bg-blue-950 dark:text-blue-400"
+                      className="rounded bg-queue-waiting/10 px-1 text-queue-waiting"
                     >
                       <sub className="font-sans">AI</sub>
                       {part}
@@ -1624,8 +1624,8 @@ cal.com/example`}
 
 function VariableProTip() {
   return (
-    <div className="mt-4 rounded-md bg-blue-50 p-3 dark:bg-blue-950/30">
-      <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+    <div className="mt-4 rounded-md bg-queue-waiting/10 p-3">
+      <div className="flex items-center gap-2 text-sm text-queue-waiting">
         <span>
           ✨ Use {"{{"}variables{"}}"} for personalized content
         </span>

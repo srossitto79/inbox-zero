@@ -420,9 +420,7 @@ function ProcessRulesRow({
 }) {
   return (
     <TableRow
-      className={
-        isRunning ? "animate-pulse bg-blue-50 dark:bg-blue-950/20" : undefined
-      }
+      className={isRunning ? "animate-pulse bg-queue-waiting/10" : undefined}
     >
       <TableCell>
         <div className="flex items-center justify-between gap-4">

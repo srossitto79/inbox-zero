@@ -21,11 +21,13 @@ export function RuleSectionCard({
       <div className="flex items-center gap-3">
         <Icon
           className={cn("size-5", {
-            "text-blue-600 dark:text-blue-400": color === "blue",
-            "text-green-600 dark:text-green-400": color === "green",
+            "text-brand": color === "blue",
+            "text-queue-receipt": color === "green",
           })}
         />
-        <TypographyH3 className="text-base">{title}</TypographyH3>
+        <TypographyH3 className="font-display text-lg font-semibold">
+          {title}
+        </TypographyH3>
       </div>
 
       {errors && <div className="mt-2">{errors}</div>}

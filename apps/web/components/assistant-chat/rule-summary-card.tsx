@@ -16,7 +16,7 @@ export function RuleSummaryCard({
   children: ReactNode;
 }) {
   return (
-    <Card>
+    <Card className="overflow-hidden rounded-2xl border-border">
       <RuleSummaryCardHeader title={title} status={status} actions={actions} />
       <CardContent className="space-y-3 px-4 py-3.5">{children}</CardContent>
     </Card>
@@ -33,9 +33,11 @@ export function RuleSummaryCardHeader({
   actions?: ReactNode;
 }) {
   return (
-    <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 border-b px-4 py-3.5">
+    <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 border-b border-border bg-muted/40 px-4 py-3.5">
       <div className="flex min-w-0 items-center gap-2">
-        <h3 className="truncate text-base font-semibold">{title}</h3>
+        <h3 className="truncate font-display text-base font-semibold">
+          {title}
+        </h3>
         {status}
       </div>
       {actions}
