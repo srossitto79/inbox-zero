@@ -17,12 +17,12 @@ export function CleanHistory() {
   return (
     <LoadingContent loading={isLoading} error={error}>
       {data?.result.length ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {data.result.map((job) => (
             <Link
               href={prefixPath(emailAccountId, `/clean/run?jobId=${job.id}`)}
               key={job.id}
-              className="block w-full cursor-pointer rounded-md border p-3 text-left transition-colors hover:bg-muted/50"
+              className="block w-full cursor-pointer rounded-2xl border border-border bg-card px-4 py-3.5 text-left transition-colors hover:border-brand/40 hover:bg-muted/50"
             >
               <div className="flex items-center justify-between">
                 <div>

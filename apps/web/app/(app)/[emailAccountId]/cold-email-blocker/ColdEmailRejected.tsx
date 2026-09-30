@@ -18,6 +18,8 @@ import { useSearchParams } from "next/navigation";
 import { ColdEmailStatus } from "@/generated/prisma/enums";
 import { ViewEmailButton } from "@/components/ViewEmailButton";
 import { EmailMessageCellWithData } from "@/components/EmailMessageCell";
+import { extractNameFromEmail } from "@/utils/email";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { useAccount } from "@/providers/EmailAccountProvider";
 
 export function ColdEmailRejected() {
@@ -68,14 +70,24 @@ function Row({
   return (
     <TableRow key={row.id}>
       <TableCell>
-        <EmailMessageCellWithData
-          sender={row.fromEmail}
-          userEmail={userEmail}
-          threadId={row.threadId || ""}
-          messageId={row.messageId || ""}
-        />
+        <div className="flex items-center gap-3">
+          <InitialsAvatar
+            name={extractNameFromEmail(row.fromEmail)}
+            seed={row.fromEmail}
+          />
+          <div className="min-w-0 flex-1">
+            <EmailMessageCellWithData
+              sender={row.fromEmail}
+              userEmail={userEmail}
+              threadId={row.threadId || ""}
+              messageId={row.messageId || ""}
+            />
+          </div>
+        </div>
       </TableCell>
-      <TableCell>{row.reason || "-"}</TableCell>
+      <TableCell className="max-w-md text-muted-foreground">
+        {row.reason || "-"}
+      </TableCell>
       <TableCell>
         <DateCell createdAt={row.createdAt} />
       </TableCell>

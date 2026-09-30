@@ -38,52 +38,66 @@ export function CleanInstructionsStep() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="text-center">
-      <TypographyH3>Which emails should stay in your inbox?</TypographyH3>
+      <TypographyH3 className="font-display">
+        Which emails should stay in your inbox?
+      </TypographyH3>
 
-      <div className="mt-4 grid gap-4">
-        <Toggle
-          name="reply"
-          enabled={skipStates.skipReply}
-          onChange={(value) => setSkipStates({ skipReply: value })}
-          labelRight="Emails needing replies"
-        />
-        <Toggle
-          name="starred"
-          enabled={skipStates.skipStarred}
-          onChange={(value) => setSkipStates({ skipStarred: value })}
-          labelRight="Starred emails"
-        />
-        <Toggle
-          name="calendar"
-          enabled={skipStates.skipCalendar}
-          onChange={(value) => setSkipStates({ skipCalendar: value })}
-          labelRight="Future events"
-        />
-        <Toggle
-          name="receipt"
-          enabled={skipStates.skipReceipt}
-          onChange={(value) => setSkipStates({ skipReceipt: value })}
-          labelRight="Payment receipts"
-        />
+      <div className="mt-6 grid gap-2 text-left">
+        <ToggleRow>
+          <Toggle
+            name="reply"
+            enabled={skipStates.skipReply}
+            onChange={(value) => setSkipStates({ skipReply: value })}
+            labelRight="Emails needing replies"
+          />
+        </ToggleRow>
+        <ToggleRow>
+          <Toggle
+            name="starred"
+            enabled={skipStates.skipStarred}
+            onChange={(value) => setSkipStates({ skipStarred: value })}
+            labelRight="Starred emails"
+          />
+        </ToggleRow>
+        <ToggleRow>
+          <Toggle
+            name="calendar"
+            enabled={skipStates.skipCalendar}
+            onChange={(value) => setSkipStates({ skipCalendar: value })}
+            labelRight="Future events"
+          />
+        </ToggleRow>
+        <ToggleRow>
+          <Toggle
+            name="receipt"
+            enabled={skipStates.skipReceipt}
+            onChange={(value) => setSkipStates({ skipReceipt: value })}
+            labelRight="Payment receipts"
+          />
+        </ToggleRow>
         {/* <Toggle
           name="attachment"
           enabled={skipStates.skipAttachment}
           onChange={(value) => setSkipStates({ skipAttachment: value })}
           labelRight="Emails with attachments"
         /> */}
-        <Toggle
-          name="conversation"
-          enabled={skipStates.skipConversation}
-          onChange={(value) => setSkipStates({ skipConversation: value })}
-          labelRight="Conversations"
-          tooltipText="Email threads where you sent a reply"
-        />
-        <Toggle
-          name="custom"
-          enabled={showCustom}
-          onChange={(value) => setShowCustom(value)}
-          labelRight="Custom"
-        />
+        <ToggleRow>
+          <Toggle
+            name="conversation"
+            enabled={skipStates.skipConversation}
+            onChange={(value) => setSkipStates({ skipConversation: value })}
+            labelRight="Conversations"
+            tooltipText="Email threads where you sent a reply"
+          />
+        </ToggleRow>
+        <ToggleRow>
+          <Toggle
+            name="custom"
+            enabled={showCustom}
+            onChange={(value) => setShowCustom(value)}
+            labelRight="Custom"
+          />
+        </ToggleRow>
       </div>
 
       {showCustom && (
@@ -107,5 +121,13 @@ I'm in the middle of a building project, keep those emails too.`}
         <Button type="submit">Continue</Button>
       </div>
     </form>
+  );
+}
+
+function ToggleRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-border bg-card px-4 py-3">
+      {children}
+    </div>
   );
 }

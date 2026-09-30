@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { Card, CardTitle } from "@/components/ui/card";
+import { PageHeading } from "@/components/Typography";
+import { CleanStepper } from "@/app/(app)/[emailAccountId]/clean/CleanStepper";
 import { Loading } from "@/components/Loading";
 import { IntroStep } from "@/app/(app)/[emailAccountId]/clean/IntroStep";
 import { ActionSelectionStep } from "@/app/(app)/[emailAccountId]/clean/ActionSelectionStep";
@@ -95,8 +97,14 @@ export default async function CleanPage(props: {
   };
 
   return (
-    <div>
-      <Card className="my-4 max-w-2xl p-6 sm:mx-4 md:mx-auto">
+    <div className="px-4 pt-6">
+      <div className="mx-auto max-w-2xl">
+        <PageHeading>Deep Clean</PageHeading>
+      </div>
+      <div className="mt-5">
+        <CleanStepper step={step} />
+      </div>
+      <Card className="mx-auto my-6 max-w-2xl p-6 sm:p-8">
         <Suspense
           key={step}
           fallback={

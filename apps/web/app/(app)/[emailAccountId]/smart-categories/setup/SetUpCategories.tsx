@@ -114,7 +114,9 @@ export function SetUpCategories({
     <>
       <Card className="m-4">
         <CardHeader>
-          <CardTitle>Set up sender categories</CardTitle>
+          <CardTitle className="font-display">
+            Set up sender categories
+          </CardTitle>
           <CardDescription className="max-w-sm">
             Automatically categorize senders for bulk archiving and AI
             assistant.
@@ -220,11 +222,18 @@ function CategoryCard({
     <Card
       className={cn(
         "flex items-center justify-between gap-2 p-4",
-        !isEnabled && "bg-muted/50",
+        isEnabled ? "border-brand/40" : "bg-muted/50",
       )}
     >
-      <div>
-        <div className="text-sm">{category.name}</div>
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className={cn(
+            "size-2.5 shrink-0 rounded-full",
+            isEnabled ? "bg-brand" : "bg-muted-foreground/40",
+          )}
+        />
+        <div className="text-sm font-medium">{category.name}</div>
         {/* <div className="mt-1 text-xs text-muted-foreground">
           {category.description}
         </div> */}

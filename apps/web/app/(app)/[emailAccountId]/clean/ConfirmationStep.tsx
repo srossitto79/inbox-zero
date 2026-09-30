@@ -11,6 +11,8 @@ import { toastError } from "@/components/Toast";
 import { CleanAction } from "@/generated/prisma/enums";
 import { PREVIEW_RUN_COUNT } from "@/app/(app)/[emailAccountId]/clean/consts";
 import { HistoryIcon, SettingsIcon } from "lucide-react";
+import { StatTile } from "@/components/ui/stat-tile";
+import { timeRangeOptions } from "@/app/(app)/[emailAccountId]/clean/types";
 import { useAccount } from "@/providers/EmailAccountProvider";
 import { prefixPath } from "@/utils/path";
 
@@ -71,9 +73,27 @@ export function ConfirmationStep({
         unoptimized
       />
 
-      <TypographyH3 className="mt-2">Ready to clean up your inbox</TypographyH3>
+      <TypographyH3 className="font-display mt-2">
+        Ready to clean up your inbox
+      </TypographyH3>
 
-      <ul className="mx-auto mt-4 max-w-prose list-disc space-y-2 pl-4 text-left">
+      <div className="mt-6 grid grid-cols-1 gap-3 text-left sm:grid-cols-3">
+        <StatTile value={PREVIEW_RUN_COUNT} label="Emails in first pass" />
+        <StatTile
+          value={action === CleanAction.ARCHIVE ? "Archive" : "Mark read"}
+          label="Action"
+        />
+        <StatTile
+          value={
+            timeRangeOptions.find(
+              (option) => option.value === String(timeRange),
+            )?.label ?? `${timeRange} days`
+          }
+          label="Time range"
+        />
+      </div>
+
+      <ul className="mx-auto mt-6 max-w-prose list-disc space-y-2 pl-4 text-left">
         <li>
           We'll process {PREVIEW_RUN_COUNT} emails in an initial clean up.
         </li>
