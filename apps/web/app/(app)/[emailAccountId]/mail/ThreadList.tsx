@@ -13,6 +13,7 @@ import { getListThreadKey } from "@/app/(app)/[emailAccountId]/mail/types";
 import { LoadingMiniSpinner } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import type { EmailLabels } from "@/providers/email-label-types";
+import { useUiVariant } from "@/providers/UiPreferencesProvider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSentMessageOpensForThreads } from "@/hooks/useSentMessageOpens";
 import { cn } from "@/utils";
@@ -68,6 +69,7 @@ export const ThreadList = memo(function ThreadList({
   showSentOpenStatus = false,
 }: ThreadListProps) {
   const isMobile = useIsMobile();
+  const isNext = useUiVariant() === "next";
   const dayStart = useDayStart();
   const sentThreadIds = useMemo(
     () =>
@@ -83,7 +85,10 @@ export const ThreadList = memo(function ThreadList({
   const { data: sentMessageOpens } =
     useSentMessageOpensForThreads(sentThreadIds);
   const groupHeaderClassName = cn(
-    "pt-4 pr-5 pb-1.5 font-normal text-muted-foreground text-sm",
+    "pt-4 pr-5 pb-1.5 text-muted-foreground",
+    isNext
+      ? "font-medium text-xs uppercase tracking-wide"
+      : "font-normal text-sm",
     selectionEnabled ? "pl-[3.25rem]" : "pl-8",
   );
   const getGroupLabel = useCallback(

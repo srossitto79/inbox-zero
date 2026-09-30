@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { XIcon } from "lucide-react";
+import { useUiVariant } from "@/providers/UiPreferencesProvider";
 import type { EmailLabel } from "@/providers/email-label-types";
 import { cn } from "@/utils";
 
@@ -31,6 +32,7 @@ export function MailLabelChip({
   className,
 }: MailLabelChipProps) {
   const providerStyle = providerColorStyle(color);
+  const isNext = useUiVariant() === "next";
 
   return (
     <span
@@ -38,7 +40,9 @@ export function MailLabelChip({
         "group/chip relative isolate inline-flex min-w-0 max-w-full items-center gap-0.5 whitespace-nowrap rounded-md border border-transparent px-1.5 py-px text-xs leading-4 before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:-z-10 before:rounded-md before:border before:transition-[right] before:content-['']",
         providerStyle
           ? "text-[var(--mail-label-text-color)] before:border-[var(--mail-label-background-color)] before:bg-[var(--mail-label-background-color)]"
-          : CHIP_CLASSES[chipColorForLabel(name)],
+          : (isNext ? QUEUE_CHIP_CLASSES : CHIP_CLASSES)[
+              chipColorForLabel(name)
+            ],
         onRemove
           ? "before:right-3 hover:before:right-0 focus-within:before:right-0"
           : "before:right-0",
@@ -91,6 +95,25 @@ const CHIP_CLASSES = {
   cyan: "text-new-cyan-700 before:border-new-cyan-200 before:bg-new-cyan-100",
   yellow:
     "text-new-yellow-600 before:border-new-yellow-150 before:bg-new-yellow-50",
+};
+
+/**
+ * The same keys mapped onto the palette tokens, so chips follow the active
+ * palette and the queue meaning: reply, waiting, newsletter, receipt, calendar.
+ */
+const QUEUE_CHIP_CLASSES: Record<keyof typeof CHIP_CLASSES, string> = {
+  blue: "text-queue-reply before:border-transparent before:bg-[hsl(var(--queue-reply)/0.12)]",
+  green:
+    "text-queue-fyi before:border-transparent before:bg-[hsl(var(--queue-fyi)/0.14)]",
+  purple:
+    "text-queue-newsletter before:border-transparent before:bg-[hsl(var(--queue-newsletter)/0.12)]",
+  orange:
+    "text-queue-receipt before:border-transparent before:bg-[hsl(var(--queue-receipt)/0.12)]",
+  red: "text-destructive before:border-transparent before:bg-destructive/10",
+  gray: "text-muted-foreground before:border-transparent before:bg-muted",
+  cyan: "text-queue-waiting before:border-transparent before:bg-[hsl(var(--queue-waiting)/0.12)]",
+  yellow:
+    "text-queue-calendar before:border-transparent before:bg-[hsl(var(--queue-calendar)/0.12)]",
 };
 
 type ChipColor = keyof typeof CHIP_CLASSES;

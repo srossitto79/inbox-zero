@@ -94,7 +94,7 @@ export function MailReaderToolbar({
                 title="Starred conversation"
               />
             )}
-            <h1 className="font-title font-medium text-2xl text-foreground leading-tight tracking-tight">
+            <h1 className="font-title [[data-palette]_&]:font-display font-medium text-2xl text-foreground leading-tight tracking-tight">
               {subject}
             </h1>
           </div>
