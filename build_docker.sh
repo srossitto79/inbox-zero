@@ -1,0 +1,1 @@
+docker compose -f docker-compose.yml -f docker-compose.fork.yml --env-file apps/web/.env --profile all up -d --build
