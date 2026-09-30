@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { subDays } from "date-fns/subDays";
 import { ChevronDown } from "lucide-react";
+import { useLocalStorage } from "usehooks-ts";
 import { usePostHog } from "posthog-js/react";
 import {
   ArchiveIcon,
@@ -12,6 +13,7 @@ import {
   ChevronsDownIcon,
   ChevronsUpIcon,
   InboxIcon,
+  LayoutGridIcon,
   ListIcon,
   MailXIcon,
   SparklesIcon,
@@ -47,6 +49,8 @@ import {
 } from "@/app/(app)/[emailAccountId]/bulk-unsubscribe/BulkUnsubscribeDesktop";
 import { BulkUnsubscribeDesktopSkeleton } from "@/app/(app)/[emailAccountId]/bulk-unsubscribe/BulkUnsubscribeSkeleton";
 import { Card } from "@/components/ui/card";
+import { SenderGrid } from "@/app/(app)/[emailAccountId]/bulk-unsubscribe/SenderGrid";
+import { cn } from "@/utils";
 import { SearchBar } from "@/app/(app)/[emailAccountId]/bulk-unsubscribe/SearchBar";
 import { useToggleSelect } from "@/hooks/useToggleSelect";
 import { BulkActions } from "@/app/(app)/[emailAccountId]/bulk-unsubscribe/BulkActions";
@@ -110,6 +114,9 @@ const filterOptions: {
     icon: <ThumbsUpIcon className="size-4" />,
   },
 ];
+
+type SenderChip = "all" | "newsletters" | "unopened" | "rarelyRead";
+type ViewMode = "grid" | "list";
 
 const selectOptions = [
   { label: "Last week", value: "7" },
@@ -264,13 +271,21 @@ export function BulkUnsubscribe() {
     [rows],
   );
 
-  const visibleRows = useMemo(
-    () =>
-      isSuggestedMode
-        ? getSuggestedModeRows(rows ?? [], selected)
-        : (rows ?? []),
-    [isSuggestedMode, rows, selected],
+  const [chip, setChip] = useState<SenderChip>("all");
+  const [viewMode, setViewMode] = useLocalStorage<ViewMode>(
+    "bulk-unsubscribe-view",
+    "grid",
+    { initializeWithValue: false },
   );
+
+  const chipCounts = useMemo(() => getChipCounts(rows ?? []), [rows]);
+
+  const visibleRows = useMemo(() => {
+    const base = isSuggestedMode
+      ? getSuggestedModeRows(rows ?? [], selected)
+      : (rows ?? []);
+    return base.filter((row) => matchesChip(row, chip));
+  }, [isSuggestedMode, rows, selected, chip]);
   const visibleRowIds = useMemo(
     () => visibleRows.map((row) => row.name),
     [visibleRows],
@@ -410,13 +425,42 @@ export function BulkUnsubscribe() {
       />
 
       <div className="items-center justify-between flex mt-4 flex-wrap">
-        <ActionBar rightContent={<LoadStatsButton />}>
+        <ActionBar
+          rightContent={
+            <>
+              <div className="flex rounded-xl bg-muted p-0.5">
+                {(
+                  [
+                    { mode: "grid", label: "Grid view", icon: LayoutGridIcon },
+                    { mode: "list", label: "List view", icon: ListIcon },
+                  ] as const
+                ).map(({ mode, label, icon: Icon }) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-label={label}
+                    aria-pressed={viewMode === mode}
+                    title={label}
+                    onClick={() => setViewMode(mode)}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1.5 text-muted-foreground transition-colors",
+                      viewMode === mode && "bg-card text-foreground shadow-sm",
+                    )}
+                  >
+                    <Icon className="size-4" />
+                  </button>
+                ))}
+              </div>
+              <LoadStatsButton />
+            </>
+          }
+        >
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-10">
                 {selectedFilter?.icon}
                 <span className="ml-2">{selectedFilter?.label ?? "All"}</span>
-                <ChevronDown className="ml-2 h-4 w-4 text-gray-400" />
+                <ChevronDown className="ml-2 h-4 w-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[170px]">
@@ -458,7 +502,7 @@ export function BulkUnsubscribe() {
                     aria-pressed={isSuggestedMode}
                     onClick={onToggleSuggestedMode}
                   >
-                    <SparklesIcon className="size-4 text-amber-500" />
+                    <SparklesIcon className="size-4 text-queue-reply" />
                     <span className="ml-2">
                       {isSuggestedMode ? "Showing" : "Select"}{" "}
                       {suggestedRows.length} suggested
@@ -478,6 +522,70 @@ export function BulkUnsubscribe() {
         </ActionBar>
       </div>
 
+      {!!rows?.length && (
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { value: rows.length, label: "Senders" },
+            { value: chipCounts.unopened, label: "Never opened" },
+            {
+              value: chipCounts.newsletters,
+              label: "Have an unsubscribe link",
+            },
+            { value: suggestedRows.length, label: "Ready to remove" },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="flex flex-col gap-1 rounded-2xl border border-border bg-card px-4 py-3.5"
+            >
+              <div className="font-display text-3xl leading-none">
+                {stat.value.toLocaleString()}
+              </div>
+              <div className="text-sm text-muted-foreground">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!!rows?.length && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {(
+            [
+              { value: "all", label: "All", count: rows.length },
+              {
+                value: "newsletters",
+                label: "Newsletters",
+                count: chipCounts.newsletters,
+              },
+              {
+                value: "unopened",
+                label: "Unopened",
+                count: chipCounts.unopened,
+              },
+              {
+                value: "rarelyRead",
+                label: "Rarely read",
+                count: chipCounts.rarelyRead,
+              },
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={chip === option.value}
+              onClick={() => setChip(option.value)}
+              className={cn(
+                "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                chip === option.value
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {option.label} {option.count}
+            </button>
+          ))}
+        </div>
+      )}
+
       <ClientOnly>
         <ArchiveProgress />
       </ClientOnly>
@@ -493,7 +601,7 @@ export function BulkUnsubscribe() {
         dateRange={dateRange}
       />
 
-      <Card className="mt-2 md:mt-4 max-sm:border-0 max-sm:shadow-none">
+      <Card className="mt-2 rounded-2xl md:mt-4 max-sm:border-0 max-sm:shadow-none">
         {(isStatsLoading && !isLoading && !data?.newsletters.length) ||
         showSkeleton ? (
           <BulkUnsubscribeDesktopSkeleton />
@@ -505,15 +613,34 @@ export function BulkUnsubscribe() {
           >
             {tableRows?.length ? (
               <>
-                <BulkUnsubscribeDesktop
-                  sortColumn={sortColumn}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  tableRows={tableRows}
-                  isAllSelected={isAllVisibleSelected}
-                  isSomeSelected={isSomeVisibleSelected}
-                  onToggleSelectAll={onToggleSelectAllVisible}
-                />
+                {viewMode === "grid" ? (
+                  <SenderGrid
+                    rows={visibleRows}
+                    selected={selected}
+                    selectedRowName={selectedRow?.name}
+                    onToggleSelect={onToggleVisibleRow}
+                    onSelectRow={setSelectedRow}
+                    onOpenNewsletter={onOpenNewsletter}
+                    userEmail={userEmail}
+                    emailAccountId={emailAccountId}
+                    labels={userLabels}
+                    mutate={mutate}
+                    hasUnsubscribeAccess={hasUnsubscribeAccess}
+                    refetchPremium={refetchPremium}
+                    openPremiumModal={openModal}
+                    filter={filter}
+                  />
+                ) : (
+                  <BulkUnsubscribeDesktop
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    tableRows={tableRows}
+                    isAllSelected={isAllVisibleSelected}
+                    isSomeSelected={isSomeVisibleSelected}
+                    onToggleSelectAll={onToggleSelectAllVisible}
+                  />
+                )}
                 {/* Only show expand/collapse when there might be more results */}
                 {(expanded || (rows && rows.length >= 50)) && (
                   <div className="mt-2 px-6 pb-6">
@@ -540,7 +667,7 @@ export function BulkUnsubscribe() {
               </>
             ) : (
               <div className="flex flex-col items-center justify-center py-16 px-4">
-                <InboxIcon className="h-16 w-16 text-gray-300" />
+                <InboxIcon className="h-16 w-16 text-muted-foreground/40" />
                 <h3 className="mt-4 text-lg font-semibold">No emails found</h3>
                 <p className="mt-2 text-center text-muted-foreground">
                   Adjust the filters or click "Load More" to load additional
@@ -560,4 +687,19 @@ export function BulkUnsubscribe() {
       <PremiumModal />
     </PageWrapper>
   );
+}
+
+function matchesChip(row: Newsletter, chip: SenderChip) {
+  if (chip === "newsletters") return Boolean(row.unsubscribeLink);
+  if (chip === "unopened") return row.readEmails === 0;
+  if (chip === "rarelyRead") return isUnsubscribeSuggestion(row);
+  return true;
+}
+
+function getChipCounts(rows: Newsletter[]) {
+  return {
+    newsletters: rows.filter((row) => matchesChip(row, "newsletters")).length,
+    unopened: rows.filter((row) => matchesChip(row, "unopened")).length,
+    rarelyRead: rows.filter((row) => matchesChip(row, "rarelyRead")).length,
+  };
 }

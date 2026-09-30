@@ -354,7 +354,7 @@ export function BulkArchiveCards({
                 </div>
                 <div className="flex items-center gap-3">
                   {isArchived ? (
-                    <div className="flex items-center gap-2 text-green-600">
+                    <div className="flex items-center gap-2 text-queue-receipt">
                       <CheckIcon className="size-5" />
                       <span className="text-sm font-medium">
                         {actionLabels.completedLabel}
@@ -688,7 +688,7 @@ function ArchiveSenderStatus({
       return <span className="text-sm text-muted-foreground">Queued</span>;
     case "processing":
       return (
-        <span className="text-sm text-blue-600">
+        <span className="text-sm text-queue-waiting">
           {status.threadsTotal
             ? `${status.threadsTotal - status.threadIds.length} / ${status.threadsTotal}`
             : "Archiving..."}
@@ -696,14 +696,14 @@ function ArchiveSenderStatus({
       );
     case "completed":
       return (
-        <span className="text-sm text-green-600">
+        <span className="text-sm text-queue-receipt">
           {status.threadsTotal
             ? `Archived ${status.threadsTotal}!`
             : "Archived"}
         </span>
       );
     case "failed":
-      return <span className="text-sm text-red-600">Failed</span>;
+      return <span className="text-sm text-destructive">Failed</span>;
     default:
       return null;
   }
@@ -717,7 +717,7 @@ function MarkReadSenderStatus({
   switch (status?.status) {
     case "completed":
       return (
-        <span className="text-sm text-green-600">
+        <span className="text-sm text-queue-receipt">
           {status.threadsTotal
             ? `Marked ${status.threadsTotal} read!`
             : "Marked read"}
@@ -725,7 +725,7 @@ function MarkReadSenderStatus({
       );
     case "processing":
       return (
-        <span className="text-sm text-blue-600">
+        <span className="text-sm text-queue-waiting">
           {status.threadsTotal - status.threadIds.length} /{" "}
           {status.threadsTotal}
         </span>
@@ -733,7 +733,7 @@ function MarkReadSenderStatus({
     case "pending":
       return <span className="text-sm text-muted-foreground">Pending...</span>;
     case "failed":
-      return <span className="text-sm text-red-600">Failed</span>;
+      return <span className="text-sm text-destructive">Failed</span>;
     default:
       return null;
   }
@@ -747,13 +747,13 @@ function DeleteSenderStatus({
   switch (status?.status) {
     case "completed":
       return (
-        <span className="text-sm text-green-600">
+        <span className="text-sm text-queue-receipt">
           {status.threadsTotal ? `Deleted ${status.threadsTotal}!` : "Deleted"}
         </span>
       );
     case "processing":
       return (
-        <span className="text-sm text-blue-600">
+        <span className="text-sm text-queue-waiting">
           {status.threadsTotal - status.threadIds.length} /{" "}
           {status.threadsTotal}
         </span>
@@ -761,7 +761,7 @@ function DeleteSenderStatus({
     case "pending":
       return <span className="text-sm text-muted-foreground">Pending...</span>;
     case "failed":
-      return <span className="text-sm text-red-600">Failed</span>;
+      return <span className="text-sm text-destructive">Failed</span>;
     default:
       return null;
   }

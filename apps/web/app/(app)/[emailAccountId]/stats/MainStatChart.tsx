@@ -6,15 +6,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { ChartConfig } from "@/components/ui/chart";
 import type { StatsByPeriodResponse } from "@/app/api/user/stats/by-period/controller";
 import { BarChart } from "@/app/(app)/[emailAccountId]/stats/BarChart";
-import { COLORS } from "@/utils/colors";
+import { CHART_COLORS } from "@/app/(app)/[emailAccountId]/stats/chartColors";
 
 const chartConfig = {
-  received: { label: "Received", color: COLORS.analytics.blue },
-  sent: { label: "Sent", color: COLORS.analytics.purple },
-  read: { label: "Read", color: COLORS.analytics.pink },
-  unread: { label: "Unread", color: COLORS.analytics.lightPink },
-  archived: { label: "Archived", color: COLORS.analytics.green },
-  inbox: { label: "Inbox", color: COLORS.analytics.lightGreen },
+  received: { label: "Received", color: CHART_COLORS.primary },
+  sent: { label: "Sent", color: CHART_COLORS.secondary },
+  read: { label: "Read", color: CHART_COLORS.accent },
+  unread: { label: "Unread", color: CHART_COLORS.accentMuted },
+  archived: { label: "Archived", color: CHART_COLORS.positive },
+  inbox: { label: "Inbox", color: CHART_COLORS.positiveMuted },
 } satisfies ChartConfig;
 
 function getActiveChart(activChart: keyof typeof chartConfig): string[] {

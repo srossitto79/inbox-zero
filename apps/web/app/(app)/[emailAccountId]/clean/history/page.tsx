@@ -17,7 +17,7 @@ export default async function CleanHistoryPage(props: {
     <Card className="my-4 w-full max-w-2xl sm:mx-4 md:mx-auto">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <PageHeading>Clean History</PageHeading>
+          <PageHeading className="font-display">Clean History</PageHeading>
           <Button variant="outline" asChild>
             <Link href={prefixPath(emailAccountId, "/clean")}>
               <PlusIcon className="mr-2 size-4" />

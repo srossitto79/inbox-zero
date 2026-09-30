@@ -7,12 +7,12 @@ import { CardBasic } from "@/components/ui/card";
 import type { EmailActionStatsResponse } from "@/app/api/user/stats/email-actions/route";
 import { BarChart } from "./BarChart";
 import type { ChartConfig } from "@/components/ui/chart";
-import { COLORS } from "@/utils/colors";
+import { CHART_COLORS } from "@/app/(app)/[emailAccountId]/stats/chartColors";
 import { BRAND_NAME } from "@/utils/branding";
 
 const chartConfig = {
-  Archived: { label: "Archived", color: COLORS.analytics.green },
-  Deleted: { label: "Deleted", color: COLORS.analytics.pink },
+  Archived: { label: "Archived", color: CHART_COLORS.positive },
+  Deleted: { label: "Deleted", color: CHART_COLORS.accent },
 } satisfies ChartConfig;
 
 export function EmailActionsAnalytics() {

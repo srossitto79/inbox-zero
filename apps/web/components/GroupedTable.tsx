@@ -565,7 +565,7 @@ function ArchiveStatusCell({
       return <span className="text-muted-foreground">Queued</span>;
     case "processing":
       return (
-        <span className="text-blue-500">
+        <span className="text-queue-waiting">
           {status.threadsTotal
             ? `${status.threadsTotal - status.threadIds.length} / ${status.threadsTotal}`
             : "Archiving..."}
@@ -578,7 +578,7 @@ function ArchiveStatusCell({
         </span>
       );
     case "failed":
-      return <span className="text-red-500">Failed</span>;
+      return <span className="text-destructive">Failed</span>;
     default:
       return null;
   }

@@ -93,7 +93,7 @@ export function ActionCell<T extends Row>({
   return (
     <>
       {isUnsubscribed ? (
-        <Badge variant="red" className="gap-1">
+        <Badge variant="calendar" className="gap-1">
           <MailXIcon className="size-3" />
           Unsubscribed
         </Badge>
@@ -137,14 +137,16 @@ export function ActionCell<T extends Row>({
   );
 }
 
-function UnsubscribeButton<T extends Row>({
+export function UnsubscribeButton<T extends Row>({
   item,
   hasUnsubscribeAccess,
   mutate,
   posthog,
   refetchPremium,
   emailAccountId,
+  className = "w-[110px] justify-center",
 }: {
+  className?: string;
   item: T;
   hasUnsubscribeAccess: boolean;
   mutate: () => Promise<void>;
@@ -185,7 +187,7 @@ function UnsubscribeButton<T extends Row>({
       <Button
         size="sm"
         variant="outline"
-        className="w-[110px] justify-center"
+        className={className}
         onClick={() => setResubscribeDialogOpen(true)}
       >
         {unsubscribeLoading && <ButtonLoader />}
@@ -197,7 +199,7 @@ function UnsubscribeButton<T extends Row>({
       <Button
         size="sm"
         variant="outline"
-        className="w-[110px] justify-center"
+        className={className}
         onClick={onUnsubscribe}
         disabled={unsubscribeLoading}
       >
@@ -205,12 +207,7 @@ function UnsubscribeButton<T extends Row>({
         {buttonText}
       </Button>
     ) : (
-      <Button
-        size="sm"
-        variant="outline"
-        className="w-[110px] justify-center"
-        asChild
-      >
+      <Button size="sm" variant="outline" className={className} asChild>
         <Link
           href={unsubscribeLink}
           target={hasUnsubscribeLink ? "_blank" : undefined}
@@ -277,7 +274,7 @@ function ApproveButton<T extends Row>({
         disabled={!hasUnsubscribeAccess}
       >
         <ThumbsUpIcon
-          className={`size-5 ${isApproved ? "" : "text-gray-400"}`}
+          className={`size-5 ${isApproved ? "" : "text-muted-foreground"}`}
         />
       </Button>
     </Tooltip>

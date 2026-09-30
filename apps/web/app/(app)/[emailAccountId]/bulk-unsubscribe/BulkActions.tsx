@@ -71,8 +71,8 @@ function ActionButton({
       title={label}
       className={cn(
         "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap",
-        "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
-        danger && "hover:text-red-600",
+        "text-muted-foreground hover:bg-muted hover:text-foreground",
+        danger && "hover:text-destructive",
         loading && "opacity-50 cursor-not-allowed",
       )}
     >
@@ -228,17 +228,17 @@ export function BulkActions({
               showTooltip={!hasUnsubscribeAccess}
               openModal={openModal}
             >
-              <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg px-2 sm:px-3 py-2 flex items-center justify-between gap-1 sm:gap-3">
+              <div className="mt-4 bg-muted border border-border rounded-xl px-2 sm:px-3 py-2 flex items-center justify-between gap-1 sm:gap-3">
                 {/* Left side: Close button and selection count */}
                 <div className="flex items-center gap-1 sm:gap-3 shrink-0">
                   <button
                     type="button"
                     onClick={onClearSelection}
-                    className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors"
+                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-background rounded transition-colors"
                   >
                     <XIcon className="size-4" />
                   </button>
-                  <span className="text-sm text-gray-600 whitespace-nowrap">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
                     {selectedCount} of {totalCount}
                     <span className="hidden sm:inline"> selected</span>
                   </span>
@@ -303,8 +303,8 @@ export function BulkActions({
 
           {/* Selected Senders List */}
           {selectedNewsletters.length > 0 && (
-            <div className="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            <div className="max-h-[300px] overflow-y-auto rounded-lg border border-border">
+              <div className="divide-y divide-border">
                 {selectedNewsletters.map((newsletter) => {
                   const domain =
                     extractDomainFromEmail(newsletter.name) || newsletter.name;
@@ -367,8 +367,8 @@ export function BulkActions({
 
           {/* Selected Senders List */}
           {selectedNewsletters.length > 0 && (
-            <div className="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            <div className="max-h-[300px] overflow-y-auto rounded-lg border border-border">
+              <div className="divide-y divide-border">
                 {selectedNewsletters.map((newsletter) => {
                   const domain =
                     extractDomainFromEmail(newsletter.name) || newsletter.name;

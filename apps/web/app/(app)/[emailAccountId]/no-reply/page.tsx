@@ -16,7 +16,9 @@ export default function NoReplyPage() {
   return (
     <div>
       <div className="border-b border-border px-8 py-6">
-        <PageHeading>Emails Sent With No Reply</PageHeading>
+        <PageHeading className="font-display">
+          Emails Sent With No Reply
+        </PageHeading>
       </div>
       <LoadingContent loading={isLoading} error={error}>
         {data && (
