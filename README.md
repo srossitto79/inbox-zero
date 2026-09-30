@@ -28,6 +28,23 @@
 
 </div>
 
+## About this fork
+
+This is a fork of [elie222/inbox-zero](https://github.com/elie222/inbox-zero) with one addition: a Gmail polling fallback for self-hosted setups that cannot expose a public Pub/Sub push endpoint.
+
+Upstream processes incoming mail only when Google Pub/Sub calls `/api/google/webhook`, which needs a public HTTPS URL. Without it the Gmail watch is never registered, and rules, labeling, archiving and auto-drafts do not run on new mail. The fork adds `/api/cron/poll-gmail`, which reads each account's current history ID from Gmail and passes it to the same `processHistoryForUser` code the webhook uses. Accounts with an active watch are skipped, so enabling Pub/Sub later does not cause double processing.
+
+Enable it with `GMAIL_POLLING_ENABLED=true` in `apps/web/.env`. The prebuilt upstream image does not contain the route, so build from this checkout with the overlay file:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.fork.yml \
+  --env-file apps/web/.env --profile all up -d --build
+```
+
+The overlay builds the web image from `docker/Dockerfile.local` and starts a `gmail-poller` service that calls the route every 60 seconds. Files changed relative to upstream: `apps/web/utils/webhook/google/poll-gmail.ts`, `apps/web/app/api/cron/poll-gmail/`, the `GMAIL_POLLING_ENABLED` entry in `env.ts`, `.env.example` and `turbo.json`, and `docker-compose.fork.yml`.
+
+To pick up upstream changes: `git fetch upstream && git merge upstream/main`.
+
 ## Mission
 
 To help you spend less time in your inbox, so you can focus on what matters most.
