@@ -129,7 +129,7 @@ export function DeleteSection() {
                           </>
                         )}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-muted-foreground">
                         Already cancelled your subscription? Click the button
                         below to proceed.
                       </p>

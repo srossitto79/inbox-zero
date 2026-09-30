@@ -14,7 +14,7 @@ export const Overview = ({
         <MessageCircleIcon size={32} />
       </p>
 
-      <TypographyH3 className="mt-8">
+      <TypographyH3 className="mt-8 font-display font-semibold">
         Hey, I'm your email assistant!
       </TypographyH3>
 

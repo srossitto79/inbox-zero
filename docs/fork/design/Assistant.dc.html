@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Assistant docked beside the inbox</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Figtree',system-ui,sans-serif;background:#F4F1EA;color:#1F1B16}
+a{color:#D9480F}a:hover{color:#B23A0A}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0}
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;border:1px solid #E7E2D6;background:#fff;color:#1F1B16;font-family:inherit}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;display:flex;overflow:hidden;background:#F4F1EA">
+
+<div style="width:72px;background:#1F1B16;display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:6px;flex-shrink:0">
+<div style="width:38px;height:38px;border-radius:12px;background:#D9480F;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:20px;margin-bottom:14px">Z</div>
+<sc-for list="{{rail}}" as="r">
+<div style="{{r.style}}"><svg class="ico" viewBox="0 0 24 24"><path d="{{r.d}}"/><path d="{{r.d2}}"/></svg></div>
+</sc-for>
+<div style="flex-grow:1"></div>
+<div class="av" style="background:#E9DFC9;color:#5B4A25;width:36px;height:36px">SR</div>
+</div>
+
+<div style="width:248px;background:#FBF9F4;border-right:1px solid #E7E2D6;display:flex;flex-direction:column;padding:20px 16px;gap:18px;flex-shrink:0;box-sizing:border-box">
+<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:#fff;border:1px solid #E7E2D6">
+<div class="av" style="width:28px;height:28px;font-size:11px;background:#DCE6F7;color:#26467F">SR</div>
+<div style="flex-grow:1;min-width:0"><div style="font-size:13px;font-weight:600">Personal</div><div style="font-size:11px;color:#8C8474">sal@example.com</div></div>
+</div>
+<a href="#compose" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:12px;background:#1F1B16;color:#fff;font-size:14px;font-weight:600;text-decoration:none">
+<svg class="ico" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Compose</a>
+<div style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{views}}" as="v">
+<div style="{{v.style}}"><span>{{v.name}}</span><span style="font-size:12px;color:#8C8474">{{v.count}}</span></div>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px">
+<div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8C8474;padding:0 10px 6px">Queues</div>
+<sc-for list="{{queues}}" as="q">
+<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;font-size:14px"><span style="{{q.dot}}"></span><span style="flex-grow:1">{{q.name}}</span><span style="font-size:12px;color:#8C8474">{{q.count}}</span></div>
+</sc-for>
+</div>
+<div style="flex-grow:1"></div>
+<div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#5E574B;padding:12px;border-radius:12px;background:#fff;border:1px solid #E7E2D6">
+<div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#15803D"></span>Synced 38 seconds ago</div>
+<div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#15803D"></span>Local model online</div>
+</div>
+</div>
+
+<!-- compact list -->
+<div style="width:400px;display:flex;flex-direction:column;padding:26px 20px 0;gap:14px;flex-shrink:0;box-sizing:border-box;overflow:hidden">
+<div style="font-family:'Fraunces',serif;font-weight:600;font-size:28px;line-height:1.1">Triage</div>
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#D9480F"><span style="width:8px;height:8px;border-radius:50%;background:#D9480F"></span>To reply<span style="color:#8C8474;font-weight:500">4</span></div>
+<sc-for list="{{cards}}" as="t">
+<div style="display:flex;gap:10px;padding:12px;border-radius:14px;background:#fff;border:1px solid #E7E2D6">
+<div class="av" style="{{t.avStyle}};width:32px;height:32px;font-size:12px">{{t.initials}}</div>
+<div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:600">{{t.name}}</span><span style="font-size:12px;color:#8C8474">{{t.time}}</span></div>
+<div style="font-size:13px;color:#5E574B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{t.subject}}</div>
+</div>
+</div>
+</sc-for>
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#7C3AED;margin-top:6px"><span style="width:8px;height:8px;border-radius:50%;background:#7C3AED"></span>Newsletters<span style="color:#8C8474;font-weight:500">23</span></div>
+<div style="padding:12px 14px;border-radius:14px;background:#F0E9FD;color:#4C1D95;font-size:13px;line-height:1.45">9 senders unopened for 60 days. The assistant has a suggestion.</div>
+</div>
+
+<!-- assistant panel -->
+<div style="flex-grow:1;background:#fff;border-left:1px solid #E7E2D6;display:flex;flex-direction:column;box-sizing:border-box;min-width:0">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-bottom:1px solid #EFEADF">
+<div style="display:flex;align-items:center;gap:10px"><span style="font-family:'Fraunces',serif;font-weight:600;font-size:22px">Assistant</span><span class="chip" style="background:#EDF0F4;color:#475569">Context: Triage, 4 to reply</span></div>
+<span class="chip" style="background:#E4F3E9;color:#166534">Local model</span>
+</div>
+<div style="flex-grow:1;padding:24px 28px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+<div style="align-self:flex-end;max-width:420px;padding:12px 16px;border-radius:16px 16px 4px 16px;background:#1F1B16;color:#fff;font-size:14px;line-height:1.5">Archive the newsletters I have not opened in two months, and label receipts automatically.</div>
+<div style="max-width:520px;font-size:14px;line-height:1.55;color:#2D2820">I found 23 newsletters. 9 have not been opened in 60 days. Nothing has changed yet.</div>
+
+<div style="border:1px solid #E7E2D6;border-radius:16px;overflow:hidden;max-width:560px">
+<div style="padding:12px 16px;background:#FBF9F4;font-size:13px;font-weight:600;display:flex;justify-content:space-between"><span>Newsletters unopened for 60 days</span><span style="color:#8C8474;font-weight:500">9 senders</span></div>
+<sc-for list="{{senders}}" as="s">
+<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid #EFEADF;font-size:13px"><div class="av" style="{{s.avStyle}};width:26px;height:26px;font-size:10px">{{s.initials}}</div><span style="flex-grow:1">{{s.name}}</span><span style="color:#8C8474">{{s.meta}}</span></div>
+</sc-for>
+<div style="padding:10px 16px;border-top:1px solid #EFEADF;font-size:13px;color:#8C8474">and 4 more</div>
+<div style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid #EFEADF;background:#FBF9F4">
+<div class="btn" style="background:#1F1B16;color:#fff;border-color:#1F1B16">Archive and unsubscribe 9</div>
+<div class="btn">Review one by one</div>
+</div>
+</div>
+
+<div style="max-width:520px;font-size:14px;line-height:1.55;color:#2D2820">For receipts I would suggest this rule.</div>
+<div style="border:1px solid #F6CDBB;background:#FFF6F1;border-radius:16px;padding:16px 18px;max-width:560px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:600">Receipts</span><span class="chip" style="background:#E4F3E9;color:#166534">Label Receipts, skip inbox</span></div>
+<div style="font-size:13px;color:#5E574B">Would have matched 9 of the last 300 threads.</div>
+<div style="height:6px;border-radius:3px;background:#F1DDD2"><div style="width:30%;height:6px;border-radius:3px;background:#D9480F"></div></div>
+<div style="display:flex;gap:8px"><div class="btn" style="background:#1F1B16;color:#fff;border-color:#1F1B16">Save rule</div><div class="btn">Adjust</div><div class="btn">Preview threads</div></div>
+</div>
+</div>
+<div style="padding:16px 28px 22px;border-top:1px solid #EFEADF;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:8px">
+<span class="chip" style="background:#F4F1EA;border:1px solid #E7E2D6;color:#5E574B">Summarize today</span>
+<span class="chip" style="background:#F4F1EA;border:1px solid #E7E2D6;color:#5E574B">Who is waiting on me?</span>
+<span class="chip" style="background:#F4F1EA;border:1px solid #E7E2D6;color:#5E574B">Draft replies for To reply</span>
+</div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:14px;border:1px solid #E7E2D6;background:#FBF9F4;font-size:14px;color:#8C8474"><span style="flex-grow:1">Ask about your mail or tell me what to do</span><svg class="ico" viewBox="0 0 24 24" style="color:#1F1B16"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const railBase = 'width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;';
+const on = railBase + 'background:#3A342B;color:#fff;';
+const off = railBase + 'color:#A79F8D;';
+const rail = [
+{ d: 'M22 12h-6l-2 3h-4l-2-3H2', d2: 'M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z', style: off },
+{ d: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z', d2: 'M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z', style: on },
+{ d: 'M13 2L4 14h7l-1 8 9-12h-7z', d2: 'M13 2', style: off },
+{ d: 'M3 6h18M8 6V4h8v2', d2: 'M6 6l1 14h10l1-14', style: off },
+{ d: 'M4 20V10M10 20V4M16 20v-7', d2: 'M22 20H2', style: off },
+{ d: 'M3 9h18M8 2v4M16 2v4', d2: 'M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', style: off },
+];
+const rowBase = 'display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:10px;font-size:14px;';
+const views = [
+{ name: 'Triage', count: '', style: rowBase + 'background:#fff;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06);border:1px solid #E7E2D6' },
+{ name: 'Inbox', count: '42', style: rowBase + 'border:1px solid transparent' },
+{ name: 'Drafts', count: '3', style: rowBase + 'border:1px solid transparent' },
+{ name: 'Sent', count: '', style: rowBase + 'border:1px solid transparent' },
+{ name: 'Archive', count: '', style: rowBase + 'border:1px solid transparent' },
+];
+const dot = (c) => 'width:9px;height:9px;border-radius:50%;background:' + c;
+const queues = [
+{ name: 'To reply', count: 4, dot: dot('#D9480F') },
+{ name: 'Waiting on others', count: 6, dot: dot('#2563EB') },
+{ name: 'FYI', count: 18, dot: dot('#64748B') },
+{ name: 'Newsletters', count: 23, dot: dot('#7C3AED') },
+{ name: 'Receipts', count: 9, dot: dot('#15803D') },
+{ name: 'Calendar', count: 3, dot: dot('#BE185D') },
+];
+const av = (bg, fg) => 'background:' + bg + ';color:' + fg;
+const cards = [
+{ initials: 'ML', name: 'Maya Lindqvist', time: '9:42', subject: 'Contract draft v3: can you confirm the dates?', avStyle: av('#FBE6EF', '#9D174D') },
+{ initials: 'NS', name: 'Northwind Studio', time: '8:15', subject: 'Invoice question for September', avStyle: av('#DCE6F7', '#26467F') },
+{ initials: 'AO', name: 'Dr. Amara Okafor', time: 'Yesterday', subject: 'Rescheduling Thursday\'s call', avStyle: av('#E4F3E9', '#166534') },
+];
+const senders = [
+{ initials: 'WD', name: 'Weekly Dispatch', meta: '4 emails, 0 opened', avStyle: av('#F0E9FD', '#5B21B6') },
+{ initials: 'TN', name: 'The Notebook', meta: '8 emails, 0 opened', avStyle: av('#FDF0D2', '#854D0E') },
+{ initials: 'DS', name: 'Deal Sheet', meta: '12 emails, 0 opened', avStyle: av('#FBE6EF', '#9D174D') },
+{ initials: 'OM', name: 'Open Markets', meta: '9 emails, 1 opened', avStyle: av('#DCE6F7', '#26467F') },
+{ initials: 'CB', name: 'Craft Brief', meta: '6 emails, 0 opened', avStyle: av('#E4F3E9', '#166534') },
+];
+return { rail, views, queues, cards, senders };
+}
+}
+</script>
+</body>
+</html>

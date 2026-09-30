@@ -12,12 +12,15 @@ import { type SubmitHandler, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePostHog } from "posthog-js/react";
 import { env } from "@/env";
+import { cn } from "@/utils";
 import { isDeleteEmailActionEnabled } from "@/utils/delete-email-action";
 import { PencilIcon, TrashIcon, InboxIcon, ZapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/Input";
 import { toastError, toastSuccess } from "@/components/Toast";
 import { TypographyH3 } from "@/components/Typography";
+import { RuleDryRunPanel } from "@/app/(app)/[emailAccountId]/assistant/dry-run/RuleDryRunPanel";
+import { hasRuleConditions } from "@/app/(app)/[emailAccountId]/assistant/dry-run/dry-run-state";
 import { ActionType, SystemType } from "@/generated/prisma/enums";
 import {
   createRuleAction,
@@ -346,6 +349,16 @@ export function RuleForm({
   }, [formState, watch]);
 
   const conditionalOperator = watch("conditionalOperator");
+  const dryRunRule = {
+    name: watch("name") ?? "",
+    conditions: conditions ?? [],
+    conditionalOperator,
+    runOnThreads: watch("runOnThreads"),
+  };
+  const canDryRun =
+    hasRuleConditions(conditions ?? []) &&
+    rule.systemType !== SystemType.COLD_EMAIL &&
+    !isConversationStatusType(rule.systemType);
   const terminology = getEmailTerminology(provider);
   const existingActionTypes = useMemo(
     () => ruleFormActionState.editableActionTypes,
@@ -393,288 +406,302 @@ export function RuleForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
-        {isSubmitted && formErrors.length > 0 && (
-          <div className="mt-4">
-            <AlertError
-              title="Error"
-              description={
-                <ul className="list-disc">
-                  {formErrors.map((message) => (
-                    <li key={message}>{message}</li>
-                  ))}
-                </ul>
-              }
-            />
-          </div>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className={cn(
+          !isDialog &&
+            "grid items-start gap-8 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)]",
         )}
-
-        <div>
-          {isNameEditMode ? (
-            <Input
-              type="text"
-              name="name"
-              label="Rule name"
-              registerProps={register("name")}
-              error={errors.name}
-              placeholder="e.g. Label receipts"
-            />
-          ) : (
-            <TypographyH3
-              onClick={toggleNameEditMode}
-              className="group flex cursor-pointer items-center"
-            >
-              {watch("name")}
-              <PencilIcon className="ml-2 size-4 opacity-0 transition-opacity group-hover:opacity-100" />
-            </TypographyH3>
-          )}
-        </div>
-
-        <RuleSectionCard
-          icon={InboxIcon}
-          color="blue"
-          title="When I get an email"
-          className="!mt-6"
-          errors={
-            errors.conditions?.root?.message ? (
-              <AlertError
-                title="Error"
-                description={errors.conditions.root.message}
-              />
-            ) : undefined
-          }
-        >
-          <ConditionSteps
-            conditionFields={conditionFields}
-            conditionalOperator={conditionalOperator}
-            removeCondition={removeCondition}
-            watch={watch}
-            setValue={setValue}
-            register={register}
-            errors={errors}
-            conditions={conditions}
-            ruleSystemType={rule.systemType}
-            appendCondition={appendCondition}
-          />
-        </RuleSectionCard>
-
-        <RuleSectionCard
-          icon={ZapIcon}
-          color="green"
-          title="Then"
-          errors={
-            actionErrors.length > 0 ? (
+      >
+        <div className="space-y-10">
+          {isSubmitted && formErrors.length > 0 && (
+            <div className="mt-4">
               <AlertError
                 title="Error"
                 description={
-                  <ul className="list-inside list-disc">
-                    {actionErrors.map((error, index) => (
-                      <li key={`action-${index}`}>{error}</li>
+                  <ul className="list-disc">
+                    {formErrors.map((message) => (
+                      <li key={message}>{message}</li>
                     ))}
                   </ul>
                 }
               />
-            ) : undefined
-          }
-        >
-          <ActionSteps
-            actionFields={actionFields}
-            register={register}
-            watch={watch}
-            setValue={setValue}
-            append={append}
-            remove={remove}
-            replaceActions={replace}
-            control={control}
-            errors={errors}
-            userLabels={userLabels}
-            isLoading={isLoading}
-            mutate={mutateLabels}
-            emailAccountId={emailAccountId}
-            typeOptions={typeOptions}
-            folders={folders}
-            foldersLoading={foldersLoading}
-            messagingChannels={messagingChannelsData?.channels ?? []}
-            availableMessagingProviders={
-              messagingChannelsData?.availableProviders ?? []
-            }
-            attachmentSources={attachmentSources}
-            onAttachmentSourcesChange={setAttachmentSources}
-          />
-        </RuleSectionCard>
+            </div>
+          )}
 
-        <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
-          <CollapsibleHeading>Advanced options</CollapsibleHeading>
-          <CollapsibleContent>
-            {isAdvancedOpen ? (
-              <div className="rounded-md border divide-y">
-                <AdvancedRow
-                  title="Apply to threads"
-                  description="Run on every reply in a conversation, not just the first message."
-                >
-                  <Tooltip
-                    content="This can't be changed for this rule type."
-                    hide={allowMultipleConditions(rule.systemType)}
-                  >
-                    <span>
-                      <Toggle
-                        name="runOnThreads"
-                        enabled={watch("runOnThreads") || false}
-                        onChange={(enabled) => {
-                          setValue("runOnThreads", enabled);
-                        }}
-                        disabled={!allowMultipleConditions(rule.systemType)}
-                      />
-                    </span>
-                  </Tooltip>
-                </AdvancedRow>
+          <div>
+            {isNameEditMode ? (
+              <Input
+                type="text"
+                name="name"
+                label="Rule name"
+                registerProps={register("name")}
+                error={errors.name}
+                placeholder="e.g. Label receipts"
+              />
+            ) : (
+              <TypographyH3
+                onClick={toggleNameEditMode}
+                className="group flex cursor-pointer items-center font-display font-semibold"
+              >
+                {watch("name")}
+                <PencilIcon className="ml-2 size-4 opacity-0 transition-opacity group-hover:opacity-100" />
+              </TypographyH3>
+            )}
+          </div>
 
-                {env.NEXT_PUBLIC_DIGEST_ENABLED && (
-                  <AdvancedRow
-                    title="Include in digest"
-                    description={
-                      !hasDigestAccess && watch("digest")
-                        ? "Digests are available on the Plus plan. Turn this off to update this rule on your current plan."
-                        : "Show matched emails in your digest summary."
-                    }
-                  >
-                    {isLoadingPremium ? null : hasDigestAccess ||
-                      watch("digest") ? (
-                      <Toggle
-                        name="digest"
-                        enabled={watch("digest") || false}
-                        onChange={(enabled) => {
-                          setValue("digest", enabled);
-                        }}
-                      />
-                    ) : (
-                      <UpgradeToPlusButton tooltip="Upgrade to the Plus plan to include emails in your digest." />
-                    )}
-                  </AdvancedRow>
-                )}
-
-                <NotifyChannelRow
-                  channels={messagingChannelsData?.channels ?? []}
-                  availableProviders={
-                    messagingChannelsData?.availableProviders ?? []
-                  }
-                  emailAccountId={emailAccountId}
-                  value={watch("notifyMessagingChannelId") ?? null}
-                  onChange={(channelId) => {
-                    setValue("notifyMessagingChannelId", channelId);
-                  }}
-                  hasDraftToChat={watch("actions")?.some(
-                    (action) =>
-                      action.type === ActionType.DRAFT_MESSAGING_CHANNEL,
-                  )}
+          <RuleSectionCard
+            icon={InboxIcon}
+            color="blue"
+            title="When I get an email"
+            className="!mt-6"
+            errors={
+              errors.conditions?.root?.message ? (
+                <AlertError
+                  title="Error"
+                  description={errors.conditions.root.message}
                 />
+              ) : undefined
+            }
+          >
+            <ConditionSteps
+              conditionFields={conditionFields}
+              conditionalOperator={conditionalOperator}
+              removeCondition={removeCondition}
+              watch={watch}
+              setValue={setValue}
+              register={register}
+              errors={errors}
+              conditions={conditions}
+              ruleSystemType={rule.systemType}
+              appendCondition={appendCondition}
+            />
+          </RuleSectionCard>
 
-                {!!rule.id && (
+          <RuleSectionCard
+            icon={ZapIcon}
+            color="green"
+            title="Then"
+            errors={
+              actionErrors.length > 0 ? (
+                <AlertError
+                  title="Error"
+                  description={
+                    <ul className="list-inside list-disc">
+                      {actionErrors.map((error, index) => (
+                        <li key={`action-${index}`}>{error}</li>
+                      ))}
+                    </ul>
+                  }
+                />
+              ) : undefined
+            }
+          >
+            <ActionSteps
+              actionFields={actionFields}
+              register={register}
+              watch={watch}
+              setValue={setValue}
+              append={append}
+              remove={remove}
+              replaceActions={replace}
+              control={control}
+              errors={errors}
+              userLabels={userLabels}
+              isLoading={isLoading}
+              mutate={mutateLabels}
+              emailAccountId={emailAccountId}
+              typeOptions={typeOptions}
+              folders={folders}
+              foldersLoading={foldersLoading}
+              messagingChannels={messagingChannelsData?.channels ?? []}
+              availableMessagingProviders={
+                messagingChannelsData?.availableProviders ?? []
+              }
+              attachmentSources={attachmentSources}
+              onAttachmentSourcesChange={setAttachmentSources}
+            />
+          </RuleSectionCard>
+
+          <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
+            <CollapsibleHeading>Advanced options</CollapsibleHeading>
+            <CollapsibleContent>
+              {isAdvancedOpen ? (
+                <div className="rounded-md border divide-y">
                   <AdvancedRow
-                    title="Learned patterns"
-                    description="Patterns inferred from your corrections."
+                    title="Apply to threads"
+                    description="Run on every reply in a conversation, not just the first message."
                   >
                     <Tooltip
-                      content="Learned patterns aren't available for this rule type."
-                      hide={!isConversationStatusType(rule.systemType)}
+                      content="This can't be changed for this rule type."
+                      hide={allowMultipleConditions(rule.systemType)}
                     >
                       <span>
-                        <LearnedPatternsDialog
-                          ruleId={rule.id}
-                          groupId={rule.groupId || null}
-                          disabled={isConversationStatusType(rule.systemType)}
-                          label="View"
+                        <Toggle
+                          name="runOnThreads"
+                          enabled={watch("runOnThreads") || false}
+                          onChange={(enabled) => {
+                            setValue("runOnThreads", enabled);
+                          }}
+                          disabled={!allowMultipleConditions(rule.systemType)}
                         />
                       </span>
                     </Tooltip>
                   </AdvancedRow>
-                )}
 
-                {rule.id && !rule.systemType && (
-                  <AdvancedRow
-                    title="Delete rule"
-                    description="Permanently remove this rule."
-                  >
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      Icon={TrashIcon}
-                      loading={isDeleting}
-                      disabled={isSubmitting}
-                      onClick={async () => {
-                        const yes = confirm(
-                          "Are you sure you want to delete this rule?",
-                        );
-                        if (yes) {
-                          try {
-                            setIsDeleting(true);
-                            const result = await deleteRuleAction(
-                              emailAccountId,
-                              {
-                                id: rule.id!,
-                              },
-                            );
-                            if (result?.serverError) {
-                              toastError({
-                                description: result.serverError,
-                              });
-                            } else {
-                              toastSuccess({
-                                description: "The rule has been deleted.",
-                              });
-
-                              if (isDialog && onSuccess) {
-                                onSuccess();
-                              }
-
-                              router.push(
-                                prefixPath(
-                                  emailAccountId,
-                                  "/automation?tab=rules",
-                                ),
-                              );
-                            }
-                          } catch {
-                            toastError({
-                              description: "Failed to delete rule.",
-                            });
-                          } finally {
-                            setIsDeleting(false);
-                          }
-                        }
-                      }}
+                  {env.NEXT_PUBLIC_DIGEST_ENABLED && (
+                    <AdvancedRow
+                      title="Include in digest"
+                      description={
+                        !hasDigestAccess && watch("digest")
+                          ? "Digests are available on the Plus plan. Turn this off to update this rule on your current plan."
+                          : "Show matched emails in your digest summary."
+                      }
                     >
-                      Delete
-                    </Button>
-                  </AdvancedRow>
-                )}
-              </div>
-            ) : null}
-          </CollapsibleContent>
-        </Collapsible>
+                      {isLoadingPremium ? null : hasDigestAccess ||
+                        watch("digest") ? (
+                        <Toggle
+                          name="digest"
+                          enabled={watch("digest") || false}
+                          onChange={(enabled) => {
+                            setValue("digest", enabled);
+                          }}
+                        />
+                      ) : (
+                        <UpgradeToPlusButton tooltip="Upgrade to the Plus plan to include emails in your digest." />
+                      )}
+                    </AdvancedRow>
+                  )}
 
-        <div className="flex justify-end space-x-2 !mt-6">
-          {onCancel && (
-            <Button variant="outline" size="sm" onClick={onCancel}>
-              Cancel
-            </Button>
-          )}
+                  <NotifyChannelRow
+                    channels={messagingChannelsData?.channels ?? []}
+                    availableProviders={
+                      messagingChannelsData?.availableProviders ?? []
+                    }
+                    emailAccountId={emailAccountId}
+                    value={watch("notifyMessagingChannelId") ?? null}
+                    onChange={(channelId) => {
+                      setValue("notifyMessagingChannelId", channelId);
+                    }}
+                    hasDraftToChat={watch("actions")?.some(
+                      (action) =>
+                        action.type === ActionType.DRAFT_MESSAGING_CHANNEL,
+                    )}
+                  />
 
-          {rule.id ? (
-            <Button
-              type="submit"
-              size="sm"
-              loading={isSubmitting}
-              disabled={isDeleting}
-            >
-              Save
-            </Button>
-          ) : (
-            <Button type="submit" size="sm" loading={isSubmitting}>
-              Create
-            </Button>
-          )}
+                  {!!rule.id && (
+                    <AdvancedRow
+                      title="Learned patterns"
+                      description="Patterns inferred from your corrections."
+                    >
+                      <Tooltip
+                        content="Learned patterns aren't available for this rule type."
+                        hide={!isConversationStatusType(rule.systemType)}
+                      >
+                        <span>
+                          <LearnedPatternsDialog
+                            ruleId={rule.id}
+                            groupId={rule.groupId || null}
+                            disabled={isConversationStatusType(rule.systemType)}
+                            label="View"
+                          />
+                        </span>
+                      </Tooltip>
+                    </AdvancedRow>
+                  )}
+
+                  {rule.id && !rule.systemType && (
+                    <AdvancedRow
+                      title="Delete rule"
+                      description="Permanently remove this rule."
+                    >
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        Icon={TrashIcon}
+                        loading={isDeleting}
+                        disabled={isSubmitting}
+                        onClick={async () => {
+                          const yes = confirm(
+                            "Are you sure you want to delete this rule?",
+                          );
+                          if (yes) {
+                            try {
+                              setIsDeleting(true);
+                              const result = await deleteRuleAction(
+                                emailAccountId,
+                                {
+                                  id: rule.id!,
+                                },
+                              );
+                              if (result?.serverError) {
+                                toastError({
+                                  description: result.serverError,
+                                });
+                              } else {
+                                toastSuccess({
+                                  description: "The rule has been deleted.",
+                                });
+
+                                if (isDialog && onSuccess) {
+                                  onSuccess();
+                                }
+
+                                router.push(
+                                  prefixPath(
+                                    emailAccountId,
+                                    "/automation?tab=rules",
+                                  ),
+                                );
+                              }
+                            } catch {
+                              toastError({
+                                description: "Failed to delete rule.",
+                              });
+                            } finally {
+                              setIsDeleting(false);
+                            }
+                          }
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </AdvancedRow>
+                  )}
+                </div>
+              ) : null}
+            </CollapsibleContent>
+          </Collapsible>
+
+          <div className="flex justify-end space-x-2 !mt-6">
+            {onCancel && (
+              <Button variant="outline" size="sm" onClick={onCancel}>
+                Cancel
+              </Button>
+            )}
+
+            {rule.id ? (
+              <Button
+                type="submit"
+                size="sm"
+                loading={isSubmitting}
+                disabled={isDeleting}
+              >
+                Save
+              </Button>
+            ) : (
+              <Button type="submit" size="sm" loading={isSubmitting}>
+                Create
+              </Button>
+            )}
+          </div>
         </div>
+
+        <RuleDryRunPanel
+          rule={dryRunRule}
+          canRun={canDryRun}
+          className={cn(!isDialog && "lg:sticky lg:top-6")}
+        />
       </form>
     </Form>
   );

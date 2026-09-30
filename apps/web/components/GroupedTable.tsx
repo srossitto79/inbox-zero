@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useMemo } from "react";
 import { useQueryState } from "nuqs";
+import { useLocalStorage } from "usehooks-ts";
 import groupBy from "lodash/groupBy";
 import {
   useReactTable,
@@ -17,6 +18,8 @@ import {
   MoreVerticalIcon,
   PencilIcon,
   BookmarkXIcon,
+  LayoutGridIcon,
+  ListIcon,
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { EmailCell } from "@/components/EmailCell";
@@ -55,6 +58,7 @@ import type { CategoryWithRules } from "@/utils/category.server";
 import { ViewEmailButton } from "@/components/ViewEmailButton";
 import { CategorySelect } from "@/components/CategorySelect";
 import { useAccount } from "@/providers/EmailAccountProvider";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
 
 const COLUMNS = 4;
 
@@ -199,76 +203,105 @@ export function GroupedTable({
   const [selectedCategoryName, setSelectedCategoryName] =
     useQueryState("categoryName");
 
+  const [viewMode, setViewMode] = useLocalStorage<CategoryView>(
+    "smart-categories-view",
+    "grid",
+    { initializeWithValue: false },
+  );
+
   return (
     <>
-      <Table>
-        <TableBody>
+      <div className="flex justify-end px-4 pt-4">
+        <ViewToggle value={viewMode} onChange={setViewMode} />
+      </div>
+      {viewMode === "grid" ? (
+        <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
           {Object.entries(groupedEmails).map(([categoryName, senders]) => {
-            const isCategoryExpanded = expanded?.includes(categoryName);
-
-            const onArchiveAll = async () => {
-              await queueArchiveSenders({
-                senders: senders.map((sender) => sender.address),
-              });
-            };
-
-            const onEditCategory = () => {
-              setSelectedCategoryName(categoryName);
-            };
-
-            const onRemoveAllFromCategory = async () => {
-              const yes = confirm(
-                "This will remove all emails from this category. You can re-categorize them later. Do you want to continue?",
-              );
-              if (!yes) return;
-              const result = await removeAllFromCategoryAction(emailAccountId, {
-                categoryName,
-              });
-
-              if (result?.serverError) {
-                toastError({ description: result.serverError });
-              } else {
-                toastSuccess({
-                  description: "All emails removed from category",
-                });
-              }
-            };
-
             const category = categoryMap[categoryName];
-
-            if (!category) {
-              return null;
-            }
-
+            if (!category) return null;
+            const isCategoryExpanded = !!expanded?.includes(categoryName);
             return (
-              <Fragment key={categoryName}>
-                <GroupRow
-                  category={category}
-                  count={senders.length}
-                  isExpanded={!!isCategoryExpanded}
-                  onToggle={() => {
-                    setExpanded((prev) =>
-                      isCategoryExpanded
-                        ? (prev || []).filter((c) => c !== categoryName)
-                        : [...(prev || []), categoryName],
-                    );
-                  }}
-                  onArchiveAll={onArchiveAll}
-                  onEditCategory={onEditCategory}
-                  onRemoveAllFromCategory={onRemoveAllFromCategory}
-                />
-                {isCategoryExpanded && (
-                  <SenderRows
-                    table={table}
-                    senders={senders}
-                    userEmail={userEmail}
-                  />
-                )}
-              </Fragment>
+              <CategoryCard
+                key={categoryName}
+                category={category}
+                senders={senders}
+                categories={categories}
+                isExpanded={isCategoryExpanded}
+                onToggle={() =>
+                  setExpanded((prev) =>
+                    isCategoryExpanded
+                      ? (prev || []).filter((c) => c !== categoryName)
+                      : [...(prev || []), categoryName],
+                  )
+                }
+                onArchiveAll={() =>
+                  queueArchiveSenders({
+                    senders: senders.map((sender) => sender.address),
+                  })
+                }
+                onEditCategory={() => setSelectedCategoryName(categoryName)}
+                onRemoveAllFromCategory={() =>
+                  removeAllFromCategory({ emailAccountId, categoryName })
+                }
+              />
             );
           })}
-        </TableBody>
-      </Table>
+        </div>
+      ) : (
+        <Table>
+          <TableBody>
+            {Object.entries(groupedEmails).map(([categoryName, senders]) => {
+              const isCategoryExpanded = expanded?.includes(categoryName);
+
+              const onArchiveAll = async () => {
+                await queueArchiveSenders({
+                  senders: senders.map((sender) => sender.address),
+                });
+              };
+
+              const onEditCategory = () => {
+                setSelectedCategoryName(categoryName);
+              };
+
+              const onRemoveAllFromCategory = () =>
+                removeAllFromCategory({ emailAccountId, categoryName });
+
+              const category = categoryMap[categoryName];
+
+              if (!category) {
+                return null;
+              }
+
+              return (
+                <Fragment key={categoryName}>
+                  <GroupRow
+                    category={category}
+                    count={senders.length}
+                    isExpanded={!!isCategoryExpanded}
+                    onToggle={() => {
+                      setExpanded((prev) =>
+                        isCategoryExpanded
+                          ? (prev || []).filter((c) => c !== categoryName)
+                          : [...(prev || []), categoryName],
+                      );
+                    }}
+                    onArchiveAll={onArchiveAll}
+                    onEditCategory={onEditCategory}
+                    onRemoveAllFromCategory={onRemoveAllFromCategory}
+                  />
+                  {isCategoryExpanded && (
+                    <SenderRows
+                      table={table}
+                      senders={senders}
+                      userEmail={userEmail}
+                    />
+                  )}
+                </Fragment>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
 
       <CreateCategoryDialog
         isOpen={selectedCategoryName !== null}
@@ -399,24 +432,10 @@ function GroupRow({
         </div>
       </TableCell>
       <TableCell className="flex justify-end gap-1.5 py-1">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="xs">
-              <MoreVerticalIcon className="size-4" />
-              <span className="sr-only">More</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onEditCategory}>
-              <PencilIcon className="mr-2 size-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onRemoveAllFromCategory}>
-              <BookmarkXIcon className="mr-2 size-4" />
-              Remove All From Category
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <CategoryActionsMenu
+          onEditCategory={onEditCategory}
+          onRemoveAllFromCategory={onRemoveAllFromCategory}
+        />
 
         <Button variant="outline" size="xs" onClick={onArchiveAll}>
           <ArchiveIcon className="mr-2 size-4" />
@@ -424,6 +443,174 @@ function GroupRow({
         </Button>
       </TableCell>
     </TableRow>
+  );
+}
+
+function CategoryActionsMenu({
+  onEditCategory,
+  onRemoveAllFromCategory,
+}: {
+  onEditCategory: () => void;
+  onRemoveAllFromCategory: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="xs">
+          <MoreVerticalIcon className="size-4" />
+          <span className="sr-only">More</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={onEditCategory}>
+          <PencilIcon className="mr-2 size-4" />
+          Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onRemoveAllFromCategory}>
+          <BookmarkXIcon className="mr-2 size-4" />
+          Remove All From Category
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ViewToggle({
+  value,
+  onChange,
+}: {
+  value: CategoryView;
+  onChange: (value: CategoryView) => void;
+}) {
+  return (
+    <div className="flex rounded-xl bg-muted p-0.5">
+      {(
+        [
+          { mode: "grid", label: "Grid view", icon: LayoutGridIcon },
+          { mode: "list", label: "List view", icon: ListIcon },
+        ] as const
+      ).map(({ mode, label, icon: Icon }) => (
+        <button
+          key={mode}
+          type="button"
+          aria-label={label}
+          aria-pressed={value === mode}
+          title={label}
+          onClick={() => onChange(mode)}
+          className={cn(
+            "rounded-lg px-2.5 py-1.5 text-muted-foreground transition-colors",
+            value === mode && "bg-card text-foreground shadow-sm",
+          )}
+        >
+          <Icon className="size-4" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CategoryCard({
+  category,
+  senders,
+  categories,
+  isExpanded,
+  onToggle,
+  onArchiveAll,
+  onEditCategory,
+  onRemoveAllFromCategory,
+}: {
+  category: CategoryWithRules;
+  senders: EmailGroup[];
+  categories: CategoryWithRules[];
+  isExpanded: boolean;
+  onToggle: () => void;
+  onArchiveAll: () => void;
+  onEditCategory: () => void;
+  onRemoveAllFromCategory: () => void;
+}) {
+  const { emailAccountId } = useAccount();
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className={cn(
+            "size-2.5 shrink-0 rounded-full",
+            getDotColor(category.name),
+          )}
+        />
+        <button
+          type="button"
+          aria-expanded={isExpanded}
+          onClick={onToggle}
+          className="flex min-w-0 flex-1 items-baseline gap-2 text-left"
+        >
+          <span className="truncate text-sm font-semibold">
+            {category.name}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {senders.length.toLocaleString()}{" "}
+            {senders.length === 1 ? "sender" : "senders"}
+          </span>
+        </button>
+        <CategoryActionsMenu
+          onEditCategory={onEditCategory}
+          onRemoveAllFromCategory={onRemoveAllFromCategory}
+        />
+      </div>
+
+      {category.description && (
+        <p className="line-clamp-2 text-xs text-muted-foreground">
+          {category.description}
+        </p>
+      )}
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex -space-x-2">
+          {senders.slice(0, 5).map((sender) => (
+            <InitialsAvatar
+              key={sender.address}
+              name={sender.name || sender.address}
+              seed={sender.address}
+              size="sm"
+              className="ring-2 ring-card"
+            />
+          ))}
+        </div>
+        <Button variant="outline" size="xs" onClick={onArchiveAll}>
+          <ArchiveIcon className="mr-2 size-4" />
+          Archive all
+        </Button>
+      </div>
+
+      {isExpanded && (
+        <div className="flex flex-col gap-2 border-t border-border pt-3">
+          {senders.length ? (
+            senders.map((sender) => (
+              <div
+                key={sender.address}
+                className="flex items-center justify-between gap-2"
+              >
+                <EmailCell
+                  emailAddress={sender.address}
+                  name={sender.name}
+                  className="flex min-w-0 gap-2"
+                />
+                <CategorySelect
+                  emailAccountId={emailAccountId}
+                  sender={sender.address}
+                  senderCategory={sender.category}
+                  categories={categories}
+                />
+              </div>
+            ))
+          ) : (
+            <MessageText>This category is empty</MessageText>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -565,7 +752,7 @@ function ArchiveStatusCell({
       return <span className="text-muted-foreground">Queued</span>;
     case "processing":
       return (
-        <span className="text-blue-500">
+        <span className="text-queue-waiting">
           {status.threadsTotal
             ? `${status.threadsTotal - status.threadIds.length} / ${status.threadsTotal}`
             : "Archiving..."}
@@ -578,8 +765,48 @@ function ArchiveStatusCell({
         </span>
       );
     case "failed":
-      return <span className="text-red-500">Failed</span>;
+      return <span className="text-destructive">Failed</span>;
     default:
       return null;
+  }
+}
+
+type CategoryView = "grid" | "list";
+
+const DOT_COLORS = [
+  "bg-queue-reply",
+  "bg-queue-waiting",
+  "bg-queue-newsletter",
+  "bg-queue-receipt",
+  "bg-queue-calendar",
+  "bg-queue-fyi",
+];
+
+// Categories have no stored color, so derive a stable one from the name.
+function getDotColor(name: string) {
+  let hash = 0;
+  for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return DOT_COLORS[hash % DOT_COLORS.length];
+}
+
+async function removeAllFromCategory({
+  emailAccountId,
+  categoryName,
+}: {
+  emailAccountId: string;
+  categoryName: string;
+}) {
+  const yes = confirm(
+    "This will remove all emails from this category. You can re-categorize them later. Do you want to continue?",
+  );
+  if (!yes) return;
+  const result = await removeAllFromCategoryAction(emailAccountId, {
+    categoryName,
+  });
+
+  if (result?.serverError) {
+    toastError({ description: result.serverError });
+  } else {
+    toastSuccess({ description: "All emails removed from category" });
   }
 }

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { prefixPath } from "@/utils/path";
 import { useAccount } from "@/providers/EmailAccountProvider";
 import Link from "next/link";
-import { MessageText } from "@/components/Typography";
+import { BanIcon, FileTextIcon, TagsIcon } from "lucide-react";
 
 export function ColdEmailContent({ searchParam }: { searchParam?: string }) {
   const { emailAccountId } = useAccount();
@@ -39,10 +39,20 @@ export function ColdEmailContent({ searchParam }: { searchParam?: string }) {
       </TabsContent>
 
       <TabsContent value="settings" className="mb-10">
-        <MessageText className="my-4">
+        <div className="grid gap-3 md:grid-cols-3">
+          {SETTINGS.map(({ icon: Icon, title }) => (
+            <Card key={title} className="flex items-center gap-3 p-4">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand/15 text-brand">
+                <Icon className="size-4" />
+              </span>
+              <span className="text-sm font-medium">{title}</span>
+            </Card>
+          ))}
+        </div>
+        <p className="my-4 text-sm text-muted-foreground">
           To manage cold email settings, go to the Assistant Rules tab and click
           Edit on the Cold Email rule.
-        </MessageText>
+        </p>
         <Button asChild variant="outline">
           <Link href={prefixPath(emailAccountId, "/automation?tab=rules")}>
             Go to Assistant Rules
@@ -52,3 +62,9 @@ export function ColdEmailContent({ searchParam }: { searchParam?: string }) {
     </Tabs>
   );
 }
+
+const SETTINGS = [
+  { icon: BanIcon, title: "Blocking policy" },
+  { icon: FileTextIcon, title: "Prompt" },
+  { icon: TagsIcon, title: "Labels" },
+];

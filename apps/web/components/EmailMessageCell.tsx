@@ -64,7 +64,7 @@ export function EmailMessageCell({
     userEmail,
   });
   return (
-    <div className="min-w-0 break-words text-sm text-slate-700 dark:text-foreground">
+    <div className="min-w-0 break-words text-sm text-foreground/80">
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         <span className="order-1 max-w-[240px] shrink-0 truncate font-semibold">
           {extractNameFromEmail(sender)}

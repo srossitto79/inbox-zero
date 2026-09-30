@@ -16,6 +16,8 @@ export type MailThreadRowProps = {
   date: ReactNode;
   labels?: ReactNode[];
   accountAvatar?: ReactNode;
+  /** Sender avatar; its presence switches the row to the calmer card style. */
+  avatar?: ReactNode;
   actions?: ReactNode;
   isUnread: boolean;
   isStarred: boolean;
@@ -43,6 +45,7 @@ export function MailThreadRow({
   date,
   labels = [],
   accountAvatar,
+  avatar,
   actions,
   isUnread,
   isStarred,
@@ -121,13 +124,14 @@ export function MailThreadRow({
     <div
       aria-selected={isSelected}
       className={cx(
-        "group relative flex cursor-pointer border-b border-border/60 outline-none",
+        "group relative flex cursor-pointer outline-none",
+        avatar ? "mx-2 my-0.5 rounded-xl" : "border-b border-border/60",
         isWide
           ? cx(
-              "gap-2.5 py-2.5 pr-5 pl-3",
+              avatar ? "gap-3 py-3 pr-4 pl-3" : "gap-2.5 py-2.5 pr-5 pl-3",
               expandedPreview ? "items-start" : "items-center",
             )
-          : "items-start gap-2 px-3.5 py-2.5",
+          : cx("items-start px-3.5 py-2.5", avatar ? "gap-3" : "gap-2"),
         rowBackground({ isSelected, isFocused }),
         isFocused &&
           "before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-primary before:content-['']",
@@ -170,6 +174,10 @@ export function MailThreadRow({
           )}
         </span>
       </span>
+
+      {avatar ? (
+        <span className={cx("shrink-0", !isWide && "mt-0.5")}>{avatar}</span>
+      ) : null}
 
       {isWide ? (
         <>

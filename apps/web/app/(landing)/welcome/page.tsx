@@ -40,7 +40,7 @@ export default async function WelcomePage(props: {
   });
 
   return (
-    <div className="flex flex-col justify-center px-6 py-20 text-gray-900">
+    <div className="flex flex-col justify-center px-6 py-20 text-foreground">
       <SquaresPattern />
 
       <CardBasic className="mx-auto flex max-w-2xl flex-col justify-center space-y-6 p-10 duration-500 animate-in fade-in">

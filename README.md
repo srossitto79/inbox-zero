@@ -30,20 +30,32 @@
 
 ## About this fork
 
-This is a fork of [elie222/inbox-zero](https://github.com/elie222/inbox-zero) with one addition: a Gmail polling fallback for self-hosted setups that cannot expose a public Pub/Sub push endpoint.
+This is a fork of [elie222/inbox-zero](https://github.com/elie222/inbox-zero). It keeps the upstream engine (mail engine, rules, hooks, server actions, API routes) and changes the presentation and a few self-hosting gaps.
+
+### What differs from upstream
+
+- **Gmail polling fallback** for self-hosted setups that cannot expose a public Pub/Sub endpoint.
+- **A mail-first interface.** One shell: an icon rail (accounts menu at the top, options and settings at the bottom) and a contextual panel. The app opens on the inbox. The inbox groups threads by queue (To reply, Waiting, FYI, Newsletters, Receipts, Calendar) with a Queues or Timeline toggle, the reader shows which rule filed a thread and offers Snooze, senders appear as a visual grid, and the cleanup, analytics, assistant and settings screens share one design language.
+- **Runtime palettes** (Paper, Sage, Ocean, Plum, Graphite, Classic) and a dark mode, chosen in Settings, Appearance. The classic interface stays available there with the "Classic interface" switch.
+- **Rule dry-run** in the rule editor: shows which recent threads an unsaved rule would match, without running any action.
+- **LLM API status** in the sidebar footer, backed by `GET /api/user/llm-status`.
+- **Custom (OpenAI-compatible) model provider** in Settings with an endpoint, an optional API key and model suggestions listed from the endpoint. The per-user endpoint is stored in `User.aiBaseUrl` (additive migration).
+
+Design language and mockups: `docs/fork/new-ui.md` and `docs/fork/design/`.
+
+### Gmail polling fallback
 
 Upstream processes incoming mail only when Google Pub/Sub calls `/api/google/webhook`, which needs a public HTTPS URL. Without it the Gmail watch is never registered, and rules, labeling, archiving and auto-drafts do not run on new mail. The fork adds `/api/cron/poll-gmail`, which reads each account's current history ID from Gmail and passes it to the same `processHistoryForUser` code the webhook uses. Accounts with an active watch are skipped, so enabling Pub/Sub later does not cause double processing.
 
-Enable it with `GMAIL_POLLING_ENABLED=true` in `apps/web/.env`. The prebuilt upstream image does not contain the route, so build from this checkout with the overlay file:
+Enable it with `GMAIL_POLLING_ENABLED=true` in `apps/web/.env`. The prebuilt upstream image does not contain the fork, so build from this checkout with the overlay file:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.fork.yml \
-  --env-file apps/web/.env --profile all up -d --build
+docker compose -f docker-compose.yml -f docker-compose.fork.yml   --env-file apps/web/.env --profile all up -d --build
 ```
 
-The overlay builds the web image from `docker/Dockerfile.prod` and starts a `gmail-poller` service that calls the route every 60 seconds. Files changed relative to upstream: `apps/web/utils/webhook/google/poll-gmail.ts`, `apps/web/app/api/cron/poll-gmail/`, the `GMAIL_POLLING_ENABLED` entry in `env.ts`, `.env.example` and `turbo.json`, and `docker-compose.fork.yml`.
+The overlay builds the web image from `docker/Dockerfile.prod` and starts a `gmail-poller` service that calls the route every 60 seconds. `build_docker.sh` runs the same command. On Windows, keep shell scripts on LF endings (`.gitattributes` enforces this).
 
-`build_docker.sh` runs the same command.
+### Updating
 
 To pick up upstream changes: `git fetch upstream && git merge upstream/main`.
 

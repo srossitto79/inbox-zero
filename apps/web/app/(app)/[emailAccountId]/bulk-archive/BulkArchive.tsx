@@ -66,7 +66,7 @@ export function BulkArchive() {
       <PageWrapper>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <PageHeading>Bulk Archive</PageHeading>
+            <PageHeading className="font-display">Bulk Archive</PageHeading>
             <TooltipExplanation text="Archive, delete, or mark emails as read in bulk by category to quickly clean up your inbox." />
           </div>
           <div className="flex items-center gap-2">

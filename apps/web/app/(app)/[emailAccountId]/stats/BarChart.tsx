@@ -122,12 +122,12 @@ export function BarChart({
             >
               <stop
                 offset="0%"
-                stopColor={config[key].color}
+                style={{ stopColor: config[key].color }}
                 stopOpacity={0.8}
               />
               <stop
                 offset="100%"
-                stopColor={config[key].color}
+                style={{ stopColor: config[key].color }}
                 stopOpacity={0.3}
               />
             </linearGradient>

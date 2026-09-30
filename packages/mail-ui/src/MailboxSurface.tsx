@@ -31,6 +31,8 @@ export type MailboxThreadListProps<T> = {
   items: T[];
   getKey: (item: T) => string;
   getGroupLabel?: (item: T) => string | null;
+  /** Replaces the plain label header; always rendered for labelled groups. */
+  renderGroupHeader?: (group: { label: string; count: number }) => ReactNode;
   renderItem: (input: MailboxThreadListRenderInput<T>) => ReactNode;
   emptyMessage?: string;
   selectionEnabled?: boolean;
@@ -63,6 +65,7 @@ export function MailboxThreadList<T>({
   items,
   getKey,
   getGroupLabel = () => null,
+  renderGroupHeader,
   renderItem,
   emptyMessage = "No emails in this view",
   selectionEnabled = true,
@@ -172,7 +175,14 @@ export function MailboxThreadList<T>({
                   key={`${group.label ?? "ungrouped"}-${group.startIndex}`}
                   role="group"
                 >
-                  {group.label && group.label !== "Today" ? (
+                  {group.label && renderGroupHeader ? (
+                    <div aria-hidden className={groupHeaderClassName}>
+                      {renderGroupHeader({
+                        label: group.label,
+                        count: group.items.length,
+                      })}
+                    </div>
+                  ) : group.label && group.label !== "Today" ? (
                     <div aria-hidden className={groupHeaderClassName}>
                       {group.label}
                     </div>

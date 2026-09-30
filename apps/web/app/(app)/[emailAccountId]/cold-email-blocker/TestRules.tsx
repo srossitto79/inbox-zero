@@ -143,11 +143,7 @@ function TestRulesContentRow({
   const { testing, response, testEmail } = useColdEmailTest();
 
   return (
-    <TableRow
-      className={
-        testing ? "animate-pulse bg-blue-50 dark:bg-blue-950/20" : undefined
-      }
-    >
+    <TableRow className={testing ? "animate-pulse bg-muted" : undefined}>
       <TableCell>
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1">

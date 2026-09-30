@@ -11,19 +11,19 @@ import { useCategorizeProgress } from "@/app/(app)/[emailAccountId]/smart-catego
 
 const features = [
   {
-    icon: <TagsIcon className="size-4 text-blue-500" />,
+    icon: <TagsIcon className="size-4 text-brand" />,
     title: "Sorted automatically",
     description:
       "We group senders into categories like Newsletters, Receipts, and Marketing",
   },
   {
-    icon: <ArchiveIcon className="size-4 text-blue-500" />,
+    icon: <ArchiveIcon className="size-4 text-brand" />,
     title: "Archive by category",
     description:
       "Clean up an entire category at once instead of one email at a time",
   },
   {
-    icon: <RotateCcwIcon className="size-4 text-blue-500" />,
+    icon: <RotateCcwIcon className="size-4 text-brand" />,
     title: "Always reversible",
     description: "Emails are archived, not deleted — you can find them anytime",
   },

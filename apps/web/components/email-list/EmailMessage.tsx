@@ -1,3 +1,4 @@
+import { ReplyDraftCard } from "@/components/email-list/ReplyDraftCard";
 import { CalendarInvitation } from "@/components/email-list/CalendarInvitation";
 import { isCalendarInvitationMessage } from "@/utils/calendar/invitations/detection";
 import { useCallback, useMemo, useState, useRef, useEffect } from "react";
@@ -309,31 +310,32 @@ export function EmailMessage({
           {message.attachments && <EmailAttachments message={message} />}
 
           {visibleDrafts.map(({ message: draft, sessionMessageId }, index) => (
-            <ReplyPanel
-              key={sessionMessageId}
-              autoScroll={!composeMode && index === visibleDrafts.length - 1}
-              draftBodyAvailable={!missingBodyIds?.has(draft.id)}
-              draftMessage={draft}
-              draftSessionMessageId={sessionMessageId}
-              message={message}
-              onCloseCompose={() => setDraftDismissed(sessionMessageId, true)}
-              onRestoreCompose={() =>
-                setDraftDismissed(sessionMessageId, false)
-              }
-              onRestore={() => setDraftDismissed(sessionMessageId, false)}
-              onSendSuccess={onSendSuccess}
-              onSent={onReplySent}
-              onMarkDone={onMarkDone}
-              onStartDiscard={() => {
-                setDraftDismissed(sessionMessageId, true);
-                return {
-                  id: composeSessionRef.current,
-                  mode: "reply" as const,
-                };
-              }}
-              refetch={refetch}
-              composeMode="reply"
-            />
+            <ReplyDraftCard key={sessionMessageId} threadId={message.threadId}>
+              <ReplyPanel
+                autoScroll={!composeMode && index === visibleDrafts.length - 1}
+                draftBodyAvailable={!missingBodyIds?.has(draft.id)}
+                draftMessage={draft}
+                draftSessionMessageId={sessionMessageId}
+                message={message}
+                onCloseCompose={() => setDraftDismissed(sessionMessageId, true)}
+                onRestoreCompose={() =>
+                  setDraftDismissed(sessionMessageId, false)
+                }
+                onRestore={() => setDraftDismissed(sessionMessageId, false)}
+                onSendSuccess={onSendSuccess}
+                onSent={onReplySent}
+                onMarkDone={onMarkDone}
+                onStartDiscard={() => {
+                  setDraftDismissed(sessionMessageId, true);
+                  return {
+                    id: composeSessionRef.current,
+                    mode: "reply" as const,
+                  };
+                }}
+                refetch={refetch}
+                composeMode="reply"
+              />
+            </ReplyDraftCard>
           ))}
           {composeMode && (
             <ReplyPanel

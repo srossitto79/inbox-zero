@@ -84,9 +84,9 @@ export function BulkUnsubscribeIllustration() {
 
   return (
     <div className="relative flex h-[200px] w-full max-w-[420px] items-center justify-center gap-4 sm:gap-6">
-      <div className="relative z-10 flex h-[160px] w-[150px] flex-col rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-slate-800">
-        <div className="border-b border-gray-100 px-3 py-2 dark:border-gray-700">
-          <div className="text-[10px] font-medium text-gray-600 dark:text-gray-300">
+      <div className="relative z-10 flex h-[160px] w-[150px] flex-col rounded-lg border border-border bg-card shadow-sm">
+        <div className="border-b border-border px-3 py-2">
+          <div className="text-[10px] font-medium text-muted-foreground">
             Inbox
           </div>
         </div>
@@ -110,7 +110,7 @@ export function BulkUnsubscribeIllustration() {
                   delay: index * 0.06,
                   ease: [0.25, 0.46, 0.45, 0.94],
                 }}
-                className="absolute left-2 right-2 flex items-center gap-1.5 rounded border border-gray-200 bg-white px-2 py-1.5 shadow-sm dark:border-gray-600 dark:bg-slate-700"
+                className="absolute left-2 right-2 flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1.5 shadow-sm"
                 style={{ zIndex: senders.length - index }}
               >
                 <div
@@ -119,7 +119,7 @@ export function BulkUnsubscribeIllustration() {
                   <email.icon className="h-2.5 w-2.5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[9px] font-medium text-gray-900 dark:text-gray-100">
+                  <div className="truncate text-[9px] font-medium text-foreground">
                     {email.name}
                   </div>
                 </div>
@@ -133,7 +133,7 @@ export function BulkUnsubscribeIllustration() {
               animate={{ opacity: 1, scale: 1 }}
               className="absolute inset-0 flex items-center justify-center"
             >
-              <CircleCheck className="h-6 w-6 text-gray-400" />
+              <CircleCheck className="h-6 w-6 text-muted-foreground" />
             </motion.div>
           )}
         </div>
@@ -165,7 +165,7 @@ export function BulkUnsubscribeIllustration() {
                 duration: 0.6,
                 ease: [0.25, 0.46, 0.45, 0.94],
               }}
-              className="absolute left-1/2 top-1/2 z-20 flex w-[126px] items-center gap-1.5 rounded border border-gray-200 bg-white px-2 py-1.5 shadow-sm dark:border-gray-600 dark:bg-slate-700"
+              className="absolute left-1/2 top-1/2 z-20 flex w-[126px] items-center gap-1.5 rounded border border-border bg-card px-2 py-1.5 shadow-sm"
             >
               <div
                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded ${email.color}`}
@@ -173,7 +173,7 @@ export function BulkUnsubscribeIllustration() {
                 <email.icon className="h-2.5 w-2.5" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[9px] font-medium text-gray-900 dark:text-gray-100">
+                <div className="truncate text-[9px] font-medium text-foreground">
                   {email.name}
                 </div>
               </div>
@@ -188,7 +188,7 @@ export function BulkUnsubscribeIllustration() {
         className="z-10 hidden items-center sm:flex"
       >
         <svg
-          className="h-4 w-6 text-gray-300"
+          className="h-4 w-6 text-muted-foreground"
           viewBox="0 0 24 16"
           fill="none"
           stroke="currentColor"
@@ -198,9 +198,9 @@ export function BulkUnsubscribeIllustration() {
         </svg>
       </motion.div>
 
-      <div className="relative z-10 flex h-[160px] w-[150px] flex-col rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-slate-800">
-        <div className="border-b border-gray-100 px-3 py-2 dark:border-gray-700">
-          <div className="text-[10px] font-medium text-gray-600 dark:text-gray-300">
+      <div className="relative z-10 flex h-[160px] w-[150px] flex-col rounded-lg border border-border bg-card shadow-sm">
+        <div className="border-b border-border px-3 py-2">
+          <div className="text-[10px] font-medium text-muted-foreground">
             Archived
           </div>
         </div>
@@ -211,12 +211,12 @@ export function BulkUnsubscribeIllustration() {
           transition={{ duration: 0.2 }}
           className="flex flex-1 flex-col items-center justify-center"
         >
-          <Archive className="mb-2 h-5 w-5 text-gray-400" />
+          <Archive className="mb-2 h-5 w-5 text-muted-foreground" />
           <motion.div
             key={archivedEmailCount}
             initial={archivedEmailCount > 0 ? { scale: 1.1 } : false}
             animate={{ scale: 1 }}
-            className="text-[11px] font-medium text-gray-600 dark:text-gray-300"
+            className="text-[11px] font-medium text-muted-foreground"
           >
             {archivedEmailCount} emails
           </motion.div>

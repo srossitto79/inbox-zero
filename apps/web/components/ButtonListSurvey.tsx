@@ -23,9 +23,8 @@ export function ButtonListSurvey({
           variant="outline"
           onClick={() => onClick(option.value)}
           className={cn(
-            "relative w-full",
-            option.recommended &&
-              "ring-1 ring-inset ring-black dark:ring-white",
+            "relative h-14 w-full rounded-2xl bg-card text-base hover:border-brand hover:bg-muted/50",
+            option.recommended && "border-brand ring-1 ring-inset ring-brand",
           )}
         >
           <span className="absolute inset-0 flex items-center justify-center">

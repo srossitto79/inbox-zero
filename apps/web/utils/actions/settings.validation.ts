@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Frequency } from "@/generated/prisma/enums";
 import { DEFAULT_PROVIDER, Provider } from "@/utils/llms/config";
+import { normalizeEndpointUrl } from "@/utils/llms/endpoint-url";
 import { SENSITIVE_DATA_POLICIES } from "@/utils/dlp/sensitive-content";
 
 export const saveDigestScheduleBody = z.object({
@@ -24,20 +25,41 @@ export type SaveEmailUpdateSettingsBody = z.infer<
   typeof saveEmailUpdateSettingsBody
 >;
 
-export const saveAiSettingsBody = z.object({
-  aiProvider: z.enum([
-    DEFAULT_PROVIDER,
-    Provider.ANTHROPIC,
-    Provider.OPEN_AI,
-    Provider.AZURE,
-    Provider.GOOGLE,
-    Provider.GROQ,
-    Provider.CEREBRAS,
-    Provider.OPENROUTER,
-  ]),
-  aiModel: z.string(),
-  aiApiKey: z.string().optional(),
-});
+export const saveAiSettingsBody = z
+  .object({
+    aiProvider: z.enum([
+      DEFAULT_PROVIDER,
+      Provider.ANTHROPIC,
+      Provider.OPEN_AI,
+      Provider.AZURE,
+      Provider.GOOGLE,
+      Provider.GROQ,
+      Provider.CEREBRAS,
+      Provider.OPENROUTER,
+      Provider.OPENAI_COMPATIBLE,
+    ]),
+    aiModel: z.string(),
+    aiApiKey: z.string().optional(),
+    aiBaseUrl: z.string().optional(),
+  })
+  .superRefine((body, ctx) => {
+    if (body.aiProvider !== Provider.OPENAI_COMPATIBLE) return;
+
+    if (!normalizeEndpointUrl(body.aiBaseUrl ?? "")) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["aiBaseUrl"],
+        message: "Enter an http or https URL without credentials",
+      });
+    }
+    if (!body.aiModel.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["aiModel"],
+        message: "Enter a model",
+      });
+    }
+  });
 export type SaveAiSettingsBody = z.infer<typeof saveAiSettingsBody>;
 
 export const saveDecisionModelSettingsBody = z.object({

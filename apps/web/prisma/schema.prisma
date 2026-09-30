@@ -94,6 +94,7 @@ model User {
   aiProvider        String?
   aiModel           String?
   aiApiKey          String?
+  aiBaseUrl         String?
   decisionModelEnabled Boolean? // null follows DEFAULT_DECISION_MODEL_ENABLED
   webhookSecret     String?
 

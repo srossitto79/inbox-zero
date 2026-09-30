@@ -89,14 +89,12 @@ export default function Pricing(props: PricingProps) {
   const header = props.header || (
     <div className="mb-12">
       <div className="mx-auto max-w-2xl text-center lg:max-w-4xl">
-        <h2 className="font-title text-base leading-7 text-blue-600">
-          Pricing
-        </h2>
-        <p className="mt-2 font-title text-4xl text-gray-900 sm:text-5xl">
+        <h2 className="font-title text-base leading-7 text-brand">Pricing</h2>
+        <p className="mt-2 font-title text-4xl text-foreground sm:text-5xl">
           Try for free, affordable paid plans
         </p>
       </div>
-      <p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-gray-600">
+      <p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-muted-foreground">
         No hidden fees. Cancel anytime.
       </p>
     </div>
@@ -156,7 +154,7 @@ export default function Pricing(props: PricingProps) {
       <div
         id="pricing"
         className={cn(
-          "relative isolate mx-auto max-w-7xl bg-white px-6 pt-6 sm:pt-10 lg:px-8",
+          "relative isolate mx-auto max-w-7xl bg-card px-6 pt-6 sm:pt-10 lg:px-8",
           props.className,
         )}
       >
@@ -300,13 +298,13 @@ function PriceTier({
   }
 
   return (
-    <div className="flex flex-col rounded-3xl bg-white p-6 ring-1 ring-gray-200 sm:p-8 xl:p-10">
+    <div className="flex flex-col rounded-3xl bg-card p-6 ring-1 ring-border sm:p-8 xl:p-10">
       <div className="flex-1">
         <div className="flex items-center justify-between gap-x-4">
           <h3
             id={tier.name}
             className={cn(
-              tier.mostPopular ? "text-blue-600" : "text-gray-900",
+              tier.mostPopular ? "text-brand" : "text-foreground",
               "font-title text-lg leading-8",
             )}
           >
@@ -314,20 +312,20 @@ function PriceTier({
           </h3>
           {tier.mostPopular ? <DiscountBadge>Popular</DiscountBadge> : null}
         </div>
-        <p className="mt-4 text-sm leading-6 text-gray-600">
+        <p className="mt-4 text-sm leading-6 text-muted-foreground">
           {tier.description}
         </p>
         <p className="mt-6 flex items-baseline gap-x-1">
           {tier.price[frequency.value] === 0 ? (
-            <span className="text-4xl font-bold tracking-tight text-gray-900">
+            <span className="text-4xl font-bold tracking-tight text-foreground">
               Let's talk
             </span>
           ) : (
             <>
-              <span className="text-4xl font-bold tracking-tight text-gray-900">
+              <span className="text-4xl font-bold tracking-tight text-foreground">
                 ${tier.price[frequency.value]}
               </span>
-              <span className="text-sm font-semibold leading-6 text-gray-600">
+              <span className="text-sm font-semibold leading-6 text-muted-foreground">
                 /user
               </span>
             </>
@@ -342,15 +340,15 @@ function PriceTier({
           )}
         </p>
 
-        <p className="mt-2 text-sm leading-6 text-gray-600">
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {tier.price[frequency.value] ? frequency.priceSuffix : "\u00A0"}
         </p>
 
-        <ul className="mt-8 space-y-3 text-sm leading-6 text-gray-600">
+        <ul className="mt-8 space-y-3 text-sm leading-6 text-muted-foreground">
           {tier.features.map((feature) => (
             <li key={feature.text} className="flex gap-x-3">
               <CheckIcon
-                className="h-6 w-5 flex-none text-blue-600"
+                className="h-6 w-5 flex-none text-brand"
                 aria-hidden="true"
               />
               <span className="flex items-center gap-2">
@@ -466,7 +464,7 @@ function PriceTier({
         className={cn(
           tier.mostPopular
             ? "bg-blue-600 text-white shadow-sm hover:bg-blue-500"
-            : "text-blue-600 ring-1 ring-inset ring-blue-200 hover:ring-blue-300",
+            : "text-brand ring-1 ring-inset ring-blue-200 hover:ring-blue-300",
           "mt-8 block rounded-md px-3 py-2 text-center text-sm font-semibold leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",
         )}
       >

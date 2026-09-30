@@ -24,7 +24,7 @@ export function ActionSelectionStep() {
 
   return (
     <div className="text-center">
-      <TypographyH3 className="mx-auto max-w-lg">
+      <TypographyH3 className="font-display mx-auto max-w-lg">
         Would you like cleaned emails to be archived or marked as read?
       </TypographyH3>
 

@@ -71,7 +71,7 @@ export function Hero({
 export function HeroVideoPlayer() {
   return (
     <HeroReveal className="relative w-full" delay={0.125 * 9}>
-      <div className="relative block overflow-hidden rounded-3xl border border-[#EFEFEF] md:rounded-[43px]">
+      <div className="relative block overflow-hidden rounded-3xl border border-border md:rounded-[43px]">
         <HeroVideoDialog />
         <Image
           src="/images/new-landing/video-thumbnail.jpg"

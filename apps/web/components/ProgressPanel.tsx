@@ -35,13 +35,13 @@ export function ProgressPanel({
         >
           <Progress
             value={progress}
-            innerClassName={isCompleted ? "bg-green-500" : "bg-blue-500"}
+            innerClassName={isCompleted ? "bg-queue-receipt" : "bg-brand"}
           />
           <div className="mt-2 flex justify-between text-sm" aria-live="polite">
             <span
               className={cn(
                 "text-muted-foreground",
-                isCompleted ? "text-green-500" : "",
+                isCompleted ? "text-queue-receipt" : "",
               )}
             >
               {isCompleted ? (

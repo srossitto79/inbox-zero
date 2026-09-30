@@ -66,7 +66,7 @@ export default async function UsagePage(props: {
             : `Credits and Usage for ${emailAccount.name || emailAccount.email}`
         }
       />
-      <div className="my-4">
+      <div className="my-6">
         <Usage usage={usage} />
       </div>
     </PageWrapper>

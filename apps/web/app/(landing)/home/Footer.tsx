@@ -200,29 +200,29 @@ export function Footer() {
                 rel={
                   item.target === "_blank" ? "noopener noreferrer" : undefined
                 }
-                className="text-sm leading-6 text-gray-600 hover:text-gray-900"
+                className="text-sm leading-6 text-muted-foreground hover:text-foreground"
               >
                 {item.name}
               </Link>
             ))}
-            <span className="text-gray-300">|</span>
+            <span className="text-border">|</span>
             {selfHostedFooter.legal.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className="text-sm leading-6 text-gray-600 hover:text-gray-900"
+                className="text-sm leading-6 text-muted-foreground hover:text-foreground"
               >
                 {item.name}
               </Link>
             ))}
           </div>
-          <p className="mt-6 text-center text-xs leading-5 text-gray-500">
+          <p className="mt-6 text-center text-xs leading-5 text-muted-foreground">
             Powered by{" "}
             <Link
               href="https://getinboxzero.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-gray-900"
+              className="hover:text-foreground"
             >
               Inbox Zero
             </Link>
@@ -275,14 +275,14 @@ export function Footer() {
             <Link
               key={item.name}
               href={item.href}
-              className="text-gray-400 hover:text-gray-500"
+              className="text-muted-foreground hover:text-foreground"
             >
               <span className="sr-only">{item.name}</span>
               <item.icon className="h-6 w-6" aria-hidden="true" />
             </Link>
           ))}
         </div>
-        <p className="mt-10 text-center text-xs leading-5 text-gray-500">
+        <p className="mt-10 text-center text-xs leading-5 text-muted-foreground">
           &copy; {new Date().getFullYear()} {copyrightName}. All rights
           reserved.
         </p>
@@ -297,7 +297,7 @@ function FooterList(props: {
 }) {
   return (
     <>
-      <h3 className="text-sm font-semibold leading-6 text-gray-900">
+      <h3 className="text-sm font-semibold leading-6 text-foreground">
         {props.title}
       </h3>
       <ul className="mt-6 space-y-4">
@@ -307,7 +307,7 @@ function FooterList(props: {
               href={item.href}
               target={item.target}
               prefetch={false}
-              className="text-sm leading-6 text-gray-600 hover:text-gray-900"
+              className="text-sm leading-6 text-muted-foreground hover:text-foreground"
             >
               {item.name}
             </Link>

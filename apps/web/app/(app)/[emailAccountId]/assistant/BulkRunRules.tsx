@@ -187,7 +187,7 @@ export function BulkRunRules() {
             </DialogDescription>
           </DialogHeader>
           {progressMessage && (
-            <div className="rounded-md border border-green-200 bg-green-50 px-2 py-1.5 dark:border-green-800 dark:bg-green-950">
+            <div className="rounded-md border border-queue-receipt/30 bg-queue-receipt/10 px-2 py-1.5">
               <SectionDescription className="mt-0">
                 {progressMessage}
               </SectionDescription>
@@ -244,7 +244,7 @@ export function BulkRunRules() {
               </ItemCard>
 
               {isTrial && (
-                <div className="flex flex-col gap-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 rounded-md border border-queue-waiting/30 bg-queue-waiting/10 px-3 py-2 text-sm text-queue-waiting sm:flex-row sm:items-center sm:justify-between">
                   <span>
                     {trialAiLimitMessage ??
                       `Trials can process up to ${TRIAL_BULK_PROCESS_EMAIL_LIMIT} past emails at a time.`}
@@ -252,7 +252,7 @@ export function BulkRunRules() {
                   <EndTrialButton
                     size="sm"
                     variant="outline"
-                    className="self-start border-blue-300 bg-white text-blue-900 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-100 dark:hover:bg-blue-900 sm:self-auto"
+                    className="self-start border-queue-waiting/30 bg-card text-queue-waiting hover:bg-queue-waiting/10 sm:self-auto"
                   />
                 </div>
               )}
@@ -309,7 +309,7 @@ export function BulkRunRules() {
               )}
 
               {state.runResult && state.runResult.count === 0 && (
-                <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                <div className="mt-4 rounded-md border border-queue-waiting/30 bg-queue-waiting/10 px-3 py-2 text-sm text-queue-waiting">
                   No{" "}
                   {describeTargetedEmails({
                     includeRead: isIncludeReadEnabled,

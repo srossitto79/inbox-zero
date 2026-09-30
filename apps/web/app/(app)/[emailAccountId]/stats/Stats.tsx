@@ -85,7 +85,7 @@ export function Stats() {
 
   return (
     <PageWrapper>
-      <PageHeading>{title}</PageHeading>
+      <PageHeading className="font-display">{title}</PageHeading>
       <ActionBar className="mt-6" rightContent={<LoadStatsButton />}>
         <DatePickerWithRange
           dateRange={dateRange}

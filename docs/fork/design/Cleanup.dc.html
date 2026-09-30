@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Senders and cleanup</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Figtree',system-ui,sans-serif;background:#F4F1EA;color:#1F1B16}
+a{color:#D9480F}a:hover{color:#B23A0A}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0}
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:600;border:1px solid #E7E2D6;background:#fff;color:#1F1B16;font-family:inherit}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;display:flex;overflow:hidden;background:#F4F1EA">
+
+<div style="width:72px;background:#1F1B16;display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:6px;flex-shrink:0">
+<div style="width:38px;height:38px;border-radius:12px;background:#D9480F;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:20px;margin-bottom:14px">Z</div>
+<sc-for list="{{rail}}" as="r">
+<div style="{{r.style}}"><svg class="ico" viewBox="0 0 24 24"><path d="{{r.d}}"/><path d="{{r.d2}}"/></svg></div>
+</sc-for>
+<div style="flex-grow:1"></div>
+<div class="av" style="background:#E9DFC9;color:#5B4A25;width:36px;height:36px">SR</div>
+</div>
+
+<div style="flex-grow:1;padding:30px 40px 0;display:flex;flex-direction:column;gap:22px;box-sizing:border-box;min-width:0">
+<div style="display:flex;align-items:flex-end;justify-content:space-between">
+<div><div style="font-family:'Fraunces',serif;font-weight:600;font-size:32px;line-height:1.1">Senders</div><div style="font-size:13px;color:#5E574B;margin-top:4px">Everyone who writes to you, grouped by what they send.</div></div>
+<div style="display:flex;background:#E9E4D8;border-radius:10px;padding:3px;font-size:13px;font-weight:500">
+<div style="padding:6px 14px;border-radius:8px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.08)">Categories</div>
+<div style="padding:6px 14px;color:#5E574B">Unsubscribe</div>
+<div style="padding:6px 14px;color:#5E574B">Archive</div>
+</div>
+</div>
+
+<div style="display:flex;gap:16px">
+<sc-for list="{{stats}}" as="s">
+<div style="flex-grow:1;padding:16px 18px;border-radius:16px;background:#fff;border:1px solid #E7E2D6;display:flex;flex-direction:column;gap:4px"><div style="font-family:'Fraunces',serif;font-weight:600;font-size:30px;line-height:1">{{s.value}}</div><div style="font-size:13px;color:#5E574B">{{s.label}}</div></div>
+</sc-for>
+</div>
+
+<div style="display:flex;gap:8px;align-items:center">
+<sc-for list="{{filters}}" as="f">
+<span class="chip" style="{{f.style}}">{{f.label}}</span>
+</sc-for>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:16px">
+<sc-for list="{{tiles}}" as="t">
+<div style="padding:16px 18px;border-radius:16px;background:#fff;border:1px solid #E7E2D6;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:12px">
+<div class="av" style="{{t.avStyle}}">{{t.initials}}</div>
+<div style="flex-grow:1;min-width:0"><div style="font-size:14px;font-weight:600">{{t.name}}</div><div style="font-size:12px;color:#8C8474">{{t.address}}</div></div>
+<span class="chip" style="{{t.chipStyle}}">{{t.category}}</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;justify-content:space-between;font-size:12px;color:#5E574B"><span>{{t.volume}} a month</span><span>{{t.opened}} opened</span></div>
+<div style="height:6px;border-radius:3px;background:#EFEADF"><div style="{{t.barStyle}}"></div></div>
+</div>
+<div style="display:flex;gap:8px"><div class="btn">Keep</div><div class="btn">Archive all</div><div class="btn" style="{{t.primaryStyle}}">Unsubscribe</div></div>
+</div>
+</sc-for>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const railBase = 'width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;';
+const on = railBase + 'background:#3A342B;color:#fff;';
+const off = railBase + 'color:#A79F8D;';
+const rail = [
+{ d: 'M22 12h-6l-2 3h-4l-2-3H2', d2: 'M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z', style: off },
+{ d: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z', d2: 'M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z', style: off },
+{ d: 'M13 2L4 14h7l-1 8 9-12h-7z', d2: 'M13 2', style: off },
+{ d: 'M3 6h18M8 6V4h8v2', d2: 'M6 6l1 14h10l1-14', style: on },
+{ d: 'M4 20V10M10 20V4M16 20v-7', d2: 'M22 20H2', style: off },
+{ d: 'M3 9h18M8 2v4M16 2v4', d2: 'M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', style: off },
+];
+const stats = [
+{ value: '186', label: 'Senders this quarter' },
+{ value: '41', label: 'Never opened' },
+{ value: '23', label: 'Have an unsubscribe link' },
+{ value: '9', label: 'Ready to remove' },
+];
+const chipOn = 'background:#1F1B16;color:#fff;padding:6px 14px;font-size:13px';
+const chipOff = 'background:#fff;border:1px solid #E7E2D6;color:#5E574B;padding:6px 14px;font-size:13px';
+const filters = [
+{ label: 'All 186', style: chipOn },
+{ label: 'Newsletters 23', style: chipOff },
+{ label: 'Promotions 31', style: chipOff },
+{ label: 'Receipts 9', style: chipOff },
+{ label: 'People 74', style: chipOff },
+{ label: 'Unopened 41', style: chipOff },
+];
+const av = (bg, fg) => 'background:' + bg + ';color:' + fg;
+const bar = (w, c) => 'width:' + w + ';height:6px;border-radius:3px;background:' + c;
+const prim = 'background:#1F1B16;color:#fff;border-color:#1F1B16';
+const tiles = [
+{ initials: 'DS', name: 'Deal Sheet', address: 'hello@dealsheet.example', category: 'Promotions', chipStyle: 'background:#FBE6EF;color:#9D174D', volume: '12', opened: '0%', barStyle: bar('4%', '#BE185D'), primaryStyle: prim, avStyle: av('#FBE6EF', '#9D174D') },
+{ initials: 'WD', name: 'Weekly Dispatch', address: 'news@weeklydispatch.example', category: 'Newsletter', chipStyle: 'background:#F0E9FD;color:#5B21B6', volume: '4', opened: '12%', barStyle: bar('12%', '#7C3AED'), primaryStyle: prim, avStyle: av('#F0E9FD', '#5B21B6') },
+{ initials: 'TN', name: 'The Notebook', address: 'write@thenotebook.example', category: 'Newsletter', chipStyle: 'background:#F0E9FD;color:#5B21B6', volume: '8', opened: '64%', barStyle: bar('64%', '#7C3AED'), primaryStyle: '', avStyle: av('#FDF0D2', '#854D0E') },
+{ initials: 'NS', name: 'Northwind Studio', address: 'billing@northwind.example', category: 'Receipts', chipStyle: 'background:#E4F3E9;color:#166534', volume: '3', opened: '100%', barStyle: bar('100%', '#15803D'), primaryStyle: '', avStyle: av('#DCE6F7', '#26467F') },
+{ initials: 'OM', name: 'Open Markets', address: 'brief@openmarkets.example', category: 'Newsletter', chipStyle: 'background:#F0E9FD;color:#5B21B6', volume: '22', opened: '9%', barStyle: bar('9%', '#7C3AED'), primaryStyle: prim, avStyle: av('#E6EEFE', '#1D4ED8') },
+{ initials: 'CB', name: 'Craft Brief', address: 'team@craftbrief.example', category: 'Promotions', chipStyle: 'background:#FBE6EF;color:#9D174D', volume: '6', opened: '0%', barStyle: bar('3%', '#BE185D'), primaryStyle: prim, avStyle: av('#E4F3E9', '#166534') },
+];
+return { rail, stats, filters, tiles };
+}
+}
+</script>
+</body>
+</html>

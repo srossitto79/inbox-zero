@@ -149,18 +149,14 @@ export function BulkUnsubscribeRowDesktop({
             value={readPercentage}
             className={cn(
               "h-1.5 w-16",
-              isSuggested ? "bg-amber-100 dark:bg-amber-950" : "bg-muted",
+              isSuggested ? "bg-queue-reply/15" : "bg-muted",
             )}
-            innerClassName={
-              isSuggested ? "bg-amber-400" : "bg-slate-300 dark:bg-slate-500"
-            }
+            innerClassName={isSuggested ? "bg-queue-reply" : "bg-brand"}
           />
           <span
             className={cn(
               "font-medium",
-              isSuggested
-                ? "text-amber-600 dark:text-amber-400"
-                : "text-foreground/80",
+              isSuggested ? "text-queue-reply" : "text-foreground/80",
             )}
           >
             {Math.round(readPercentage)}%

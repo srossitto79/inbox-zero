@@ -271,7 +271,7 @@ export function IntegrationRow({
               )}
             </div>
           ) : (
-            <TypographyP className="text-sm text-gray-500">
+            <TypographyP className="text-sm text-muted-foreground">
               No Auth Required
             </TypographyP>
           )}

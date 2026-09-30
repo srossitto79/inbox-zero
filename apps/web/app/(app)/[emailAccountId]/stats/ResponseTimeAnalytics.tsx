@@ -11,7 +11,7 @@ import { CardBasic } from "@/components/ui/card";
 import { getDateRangeParams } from "./params";
 import { BarChart } from "./BarChart";
 import type { ChartConfig } from "@/components/ui/chart";
-import { COLORS } from "@/utils/colors";
+import { CHART_COLORS } from "@/app/(app)/[emailAccountId]/stats/chartColors";
 import { cn } from "@/utils";
 import type { ResponseTimeQuery } from "@/utils/stats/response-time/validation";
 import type { ResponseTimeResponse } from "@/utils/stats/response-time/controller";
@@ -61,11 +61,11 @@ export function ResponseTimeAnalytics({
   }, [data]);
 
   const distributionChartConfig: ChartConfig = {
-    count: { label: "Emails", color: COLORS.analytics.blue },
+    count: { label: "Emails", color: CHART_COLORS.primary },
   };
 
   const trendChartConfig: ChartConfig = {
-    median: { label: "Median Response Time", color: COLORS.analytics.purple },
+    median: { label: "Median Response Time", color: CHART_COLORS.secondary },
   };
 
   return (
@@ -182,9 +182,9 @@ function SummaryCard({
             className={cn(
               "text-xs mt-1 flex items-center gap-1",
               comparison.percentChange < 0
-                ? "text-green-600"
+                ? "text-queue-receipt"
                 : comparison.percentChange > 0
-                  ? "text-red-600"
+                  ? "text-destructive"
                   : "text-muted-foreground",
             )}
           >

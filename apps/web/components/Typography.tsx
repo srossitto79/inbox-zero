@@ -9,7 +9,7 @@ const PageHeading = forwardRef<
   <h1
     ref={ref}
     className={cn(
-      "font-title text-2xl leading-7 text-primary dark:text-foreground sm:truncate lg:text-3xl",
+      "font-display text-2xl font-semibold leading-7 text-foreground sm:truncate lg:text-3xl",
       className,
     )}
     {...props}
@@ -47,10 +47,7 @@ const SectionDescription = forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn(
-      "mt-1 text-sm leading-6 text-slate-700 dark:text-foreground",
-      className,
-    )}
+    className={cn("mt-1 text-sm leading-6 text-foreground/80", className)}
     {...props}
   />
 ));
@@ -62,7 +59,7 @@ const MessageText = forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-slate-700 dark:text-foreground", className)}
+    className={cn("text-sm text-foreground/80", className)}
     {...props}
   />
 ));
@@ -118,7 +115,7 @@ const TextLink = forwardRef<HTMLAnchorElement, LinkProps>(
     <Link
       ref={ref}
       className={cn(
-        "font-semibold text-blue-600 hover:underline dark:text-primary",
+        "font-semibold text-blue-600 hover:underline dark:text-primary [html[data-palette]_&]:text-brand",
         className,
       )}
       {...props}

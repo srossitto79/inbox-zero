@@ -32,7 +32,7 @@ export function IntroStep({
           unoptimized
         />
 
-        <TypographyH3 className="mt-2">
+        <TypographyH3 className="font-display mt-2">
           Let's get your inbox cleaned up in 5 minutes
         </TypographyH3>
 

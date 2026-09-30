@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rule editor with dry-run</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Figtree',system-ui,sans-serif;background:#F4F1EA;color:#1F1B16}
+a{color:#D9480F}a:hover{color:#B23A0A}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0}
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;border:1px solid #E7E2D6;background:#fff;color:#1F1B16;font-family:inherit}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;display:flex;overflow:hidden;background:#F4F1EA">
+
+<div style="width:72px;background:#1F1B16;display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:6px;flex-shrink:0">
+<div style="width:38px;height:38px;border-radius:12px;background:#D9480F;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:20px;margin-bottom:14px">Z</div>
+<sc-for list="{{rail}}" as="r">
+<div style="{{r.style}}"><svg class="ico" viewBox="0 0 24 24"><path d="{{r.d}}"/><path d="{{r.d2}}"/></svg></div>
+</sc-for>
+<div style="flex-grow:1"></div>
+<div class="av" style="background:#E9DFC9;color:#5B4A25;width:36px;height:36px">SR</div>
+</div>
+
+<div style="width:248px;background:#FBF9F4;border-right:1px solid #E7E2D6;display:flex;flex-direction:column;padding:20px 16px;gap:14px;flex-shrink:0;box-sizing:border-box">
+<div style="font-family:'Fraunces',serif;font-weight:600;font-size:22px;padding:6px 10px">Rules</div>
+<div style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{rules}}" as="r">
+<div style="{{r.style}}"><span style="display:flex;align-items:center;gap:10px"><span style="{{r.dot}}"></span>{{r.name}}</span><span style="{{r.stateStyle}}">{{r.state}}</span></div>
+</sc-for>
+</div>
+<div style="padding:10px;font-size:13px;font-weight:600;color:#D9480F">New rule</div>
+</div>
+
+<div style="flex-grow:1;padding:30px 36px 0;display:flex;flex-direction:column;gap:22px;box-sizing:border-box;min-width:0">
+<div style="display:flex;align-items:flex-end;justify-content:space-between">
+<div><div style="font-family:'Fraunces',serif;font-weight:600;font-size:32px;line-height:1.1">Newsletters</div><div style="font-size:13px;color:#5E574B;margin-top:4px">Edit the rule and see what it would have done.</div></div>
+<div style="display:flex;gap:8px"><div class="btn">Run on past mail</div><div class="btn" style="background:#1F1B16;color:#fff;border-color:#1F1B16">Save rule</div></div>
+</div>
+
+<div style="display:flex;gap:32px;flex-grow:1;min-height:0">
+<!-- form -->
+<div style="width:470px;display:flex;flex-direction:column;gap:18px;flex-shrink:0">
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8C8474">When</div>
+<div style="padding:14px 16px;border-radius:14px;background:#fff;border:1px solid #E7E2D6;font-size:15px;line-height:1.5">Bulk mail or newsletters from senders I have never replied to.</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip" style="background:#F0E9FD;color:#5B21B6">Has unsubscribe link</span><span class="chip" style="background:#F0E9FD;color:#5B21B6">Never replied</span><span class="chip" style="background:#EDF0F4;color:#475569">Not from contacts</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8C8474">Then</div>
+<sc-for list="{{actions}}" as="a">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:12px;background:#fff;border:1px solid #E7E2D6;font-size:14px"><span>{{a.label}}</span><span style="{{a.stateStyle}}">{{a.state}}</span></div>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8C8474">How</div>
+<div style="display:flex;background:#E9E4D8;border-radius:12px;padding:3px;font-size:13px;font-weight:500">
+<div style="flex-grow:1;text-align:center;padding:9px;border-radius:10px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.08)">Apply automatically</div>
+<div style="flex-grow:1;text-align:center;padding:9px;color:#5E574B">Ask me first</div>
+</div>
+</div>
+</div>
+
+<!-- preview -->
+<div style="flex-grow:1;display:flex;flex-direction:column;gap:12px;min-width:0">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<div style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8C8474">Dry-run, last 14 days</div>
+<span class="chip" style="background:#F0E9FD;color:#5B21B6">23 of 300 threads would match</span>
+</div>
+<div style="background:#fff;border:1px solid #E7E2D6;border-radius:16px;overflow:hidden">
+<sc-for list="{{matches}}" as="m">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #EFEADF">
+<div class="av" style="{{m.avStyle}};width:30px;height:30px;font-size:11px">{{m.initials}}</div>
+<div style="flex-grow:1;min-width:0"><div style="font-size:13px;font-weight:600">{{m.name}}</div><div style="font-size:13px;color:#5E574B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{m.subject}}</div></div>
+<span class="chip" style="background:#E4F3E9;color:#166534">Matches</span>
+</div>
+</sc-for>
+<div style="padding:10px 16px;font-size:12px;color:#8C8474;background:#FBF9F4">and 18 more</div>
+</div>
+<div style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8C8474;margin-top:6px">Left alone</div>
+<div style="background:#fff;border:1px solid #E7E2D6;border-radius:16px;overflow:hidden">
+<sc-for list="{{skipped}}" as="s">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #EFEADF">
+<div class="av" style="{{s.avStyle}};width:30px;height:30px;font-size:11px">{{s.initials}}</div>
+<div style="flex-grow:1;min-width:0"><div style="font-size:13px;font-weight:600">{{s.name}}</div><div style="font-size:13px;color:#5E574B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{s.subject}}</div></div>
+<span class="chip" style="background:#EDF0F4;color:#475569">{{s.why}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const railBase = 'width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;';
+const on = railBase + 'background:#3A342B;color:#fff;';
+const off = railBase + 'color:#A79F8D;';
+const rail = [
+{ d: 'M22 12h-6l-2 3h-4l-2-3H2', d2: 'M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z', style: off },
+{ d: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z', d2: 'M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z', style: off },
+{ d: 'M13 2L4 14h7l-1 8 9-12h-7z', d2: 'M13 2', style: on },
+{ d: 'M3 6h18M8 6V4h8v2', d2: 'M6 6l1 14h10l1-14', style: off },
+{ d: 'M4 20V10M10 20V4M16 20v-7', d2: 'M22 20H2', style: off },
+{ d: 'M3 9h18M8 2v4M16 2v4', d2: 'M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', style: off },
+];
+const rowBase = 'display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:10px;font-size:14px;';
+const dot = (c) => 'width:9px;height:9px;border-radius:50%;background:' + c;
+const okState = 'font-size:12px;color:#166534';
+const offState = 'font-size:12px;color:#8C8474';
+const rules = [
+{ name: 'Direct questions', dot: dot('#D9480F'), state: 'On', stateStyle: okState, style: rowBase },
+{ name: 'Awaiting reply', dot: dot('#2563EB'), state: 'On', stateStyle: okState, style: rowBase },
+{ name: 'Newsletters', dot: dot('#7C3AED'), state: 'Editing', stateStyle: 'font-size:12px;color:#D9480F', style: rowBase + 'background:#fff;font-weight:600;border:1px solid #E7E2D6' },
+{ name: 'Receipts', dot: dot('#15803D'), state: 'On', stateStyle: okState, style: rowBase },
+{ name: 'Calendar invites', dot: dot('#BE185D'), state: 'On', stateStyle: okState, style: rowBase },
+{ name: 'Cold outreach', dot: dot('#64748B'), state: 'Off', stateStyle: offState, style: rowBase },
+];
+const actions = [
+{ label: 'Label as Newsletters', state: 'On', stateStyle: okState },
+{ label: 'Skip the inbox', state: 'On', stateStyle: okState },
+{ label: 'Mark as read', state: 'Off', stateStyle: offState },
+{ label: 'Draft a reply', state: 'Off', stateStyle: offState },
+];
+const av = (bg, fg) => 'background:' + bg + ';color:' + fg;
+const matches = [
+{ initials: 'WD', name: 'Weekly Dispatch', subject: 'Five things worth reading this week', avStyle: av('#F0E9FD', '#5B21B6') },
+{ initials: 'TN', name: 'The Notebook', subject: 'Notes on slow software', avStyle: av('#FDF0D2', '#854D0E') },
+{ initials: 'DS', name: 'Deal Sheet', subject: 'Autumn offers end Sunday', avStyle: av('#FBE6EF', '#9D174D') },
+{ initials: 'OM', name: 'Open Markets', subject: 'Morning brief', avStyle: av('#DCE6F7', '#26467F') },
+];
+const skipped = [
+{ initials: 'HL', name: 'Harbor Logistics', subject: 'Shipping update for order 5521', why: 'You replied before', avStyle: av('#E6EEFE', '#1D4ED8') },
+{ initials: 'BL', name: 'Bright Learning', subject: 'Your course digest', why: 'Saved contact', avStyle: av('#E4F3E9', '#166534') },
+];
+return { rail, rules, actions, matches, skipped };
+}
+}
+</script>
+</body>
+</html>

@@ -136,7 +136,9 @@ function SubtleToolCollapsible({
         <span>{title}</span>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="mt-2 space-y-3 rounded-md border p-3">{children}</div>
+        <div className="mt-2 space-y-3 rounded-2xl border border-border bg-card p-4">
+          {children}
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -158,7 +160,7 @@ function CollapsibleToolCard({
   const [open, setOpen] = useState(initialOpen);
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden rounded-2xl border-border">
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger className="w-full text-left">
           <CardHeader className={cn("px-4 py-3.5", open && "border-b")}>
@@ -297,13 +299,13 @@ export function ManageInboxResult({
       initialOpen={isInProgress}
     >
       {isInProgress && (
-        <ToolPanel className="border-blue-200 bg-blue-50/60 text-blue-700 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-200">
+        <ToolPanel className="border-queue-waiting/30 bg-queue-waiting/10 text-queue-waiting">
           <div className="text-sm">Processing senders now.</div>
         </ToolPanel>
       )}
 
       {typeof failedCount === "number" && failedCount > 0 && (
-        <ToolPanel className="border-red-200 bg-red-50/60 text-red-700 dark:border-red-900 dark:bg-red-950/20 dark:text-red-200">
+        <ToolPanel className="border-destructive/30 bg-destructive/10 text-destructive">
           <div className="text-sm">
             Failed on {failedCount} {countLabel}
             {failedCount === 1 ? "" : "s"}.
@@ -678,7 +680,7 @@ function EmailActionResult({
     : actionLabel;
 
   return (
-    <Card>
+    <Card className="overflow-hidden rounded-2xl border-border">
       <CardHeader className="flex flex-row items-center gap-3 space-y-0 border-b px-4 py-3.5">
         <Avatar className="size-8">
           <AvatarFallbackColor content={recipientInitial} className="text-xs" />
@@ -698,7 +700,7 @@ function EmailActionResult({
           )}
         </div>
         {isConfirmed && (
-          <div className="flex items-center gap-1 text-xs font-medium text-green-600">
+          <div className="flex items-center gap-1 text-xs font-medium text-queue-receipt">
             <CheckIcon className="size-3.5" />
             Sent
           </div>
@@ -768,7 +770,7 @@ function EmailActionResult({
               variant="ghost"
               size="sm"
               className={`h-8 gap-1.5 text-xs ${
-                copied ? "text-green-600" : "text-muted-foreground"
+                copied ? "text-queue-receipt" : "text-muted-foreground"
               }`}
               onClick={handleCopy}
             >
@@ -1040,7 +1042,7 @@ export function PendingSaveMemoryToolCard({
   };
 
   return (
-    <Card>
+    <Card className="overflow-hidden rounded-2xl border-border">
       <CardHeader className="px-4 py-3.5">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -1118,8 +1120,11 @@ function PendingCreateRuleCardContent({
 
   return (
     <div className="space-y-3">
-      <Alert variant="default" className="border-amber-500/40 bg-amber-500/5">
-        <AlertTriangleIcon className="size-4 text-amber-600" />
+      <Alert
+        variant="default"
+        className="border-queue-reply/30 bg-queue-reply/5"
+      >
+        <AlertTriangleIcon className="size-4 text-queue-reply" />
         <AlertTitle>Review before enabling</AlertTitle>
         <AlertDescription className="space-y-2 text-sm">
           <p>
@@ -1185,7 +1190,7 @@ export function UpdatedRuleConditions({
   const conditionText = buildConditionText(args.condition);
 
   return (
-    <Card>
+    <Card className="overflow-hidden rounded-2xl border-border">
       <RuleSummaryCardHeader
         title={args.ruleName}
         status={<RuleStatusBadge label="Updated" color="blue" />}
@@ -1255,7 +1260,7 @@ export function UpdatedRuleActions({
   const conditionText = condition ? buildConditionText(condition) : null;
 
   return (
-    <Card>
+    <Card className="overflow-hidden rounded-2xl border-border">
       <RuleSummaryCardHeader
         title={args.ruleName}
         status={<RuleStatusBadge label="Updated" color="blue" />}
@@ -1332,7 +1337,7 @@ export function UpdatedRule({
   });
 
   return (
-    <Card>
+    <Card className="overflow-hidden rounded-2xl border-border">
       <RuleSummaryCardHeader
         title={title}
         status={<RuleStatusBadge label={status.label} color={status.color} />}
@@ -1408,7 +1413,7 @@ export function UpdatedLearnedPatterns({
   );
 
   return (
-    <Card>
+    <Card className="overflow-hidden rounded-2xl border-border">
       <RuleSummaryCardHeader
         title={args.ruleName}
         status={<RuleStatusBadge label="Patterns updated" color="blue" />}
@@ -1453,7 +1458,7 @@ export function UpdatedRuleState({
   const label = enabled ? "Enabled" : "Disabled";
 
   return (
-    <Card>
+    <Card className="overflow-hidden rounded-2xl border-border">
       <RuleSummaryCardHeader
         title={ruleName}
         status={
@@ -1518,11 +1523,13 @@ export function PendingDeleteRuleToolCard({
   };
 
   return (
-    <Card>
+    <Card className="overflow-hidden rounded-2xl border-border">
       <CardHeader className="flex flex-row items-start gap-3 space-y-0 border-b px-4 py-3.5">
         <TrashIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-semibold">{ruleName}</h3>
+          <h3 className="truncate font-display text-base font-semibold">
+            {ruleName}
+          </h3>
           <p className="mt-1 text-xs text-muted-foreground">
             {deleted ? "Deleted rule" : "Pending deletion"}
           </p>
@@ -1538,9 +1545,9 @@ export function PendingDeleteRuleToolCard({
         <CardContent className="space-y-3 px-4 py-3.5">
           <Alert
             variant="default"
-            className="border-amber-500/40 bg-amber-500/5"
+            className="border-queue-reply/30 bg-queue-reply/5"
           >
-            <AlertTriangleIcon className="size-4 text-amber-600" />
+            <AlertTriangleIcon className="size-4 text-queue-reply" />
             <AlertTitle>Confirm rule deletion</AlertTitle>
             <AlertDescription className="text-sm text-muted-foreground">
               This will permanently delete the rule and its actions.
@@ -1582,11 +1589,13 @@ export function PendingDeleteRulePreviewCard({
   const ruleName = output.ruleName || args.ruleName;
 
   return (
-    <Card>
+    <Card className="overflow-hidden rounded-2xl border-border">
       <CardHeader className="flex flex-row items-start gap-3 space-y-0 border-b px-4 py-3.5">
         <TrashIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-semibold">{ruleName}</h3>
+          <h3 className="truncate font-display text-base font-semibold">
+            {ruleName}
+          </h3>
           <p className="mt-1 text-xs text-muted-foreground">
             {deleted ? "Deleted rule" : "Pending deletion"}
           </p>
@@ -1602,9 +1611,9 @@ export function PendingDeleteRulePreviewCard({
         <CardContent className="space-y-3 px-4 py-3.5">
           <Alert
             variant="default"
-            className="border-amber-500/40 bg-amber-500/5"
+            className="border-queue-reply/30 bg-queue-reply/5"
           >
-            <AlertTriangleIcon className="size-4 text-amber-600" />
+            <AlertTriangleIcon className="size-4 text-queue-reply" />
             <AlertTitle>Confirm rule deletion</AlertTitle>
             <AlertDescription className="text-sm text-muted-foreground">
               This will permanently delete the rule and its actions.
@@ -1864,11 +1873,13 @@ function ExpandedToolCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden rounded-2xl border-border">
       <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 px-4 py-3.5">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-semibold leading-tight">{title}</h3>
+            <h3 className="font-display text-base font-semibold leading-tight">
+              {title}
+            </h3>
             {badge}
           </div>
           {description && (
@@ -1912,14 +1923,14 @@ function CollapsibleDiffContent({
       <div className="text-xs font-medium text-muted-foreground">{title}</div>
       <div className="max-h-96 overflow-auto rounded-md border bg-muted/30 p-3 font-mono text-sm">
         {originalText && (
-          <div className="mb-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-red-50 px-2 py-1 text-red-800 dark:bg-red-950/30 dark:text-red-200">
-            <span className="mr-2 text-red-500">-</span>
+          <div className="mb-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-destructive/10 px-2 py-1 text-destructive">
+            <span className="mr-2 text-destructive">-</span>
             {originalText}
           </div>
         )}
         {updatedText && (
-          <div className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-green-50 px-2 py-1 text-green-800 dark:bg-green-950/30 dark:text-green-200">
-            <span className="mr-2 text-green-500">+</span>
+          <div className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-queue-receipt/10 px-2 py-1 text-queue-receipt">
+            <span className="mr-2 text-queue-receipt">+</span>
             {updatedText}
           </div>
         )}
@@ -2003,7 +2014,9 @@ function ToolPanel({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-md border bg-muted/20 p-3", className)}>
+    <div
+      className={cn("rounded-2xl border border-border bg-card p-4", className)}
+    >
       {children}
     </div>
   );

@@ -70,9 +70,9 @@ function ActivityLogRow({
   return (
     <div className="flex items-start gap-2 rounded px-2 py-1.5 text-xs">
       {isCompleted ? (
-        <CheckCircle2Icon className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-green-600" />
+        <CheckCircle2Icon className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-queue-receipt" />
       ) : showSpinner ? (
-        <LoaderIcon className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 animate-spin text-blue-600" />
+        <LoaderIcon className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 animate-spin text-queue-waiting" />
       ) : (
         <div className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
       )}

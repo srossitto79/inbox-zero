@@ -28,6 +28,8 @@ import { getCategorizationProgress } from "@/utils/redis/categorization-progress
 import { prefixPath } from "@/utils/path";
 import { checkUserOwnsEmailAccount } from "@/utils/email-account";
 import { EmailStatsPreloader } from "@/components/EmailStatsPreloader";
+import { PageHeading } from "@/components/Typography";
+import { CategoriesStats } from "@/app/(app)/[emailAccountId]/smart-categories/CategoriesStats";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -72,6 +74,16 @@ export default async function CategoriesPage({
 
       <PremiumAlertWithData className="mx-2 mt-2 sm:mx-4" />
 
+      <div className="px-2 pb-4 pt-4 sm:px-4">
+        <PageHeading>Smart Categories</PageHeading>
+        <div className="mt-4">
+          <CategoriesStats
+            categoryCount={categories.length}
+            categorizedCount={senders.length}
+          />
+        </div>
+      </div>
+
       <Suspense>
         <Tabs defaultValue="categories">
           <TopBar className="items-center">
@@ -106,7 +118,7 @@ export default async function CategoriesPage({
 
           <TabsContent value="categories" className="m-0">
             {senders.length === 0 && (
-              <Card className="m-4">
+              <Card className="m-4 border-brand/30 bg-brand/5">
                 <CardHeader>
                   <CardTitle>Categorize senders</CardTitle>
                   <CardDescription>

@@ -23,8 +23,8 @@ export function ChatIllustration() {
         transition={{ duration: 0.4, delay: 0.7, ease: EASE }}
         className="self-start max-w-[85%]"
       >
-        <div className="rounded-2xl rounded-tl-sm border border-gray-200 bg-white px-3 py-2 text-left shadow-sm dark:border-gray-700 dark:bg-slate-800">
-          <div className="text-[11px] leading-snug text-gray-800 dark:text-gray-200">
+        <div className="rounded-2xl rounded-tl-sm border border-border bg-card px-3 py-2 text-left shadow-sm">
+          <div className="text-[11px] leading-snug text-foreground">
             Found 12 newsletters from last week. Archiving now.
           </div>
           <motion.div
@@ -33,9 +33,9 @@ export function ChatIllustration() {
             transition={{ duration: 0.3, delay: 1.5 }}
             className="overflow-hidden"
           >
-            <div className="mt-2 flex items-center gap-1.5 rounded-md bg-slate-50 px-2 py-1 dark:bg-slate-900">
-              <Mail className="h-3 w-3 text-gray-500" />
-              <span className="text-[10px] text-gray-600 dark:text-gray-400">
+            <div className="mt-2 flex items-center gap-1.5 rounded-md bg-muted px-2 py-1">
+              <Mail className="h-3 w-3 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground">
                 12 emails archived
               </span>
             </div>
@@ -47,11 +47,11 @@ export function ChatIllustration() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 2.1, ease: EASE }}
-        className="mt-2 flex items-center justify-center gap-1.5 self-center rounded-full border border-gray-200 bg-white px-2.5 py-1 shadow-sm dark:border-gray-700 dark:bg-slate-800"
+        className="mt-2 flex items-center justify-center gap-1.5 self-center rounded-full border border-border bg-card px-2.5 py-1 shadow-sm"
       >
         <SlackIcon className="h-3 w-3" />
         <TelegramIcon className="h-3 w-3" />
-        <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300">
+        <span className="text-[10px] font-medium text-foreground">
           Also in Slack and Telegram
         </span>
       </motion.div>

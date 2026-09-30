@@ -15,10 +15,12 @@ import type {
   ListThread,
   MailLayoutMode,
 } from "@/app/(app)/[emailAccountId]/mail/types";
+import { ExecutedRuleStrip } from "@/components/email-list/ExecutedRuleStrip";
 import { EmailThread } from "@/components/email-list/EmailThread";
 import type { ThreadMessage } from "@/components/email-list/types";
 import { getEmailMessageCellLabels } from "@/components/EmailMessageCellLabels";
 import { LoadingContent } from "@/components/LoadingContent";
+import { useUiVariant } from "@/providers/UiPreferencesProvider";
 import { getSWRFetchErrorMessage } from "@/providers/swr-error";
 import { Button } from "@/components/ui/button";
 import type { EmailLabels } from "@/providers/email-label-types";
@@ -71,6 +73,7 @@ export type ThreadReaderProps = {
   isUnread: boolean;
   onMarkRead: () => void;
   onMarkUnread: () => void;
+  onSnooze?: (until: Date) => void;
   /** Refreshes the open thread after a reply is sent or a draft changes. */
   refetch: () => void;
   /** Opens a different provider thread when a sent message starts one. */
@@ -109,6 +112,7 @@ export function ThreadReader({
   isUnread,
   onMarkRead,
   onMarkUnread,
+  onSnooze,
   refetch,
   onSendSuccess,
   autoOpenReplyForMessageId,
@@ -121,6 +125,7 @@ export function ThreadReader({
     senderEmail: string;
     senderName: string;
   } | null>(null);
+  const uiVariant = useUiVariant();
   const [readerRef, readerWidth] = useElementWidth();
   const headerMessage = thread?.messages.at(-1) ?? messages.at(-1);
 
@@ -174,6 +179,7 @@ export function ThreadReader({
       onMoveToInbox={onMoveToInbox}
       onMarkRead={onMarkRead}
       onMarkUnread={onMarkUnread}
+      onSnooze={onSnooze}
       onBackToInbox={onBackToInbox}
       onRemoveLabel={onRemoveLabel}
       subject={headerMessage?.headers.subject ?? "Conversation"}
@@ -214,6 +220,11 @@ export function ThreadReader({
     >
       {messages.length > 0 ? (
         <EmailThread
+          banner={
+            uiVariant === "next" && threadId ? (
+              <ExecutedRuleStrip threadId={threadId} />
+            ) : undefined
+          }
           renderToolbar={renderToolbar}
           renderMessageMenu={renderMessageMenu}
           enableMessageNavigation={enableMessageNavigation}

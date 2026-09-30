@@ -58,6 +58,7 @@ export const sendBriefAction = actionClient
               aiProvider: true,
               aiModel: true,
               aiApiKey: true,
+              aiBaseUrl: true,
             },
           },
           account: {

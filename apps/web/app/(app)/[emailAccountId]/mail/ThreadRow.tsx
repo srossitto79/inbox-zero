@@ -3,6 +3,7 @@
 import { memo, useMemo, type Ref } from "react";
 import { MailThreadRow } from "@inboxzero/mail-ui/MailThreadRow";
 import { isThreadStarred } from "@/app/(app)/[emailAccountId]/mail/star-state";
+import { SenderAvatar } from "@/app/(app)/[emailAccountId]/mail/SenderAvatar";
 import { MailLabelChip } from "@/app/(app)/[emailAccountId]/mail/MailLabelChip";
 import { isThreadUnread } from "@/app/(app)/[emailAccountId]/mail/read-state";
 import { getThreadParticipantNames } from "@/app/(app)/[emailAccountId]/mail/thread-participants";
@@ -21,6 +22,7 @@ import {
   AvatarFallbackColor,
   AvatarImage,
 } from "@/components/ui/avatar";
+import { useUiVariant } from "@/providers/UiPreferencesProvider";
 import type { EmailLabels } from "@/providers/email-label-types";
 import { cn } from "@/utils";
 import { internalDateToDate } from "@/utils/date";
@@ -71,6 +73,7 @@ export const ThreadRow = memo(function ThreadRow({
   rowRef,
   sentMessageOpen,
 }: ThreadRowProps) {
+  const uiVariant = useUiVariant();
   const message = thread.messages.at(-1);
   const labels = useMemo(
     () =>
@@ -101,6 +104,14 @@ export const ThreadRow = memo(function ThreadRow({
   return (
     <MailThreadRow
       accountAvatar={account ? <AccountAvatar account={account} /> : null}
+      avatar={
+        uiVariant === "next" ? (
+          <SenderAvatar
+            className={compact ? "size-8" : undefined}
+            name={participantSummary || message.headers.from}
+          />
+        ) : undefined
+      }
       compact={compact}
       date={
         <div className="flex items-center justify-end gap-1.5">

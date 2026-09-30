@@ -193,7 +193,7 @@ export function ResultDisplayContent({ result }: { result: RunRulesResult }) {
           {reasonDisplay.actionFailureMessages.length > 0 && (
             <div className="space-y-1">
               <div className="font-medium text-sm">Action issues:</div>
-              <ul className="list-disc space-y-1 pl-4 text-sm text-slate-700 dark:text-foreground">
+              <ul className="list-disc space-y-1 pl-4 text-sm text-foreground">
                 {reasonDisplay.actionFailureMessages.map((message) => (
                   <li key={message} className="break-words">
                     {message}

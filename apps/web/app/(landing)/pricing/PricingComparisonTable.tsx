@@ -120,12 +120,12 @@ const tierHeaders = tiers.map((tier) => ({
 
 function FeatureCell({ value }: { value: FeatureValue }) {
   if (typeof value === "string") {
-    return <span className="text-sm text-gray-700">{value}</span>;
+    return <span className="text-sm text-foreground">{value}</span>;
   }
   if (value) {
     return <CheckIcon className="h-5 w-5 text-blue-500 mx-auto" />;
   }
-  return <MinusIcon className="h-5 w-5 text-gray-300 mx-auto" />;
+  return <MinusIcon className="h-5 w-5 text-border mx-auto" />;
 }
 
 export function PricingComparisonTable() {
@@ -138,7 +138,7 @@ export function PricingComparisonTable() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-[#E7E7E780]">
-                  <th className="py-4 px-6 text-sm font-medium text-gray-500">
+                  <th className="py-4 px-6 text-sm font-medium text-muted-foreground">
                     Feature
                   </th>
                   {tierHeaders.map((tier) => (
@@ -146,10 +146,10 @@ export function PricingComparisonTable() {
                       key={tier.name}
                       className="py-4 px-6 text-center min-w-[140px]"
                     >
-                      <div className="text-sm font-semibold text-gray-900">
+                      <div className="text-sm font-semibold text-foreground">
                         {tier.name}
                       </div>
-                      <div className="text-xs text-gray-500 mt-0.5">
+                      <div className="text-xs text-muted-foreground mt-0.5">
                         {tier.price}/mo
                       </div>
                     </th>
@@ -166,7 +166,7 @@ export function PricingComparisonTable() {
                         : ""
                     }
                   >
-                    <td className="py-3.5 px-6 text-sm text-gray-700">
+                    <td className="py-3.5 px-6 text-sm text-foreground">
                       {feature.name}
                     </td>
                     <td className="py-3.5 px-6 text-center">

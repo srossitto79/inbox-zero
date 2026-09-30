@@ -30,7 +30,7 @@ import type { Row } from "@/app/(app)/[emailAccountId]/bulk-unsubscribe/types";
 import { useThreads } from "@/hooks/useThreads";
 import { useAccount } from "@/providers/EmailAccountProvider";
 import { onAutoArchive } from "@/utils/actions/client";
-import { COLORS } from "@/utils/colors";
+import { CHART_COLORS } from "@/app/(app)/[emailAccountId]/stats/chartColors";
 import { getUserFacingUnsubscribeLink } from "@/utils/parse/unsubscribe";
 
 export function NewsletterModal(props: {
@@ -173,7 +173,7 @@ function EmailsChart(props: {
         <BarChart
           data={data.result}
           config={{
-            Emails: { label: "Emails", color: COLORS.analytics.green },
+            Emails: { label: "Emails", color: CHART_COLORS.positive },
           }}
           xAxisKey="startOfPeriod"
         />

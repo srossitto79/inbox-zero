@@ -33,6 +33,7 @@ test("blocks a selected sender and surfaces it in Auto Archive", async ({
     page.getByRole("heading", { name: "Bulk Unsubscriber" }),
   ).toBeVisible();
 
+  await page.getByRole("button", { name: "List view" }).click();
   await selectNewsletterFilter(page, "Unhandled", "All");
 
   const senderRow = page

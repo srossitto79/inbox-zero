@@ -48,9 +48,9 @@ export function EmailItem({
     <div
       className={cn(
         "flex items-center rounded-md border p-2 text-sm transition-all duration-300",
-        pending && "border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20",
-        archive && "border-green-500/30",
-        label && "border-yellow-500/30",
+        pending && "border-queue-waiting/30 bg-queue-waiting/5",
+        archive && "border-queue-receipt/30",
+        label && "border-queue-reply/30",
       )}
     >
       <div className="min-w-0 flex-1">
@@ -90,9 +90,10 @@ function StatusCircle({ status }: { status: Status }) {
     <div
       className={cn(
         "mr-2 size-2 rounded-full",
-        (status === "markedDone" || status === "markingDone") && "bg-green-500",
-        status === "keep" && "bg-blue-500",
-        status === "labelled" && "bg-yellow-500",
+        (status === "markedDone" || status === "markingDone") &&
+          "bg-queue-receipt",
+        status === "keep" && "bg-queue-waiting",
+        status === "labelled" && "bg-queue-reply",
       )}
     />
   );

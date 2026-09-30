@@ -154,6 +154,7 @@ export function getEmailAccountForModel(
       aiProvider: model.provider,
       aiModel: model.model,
       aiApiKey: getApiKeyForProvider(model.provider),
+      aiBaseUrl: null,
     },
   };
 }

@@ -142,18 +142,18 @@ function getActionType(example: string): ActionType | null {
 function getIconColorClass(color: Color): string {
   switch (color) {
     case "green":
-      return "text-green-600 dark:text-green-400";
+      return "text-queue-receipt";
     case "yellow":
-      return "text-yellow-600 dark:text-yellow-400";
+      return "text-queue-reply";
     case "blue":
-      return "text-blue-600 dark:text-blue-400";
+      return "text-queue-waiting";
     case "red":
-      return "text-red-600 dark:text-red-400";
+      return "text-destructive";
     case "purple":
-      return "text-purple-600 dark:text-purple-400";
+      return "text-queue-newsletter";
     case "indigo":
-      return "text-indigo-600 dark:text-indigo-400";
+      return "text-queue-waiting";
     default:
-      return "text-gray-600 dark:text-gray-400";
+      return "text-muted-foreground";
   }
 }

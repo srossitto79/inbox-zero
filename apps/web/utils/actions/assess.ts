@@ -54,7 +54,14 @@ export const analyzeWritingStyleAction = actionClient
         sensitiveDataPolicy: true,
         timezone: true,
         calendarBookingLink: true,
-        user: { select: { aiProvider: true, aiModel: true, aiApiKey: true } },
+        user: {
+          select: {
+            aiProvider: true,
+            aiModel: true,
+            aiApiKey: true,
+            aiBaseUrl: true,
+          },
+        },
       },
     });
 

@@ -121,14 +121,14 @@ export function ExamplesDialog({
                       className={cn(
                         "relative h-auto min-h-[2.5rem] w-full justify-start text-wrap px-4 py-3 text-left text-sm leading-relaxed",
                         isSelected &&
-                          "border-green-500 bg-green-50 hover:bg-green-100 dark:bg-green-950/20 dark:hover:bg-green-950/30",
+                          "border-queue-receipt/30 bg-queue-receipt/10 hover:bg-queue-receipt/10",
                       )}
                       onClick={() => handleExampleToggle(index)}
                     >
                       <div className="flex w-full items-start gap-3">
                         {isSelected && (
                           <div className="mt-0.5 flex-shrink-0">
-                            <CheckCircle2Icon className="size-4 text-green-600 dark:text-green-400" />
+                            <CheckCircle2Icon className="size-4 text-queue-receipt" />
                           </div>
                         )}
                         <span className="flex-1 whitespace-pre-wrap">

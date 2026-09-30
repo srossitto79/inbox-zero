@@ -348,11 +348,9 @@ function SettingsGroup({
   return (
     <section className="space-y-4">
       {title && (
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="flex items-center gap-2 border-b border-border pb-2 text-muted-foreground">
           {icon}
-          <h2 className="text-sm font-medium uppercase tracking-wide">
-            {title}
-          </h2>
+          <h2 className="font-display text-lg text-foreground">{title}</h2>
         </div>
       )}
       {children}

@@ -25,18 +25,26 @@ import { setLastEmailAccountAction } from "@/utils/actions/email-account-cookie"
 import { ProfileImage } from "@/components/ProfileImage";
 import { getAccountSwitchUrl } from "@/utils/account-switch-url";
 import { redirectToSafeUrl } from "@/utils/redirect";
-export function AccountSwitcher() {
+export function AccountSwitcher({ trigger }: { trigger?: React.ReactNode }) {
   const { data: accountsData } = useAccounts();
 
   if (!accountsData) return null;
 
-  return <AccountSwitcherInternal emailAccounts={accountsData.emailAccounts} />;
+  return (
+    <AccountSwitcherInternal
+      emailAccounts={accountsData.emailAccounts}
+      trigger={trigger}
+    />
+  );
 }
 
 export function AccountSwitcherInternal({
   emailAccounts,
+  trigger,
 }: {
   emailAccounts: GetEmailAccountsResponse["emailAccounts"];
+  /** Replaces the sidebar row, for callers that place the menu elsewhere. */
+  trigger?: React.ReactNode;
 }) {
   const { isMobile } = useSidebar();
 
@@ -81,90 +89,94 @@ export function AccountSwitcherInternal({
 
   if (isLoading) return null;
 
-  return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-              sidebarName="left-sidebar"
-            >
-              {activeEmailAccount ? (
-                <>
-                  <div className="flex aspect-square size-8 items-center justify-center">
-                    <ProfileImage
-                      image={activeEmailAccount.image}
-                      label={
-                        activeEmailAccount.name || activeEmailAccount.email
-                      }
-                    />
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">
-                      {activeEmailAccount.name || activeEmailAccount.email}
-                    </span>
-                    {activeEmailAccount.name && (
-                      <span className="truncate text-xs text-muted-foreground">
-                        {activeEmailAccount.email}
-                      </span>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div>Choose account</div>
-              )}
-              <ChevronsUpDown className="ml-auto" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-80 rounded-lg"
-            align="start"
-            side={isMobile ? "bottom" : "right"}
-            sideOffset={4}
+  const menu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        {trigger ?? (
+          <SidebarMenuButton
+            size="lg"
+            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            sidebarName="left-sidebar"
           >
-            <DropdownMenuLabel className="text-xs text-muted-foreground">
-              Accounts
-            </DropdownMenuLabel>
-            {emailAccounts.map((emailAccount) => (
-              <DropdownMenuItem
-                key={emailAccount.id}
-                className="gap-2 p-2"
-                onSelect={() => {
-                  handleSelect(emailAccount.id);
-                }}
-              >
-                <ProfileImage
-                  image={emailAccount.image}
-                  label={emailAccount.name || emailAccount.email}
-                />
-                <div className="flex flex-col">
-                  <span className="truncate font-medium">
-                    {emailAccount.name || emailAccount.email}
+            {activeEmailAccount ? (
+              <>
+                <div className="flex aspect-square size-8 items-center justify-center">
+                  <ProfileImage
+                    image={activeEmailAccount.image}
+                    label={activeEmailAccount.name || activeEmailAccount.email}
+                  />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">
+                    {activeEmailAccount.name || activeEmailAccount.email}
                   </span>
-                  {emailAccount.name && (
+                  {activeEmailAccount.name && (
                     <span className="truncate text-xs text-muted-foreground">
-                      {emailAccount.email}
+                      {activeEmailAccount.email}
                     </span>
                   )}
                 </div>
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <Link href="/accounts">
-              <DropdownMenuItem className="gap-2 p-2">
-                <div className="flex size-6 items-center justify-center rounded-md border bg-background">
-                  <Plus className="size-4" />
-                </div>
-                <div className="font-medium text-muted-foreground">
-                  Add or manage accounts
-                </div>
-              </DropdownMenuItem>
-            </Link>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
+              </>
+            ) : (
+              <div>Choose account</div>
+            )}
+            <ChevronsUpDown className="ml-auto" />
+          </SidebarMenuButton>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="w-[--radix-dropdown-menu-trigger-width] min-w-80 rounded-lg"
+        align="start"
+        side={isMobile ? "bottom" : "right"}
+        sideOffset={4}
+      >
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          Accounts
+        </DropdownMenuLabel>
+        {emailAccounts.map((emailAccount) => (
+          <DropdownMenuItem
+            key={emailAccount.id}
+            className="gap-2 p-2"
+            onSelect={() => {
+              handleSelect(emailAccount.id);
+            }}
+          >
+            <ProfileImage
+              image={emailAccount.image}
+              label={emailAccount.name || emailAccount.email}
+            />
+            <div className="flex flex-col">
+              <span className="truncate font-medium">
+                {emailAccount.name || emailAccount.email}
+              </span>
+              {emailAccount.name && (
+                <span className="truncate text-xs text-muted-foreground">
+                  {emailAccount.email}
+                </span>
+              )}
+            </div>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <Link href="/accounts">
+          <DropdownMenuItem className="gap-2 p-2">
+            <div className="flex size-6 items-center justify-center rounded-md border bg-background">
+              <Plus className="size-4" />
+            </div>
+            <div className="font-medium text-muted-foreground">
+              Add or manage accounts
+            </div>
+          </DropdownMenuItem>
+        </Link>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  if (trigger) return menu;
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>{menu}</SidebarMenuItem>
     </SidebarMenu>
   );
 }

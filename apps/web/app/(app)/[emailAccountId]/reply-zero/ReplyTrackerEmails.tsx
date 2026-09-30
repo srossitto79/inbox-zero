@@ -317,8 +317,7 @@ function Row({
       ref={rowRef}
       className={cn(
         "transition-colors duration-100 hover:bg-background",
-        isSelected &&
-          "bg-blue-50 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-slate-800",
+        isSelected && "bg-queue-waiting/10 hover:bg-queue-waiting/10",
       )}
       onMouseEnter={onSelect}
     >

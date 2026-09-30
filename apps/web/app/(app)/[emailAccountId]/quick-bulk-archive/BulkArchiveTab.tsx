@@ -45,30 +45,30 @@ const confidenceConfig = {
     label: "Safe to Archive",
     description: "Marketing emails and newsletters you likely don't need",
     icon: MailXIcon,
-    color: "text-green-600",
-    bgColor: "bg-green-50 dark:bg-green-950/30",
-    hoverBgColor: "hover:bg-green-100 dark:hover:bg-green-950/50",
-    borderColor: "border-green-200 dark:border-green-900",
+    color: "text-queue-receipt",
+    bgColor: "bg-queue-receipt/10",
+    hoverBgColor: "hover:bg-queue-receipt/15",
+    borderColor: "border-queue-receipt/30",
     badgeVariant: "default" as const,
   },
   medium: {
     label: "Probably Safe",
     description: "Automated notifications and updates",
     icon: BellOffIcon,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50 dark:bg-amber-950/30",
-    hoverBgColor: "hover:bg-amber-100 dark:hover:bg-amber-950/50",
-    borderColor: "border-amber-200 dark:border-amber-900",
+    color: "text-queue-reply",
+    bgColor: "bg-queue-reply/10",
+    hoverBgColor: "hover:bg-queue-reply/15",
+    borderColor: "border-queue-reply/30",
     badgeVariant: "secondary" as const,
   },
   low: {
     label: "Review Recommended",
     description: "Senders that may need a closer look",
     icon: MailOpenIcon,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50 dark:bg-blue-950/30",
-    hoverBgColor: "hover:bg-blue-100 dark:hover:bg-blue-950/50",
-    borderColor: "border-blue-200 dark:border-blue-900",
+    color: "text-queue-waiting",
+    bgColor: "bg-queue-waiting/10",
+    hoverBgColor: "hover:bg-queue-waiting/15",
+    borderColor: "border-queue-waiting/30",
     badgeVariant: "outline" as const,
   },
 };
@@ -264,7 +264,7 @@ export function BulkArchiveTab() {
               <div className="mb-4 flex flex-wrap gap-3 text-sm">
                 {groupedByConfidence.high.length > 0 && (
                   <div className="flex items-center gap-1.5">
-                    <div className="size-2 rounded-full bg-green-500" />
+                    <div className="size-2 rounded-full bg-queue-receipt" />
                     <span>
                       {groupedByConfidence.high.length} safe to archive
                     </span>
@@ -272,7 +272,7 @@ export function BulkArchiveTab() {
                 )}
                 {groupedByConfidence.medium.length > 0 && (
                   <div className="flex items-center gap-1.5">
-                    <div className="size-2 rounded-full bg-amber-500" />
+                    <div className="size-2 rounded-full bg-queue-reply" />
                     <span>
                       {groupedByConfidence.medium.length} probably safe
                     </span>
@@ -280,7 +280,7 @@ export function BulkArchiveTab() {
                 )}
                 {groupedByConfidence.low.length > 0 && (
                   <div className="flex items-center gap-1.5">
-                    <div className="size-2 rounded-full bg-blue-500" />
+                    <div className="size-2 rounded-full bg-queue-waiting" />
                     <span>{groupedByConfidence.low.length} to review</span>
                   </div>
                 )}
@@ -315,6 +315,7 @@ export function BulkArchiveTab() {
           <Progress
             value={(selectedCount / totalCount) * 100}
             className="mt-2 h-2"
+            innerClassName="bg-brand"
           />
         </div>
       </Card>
@@ -355,7 +356,7 @@ export function BulkArchiveTab() {
                   <div className="flex items-center gap-3">
                     <div
                       className={cn(
-                        "flex size-10 items-center justify-center rounded-lg bg-white dark:bg-gray-900",
+                        "flex size-10 items-center justify-center rounded-lg bg-card",
                         config.color,
                       )}
                     >
@@ -513,7 +514,7 @@ function ArchiveStatus({
       return <span className="text-sm text-muted-foreground">Queued</span>;
     case "processing":
       return (
-        <span className="text-sm text-blue-600">
+        <span className="text-sm text-queue-waiting">
           {status.threadsTotal
             ? `${status.threadsTotal - status.threadIds.length} / ${status.threadsTotal}`
             : "Archiving..."}
@@ -526,7 +527,7 @@ function ArchiveStatus({
         </span>
       );
     case "failed":
-      return <span className="text-sm text-red-600">Failed</span>;
+      return <span className="text-sm text-destructive">Failed</span>;
     default:
       return null;
   }

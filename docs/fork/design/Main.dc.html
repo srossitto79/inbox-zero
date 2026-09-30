@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Triage inbox</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Figtree',system-ui,sans-serif;background:#F4F1EA;color:#1F1B16}
+a{color:#D9480F}a:hover{color:#B23A0A}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0}
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;border:1px solid #E7E2D6;background:#fff;color:#1F1B16;font-family:inherit}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;display:flex;overflow:hidden;background:#F4F1EA">
+
+<!-- rail -->
+<div style="width:72px;background:#1F1B16;display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:6px;flex-shrink:0">
+<div style="width:38px;height:38px;border-radius:12px;background:#D9480F;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:20px;margin-bottom:14px">Z</div>
+<sc-for list="{{rail}}" as="r">
+<div style="{{r.style}}"><svg class="ico" viewBox="0 0 24 24"><path d="{{r.d}}"/><path d="{{r.d2}}"/></svg></div>
+</sc-for>
+<div style="flex-grow:1"></div>
+<div class="av" style="background:#E9DFC9;color:#5B4A25;width:36px;height:36px">SR</div>
+</div>
+
+<!-- nav -->
+<div style="width:248px;background:#FBF9F4;border-right:1px solid #E7E2D6;display:flex;flex-direction:column;padding:20px 16px;gap:18px;flex-shrink:0;box-sizing:border-box">
+<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:#fff;border:1px solid #E7E2D6">
+<div class="av" style="width:28px;height:28px;font-size:11px;background:#DCE6F7;color:#26467F">SR</div>
+<div style="flex-grow:1;min-width:0"><div style="font-size:13px;font-weight:600">Personal</div><div style="font-size:11px;color:#8C8474">sal@example.com</div></div>
+</div>
+<a href="#compose" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:12px;background:#1F1B16;color:#fff;font-size:14px;font-weight:600;text-decoration:none">
+<svg class="ico" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Compose</a>
+<div style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{views}}" as="v">
+<div style="{{v.style}}"><span>{{v.name}}</span><span style="font-size:12px;color:#8C8474">{{v.count}}</span></div>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px">
+<div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8C8474;padding:0 10px 6px">Queues</div>
+<sc-for list="{{queues}}" as="q">
+<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;font-size:14px"><span style="{{q.dot}}"></span><span style="flex-grow:1">{{q.name}}</span><span style="font-size:12px;color:#8C8474">{{q.count}}</span></div>
+</sc-for>
+</div>
+<div style="flex-grow:1"></div>
+<div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#5E574B;padding:12px;border-radius:12px;background:#fff;border:1px solid #E7E2D6">
+<div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#15803D"></span>Synced 38 seconds ago</div>
+<div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#15803D"></span>Local model online</div>
+</div>
+</div>
+
+<!-- list -->
+<div style="width:500px;display:flex;flex-direction:column;padding:26px 22px 0;gap:16px;flex-shrink:0;box-sizing:border-box;overflow:hidden">
+<div style="display:flex;align-items:flex-end;justify-content:space-between">
+<div>
+<div style="font-family:'Fraunces',serif;font-weight:600;font-size:32px;line-height:1.1">Triage</div>
+<div style="font-size:13px;color:#5E574B;margin-top:4px">Tuesday 30 September. Four need a reply.</div>
+</div>
+<div style="display:flex;background:#E9E4D8;border-radius:10px;padding:3px;font-size:13px;font-weight:500">
+<div style="padding:6px 12px;border-radius:8px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.08)">Queues</div>
+<div style="padding:6px 12px;color:#5E574B">Timeline</div>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:#fff;border:1px solid #E7E2D6;color:#8C8474;font-size:14px">
+<svg class="ico" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Search mail or ask the assistant
+</div>
+
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#D9480F"><span style="width:8px;height:8px;border-radius:50%;background:#D9480F"></span>To reply<span style="color:#8C8474;font-weight:500">4</span></div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{toReply}}" as="t">
+<div style="{{t.cardStyle}}">
+<div class="av" style="{{t.avStyle}}">{{t.initials}}</div>
+<div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+<div style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:14px;font-weight:600">{{t.name}}</span><span style="font-size:12px;color:#8C8474">{{t.time}}</span></div>
+<div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{t.subject}}</div>
+<div style="font-size:13px;color:#5E574B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{t.preview}}</div>
+<div style="display:flex;gap:6px;margin-top:5px"><span class="chip" style="{{t.chipStyle}}">{{t.chip}}</span><sc-if value="{{t.draft}}" hint-placeholder-val="{{ true }}"><span class="chip" style="background:#EDEAFB;color:#4B3FA8">Draft ready</span></sc-if></div>
+</div>
+</div>
+</sc-for>
+</div>
+
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#2563EB;margin-top:4px"><span style="width:8px;height:8px;border-radius:50%;background:#2563EB"></span>Waiting on others<span style="color:#8C8474;font-weight:500">6</span></div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{waiting}}" as="w">
+<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:#FBF9F4;border:1px solid #E7E2D6">
+<div class="av" style="{{w.avStyle}};width:30px;height:30px;font-size:11px">{{w.initials}}</div>
+<div style="flex-grow:1;min-width:0;font-size:13px"><b style="font-weight:600">{{w.name}}</b> <span style="color:#5E574B">{{w.subject}}</span></div>
+<span class="chip" style="background:#E6EEFE;color:#1D4ED8">{{w.meta}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+
+<!-- reader -->
+<div style="width:628px;background:#fff;border-left:1px solid #E7E2D6;display:flex;flex-direction:column;padding:26px 32px;gap:18px;box-sizing:border-box;overflow:hidden;flex-shrink:0">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<div style="display:flex;gap:8px">
+<div class="btn"><svg class="ico" viewBox="0 0 24 24" style="width:16px;height:16px"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/></svg>Archive</div>
+<div class="btn"><svg class="ico" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Snooze</div>
+</div>
+<span style="font-size:12px;color:#8C8474">Thread of 3 messages</span>
+</div>
+<div style="font-family:'Fraunces',serif;font-weight:600;font-size:26px;line-height:1.2">Contract draft v3: can you confirm the dates?</div>
+<div style="display:flex;align-items:center;gap:12px">
+<div class="av" style="background:#FBE6EF;color:#9D174D">ML</div>
+<div style="flex-grow:1"><div style="font-size:14px;font-weight:600">Maya Lindqvist</div><div style="font-size:12px;color:#8C8474">maya@lindqvist.example, today at 9:42</div></div>
+<span class="chip" style="background:#EDF0F4;color:#475569">12 threads, last reply 3 days ago</span>
+</div>
+
+<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:12px;background:#FDEBE3;border:1px solid #F6CDBB">
+<svg class="ico" viewBox="0 0 24 24" style="color:#D9480F;margin-top:1px"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg>
+<div style="flex-grow:1;font-size:13px;line-height:1.45;color:#7A2E0B"><b style="font-weight:600">Filed under To reply.</b> Rule "Direct questions from people I write to" matched: the message asks a question and Maya is in your sent history.</div>
+<a href="#fix" style="font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap">Wrong? Fix rule</a>
+</div>
+
+<div style="font-size:15px;line-height:1.6;color:#2D2820;display:flex;flex-direction:column;gap:12px">
+<div>Hi Sal, attaching the revised draft. The main change is the delivery schedule in section 4.</div>
+<div>Could you confirm the 14th works for the kickoff before Friday? If not, I can hold the 21st instead.</div>
+<div style="color:#5E574B">Thanks, Maya</div>
+</div>
+
+<div style="border-radius:16px;border:1px solid #DAD3F5;background:#F7F5FF;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4B3FA8"><svg class="ico" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg>Draft in your voice</div>
+<div style="font-size:15px;line-height:1.55;color:#2D2820">Hi Maya, thanks for the update. The 14th works for me, so let's keep the kickoff there. I'll read section 4 tonight and send comments tomorrow morning.</div>
+<div style="display:flex;gap:8px;align-items:center">
+<div class="btn" style="background:#1F1B16;color:#fff;border-color:#1F1B16"><svg class="ico" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>Send</div>
+<div class="btn">Edit</div>
+<div class="btn">Shorter</div>
+<div class="btn">Regenerate</div>
+</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const railBase = 'width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;';
+const railOn = railBase + 'background:#3A342B;color:#fff;';
+const railOff = railBase + 'color:#A79F8D;';
+const rail = [
+{ d: 'M22 12h-6l-2 3h-4l-2-3H2', d2: 'M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z', style: railOn },
+{ d: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z', d2: 'M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z', style: railOff },
+{ d: 'M13 2L4 14h7l-1 8 9-12h-7z', d2: 'M13 2', style: railOff },
+{ d: 'M3 6h18M8 6V4h8v2', d2: 'M6 6l1 14h10l1-14', style: railOff },
+{ d: 'M4 20V10M10 20V4M16 20v-7', d2: 'M22 20H2', style: railOff },
+{ d: 'M3 9h18M8 2v4M16 2v4', d2: 'M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', style: railOff },
+];
+const rowBase = 'display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:10px;font-size:14px;';
+const views = [
+{ name: 'Triage', count: '', style: rowBase + 'background:#fff;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06);border:1px solid #E7E2D6' },
+{ name: 'Inbox', count: '42', style: rowBase + 'border:1px solid transparent' },
+{ name: 'Drafts', count: '3', style: rowBase + 'border:1px solid transparent' },
+{ name: 'Sent', count: '', style: rowBase + 'border:1px solid transparent' },
+{ name: 'Archive', count: '', style: rowBase + 'border:1px solid transparent' },
+];
+const dot = (c) => 'width:9px;height:9px;border-radius:50%;background:' + c;
+const queues = [
+{ name: 'To reply', count: 4, dot: dot('#D9480F') },
+{ name: 'Waiting on others', count: 6, dot: dot('#2563EB') },
+{ name: 'FYI', count: 18, dot: dot('#64748B') },
+{ name: 'Newsletters', count: 23, dot: dot('#7C3AED') },
+{ name: 'Receipts', count: 9, dot: dot('#15803D') },
+{ name: 'Calendar', count: 3, dot: dot('#BE185D') },
+];
+const card = (sel) => 'display:flex;gap:12px;padding:14px;border-radius:14px;background:#fff;box-sizing:border-box;' + (sel ? 'border:1.5px solid #D9480F;box-shadow:0 6px 18px rgba(217,72,15,.12)' : 'border:1px solid #E7E2D6');
+const av = (bg, fg) => 'background:' + bg + ';color:' + fg;
+const toReply = [
+{ initials: 'ML', name: 'Maya Lindqvist', time: '9:42', subject: 'Contract draft v3: can you confirm the dates?', preview: 'Attaching the revised draft. Could you confirm the 14th works before Friday...', chip: 'Direct question', chipStyle: 'background:#FDEBE3;color:#9A3412', draft: true, cardStyle: card(true), avStyle: av('#FBE6EF', '#9D174D') },
+{ initials: 'NS', name: 'Northwind Studio', time: '8:15', subject: 'Invoice question for September', preview: 'Hello, the total on invoice 2041 differs from the quote...', chip: 'Direct question', chipStyle: 'background:#FDEBE3;color:#9A3412', draft: true, cardStyle: card(false), avStyle: av('#DCE6F7', '#26467F') },
+{ initials: 'AO', name: 'Dr. Amara Okafor', time: 'Yesterday', subject: 'Rescheduling Thursday\'s call', preview: 'Would Friday at 10:00 suit you instead? I have a clash...', chip: 'Needs a time', chipStyle: 'background:#FDEBE3;color:#9A3412', draft: false, cardStyle: card(false), avStyle: av('#E4F3E9', '#166534') },
+{ initials: 'TR', name: 'Tomás Rey', time: 'Yesterday', subject: 'Quick intro?', preview: 'A mutual contact suggested we talk about the pilot...', chip: 'New contact', chipStyle: 'background:#EDF0F4;color:#475569', draft: false, cardStyle: card(false), avStyle: av('#FDF0D2', '#854D0E') },
+];
+const waiting = [
+{ initials: 'HL', name: 'Harbor Logistics', subject: 'Re: Delivery window', meta: '2 days', avStyle: av('#E6EEFE', '#1D4ED8') },
+{ initials: 'PK', name: 'Priya Kapoor', subject: 'Re: Pilot scope', meta: '4 days', avStyle: av('#F0E9FD', '#5B21B6') },
+];
+return { rail, views, queues, toReply, waiting };
+}
+}
+</script>
+</body>
+</html>

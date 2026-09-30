@@ -35,6 +35,7 @@ export function EmailThread({
   autoOpenReplyForMessageId,
   autoOpenForwardForMessageId,
   topRightComponent,
+  banner,
   onSendSuccess,
   onMarkDone,
   onOpenSenderContext,
@@ -54,6 +55,8 @@ export function EmailThread({
   autoOpenReplyForMessageId?: string;
   autoOpenForwardForMessageId?: string;
   topRightComponent?: React.ReactNode;
+  /** Sits between the toolbar and the first message. */
+  banner?: ReactNode;
   onSendSuccess?: (
     messageId: string,
     sentThreadId: string,
@@ -254,6 +257,8 @@ export function EmailThread({
             </Tooltip>
           </div>
         )}
+
+        {banner}
 
         <ul className="pt-1">
           {organizedMessages.map(({ message, draftMessages, outgoing }) => {

@@ -186,7 +186,7 @@ export function Rules({
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="overflow-hidden rounded-2xl border-border">
         <LoadingContent loading={isLoading} error={error}>
           {hasRules ? (
             <Table>

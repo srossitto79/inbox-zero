@@ -135,7 +135,7 @@ function OnboardingCompleteDemo({
   provider: string;
 }) {
   return (
-    <div className="flex flex-col items-center rounded-lg border bg-slate-50 px-4 py-10">
+    <div className="flex flex-col items-center rounded-lg border bg-muted px-4 py-10">
       <StepInboxProcessedView
         data={data}
         isLoading={isLoading}
