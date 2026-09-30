@@ -9,7 +9,7 @@ services:
     pull_policy: never
     build:
       context: .
-      dockerfile: docker/Dockerfile.local
+      dockerfile: docker/Dockerfile.prod
 
   gmail-poller:
     image: alpine:latest

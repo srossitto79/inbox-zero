@@ -41,7 +41,7 @@ docker compose -f docker-compose.yml -f docker-compose.fork.yml \
   --env-file apps/web/.env --profile all up -d --build
 ```
 
-The overlay builds the web image from `docker/Dockerfile.local` and starts a `gmail-poller` service that calls the route every 60 seconds. Files changed relative to upstream: `apps/web/utils/webhook/google/poll-gmail.ts`, `apps/web/app/api/cron/poll-gmail/`, the `GMAIL_POLLING_ENABLED` entry in `env.ts`, `.env.example` and `turbo.json`, and `docker-compose.fork.yml`.
+The overlay builds the web image from `docker/Dockerfile.prod` and starts a `gmail-poller` service that calls the route every 60 seconds. Files changed relative to upstream: `apps/web/utils/webhook/google/poll-gmail.ts`, `apps/web/app/api/cron/poll-gmail/`, the `GMAIL_POLLING_ENABLED` entry in `env.ts`, `.env.example` and `turbo.json`, and `docker-compose.fork.yml`.
 
 To pick up upstream changes: `git fetch upstream && git merge upstream/main`.
 
