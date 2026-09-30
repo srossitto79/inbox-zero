@@ -64,8 +64,19 @@ module.exports = {
         sans: ["var(--font-geist)", ...fontFamily.sans],
         inter: ["var(--font-inter)", ...fontFamily.sans],
         title: ["var(--font-title)", ...fontFamily.sans],
+        display: ["var(--font-display)", "Georgia", "serif"],
+        body: ["var(--font-body)", ...fontFamily.sans],
       },
       colors: {
+        brand: "hsl(var(--brand))",
+        queue: {
+          reply: "hsl(var(--queue-reply))",
+          waiting: "hsl(var(--queue-waiting))",
+          fyi: "hsl(var(--queue-fyi))",
+          newsletter: "hsl(var(--queue-newsletter))",
+          receipt: "hsl(var(--queue-receipt))",
+          calendar: "hsl(var(--queue-calendar))",
+        },
         // shadcn/ui
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

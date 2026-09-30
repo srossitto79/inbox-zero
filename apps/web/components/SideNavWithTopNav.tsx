@@ -10,6 +10,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { SideNav } from "@/components/SideNav";
+import { NewSideNav } from "@/components/shell/NewSideNav";
+import type { UiVariant } from "@/utils/ui-variant";
 import { SidebarRight } from "@/components/SidebarRight";
 import { cn } from "@/utils";
 
@@ -57,10 +59,12 @@ export function SideNavWithTopNav({
   children,
   defaultOpen,
   feedbackEnabled,
+  variant,
 }: {
   children: React.ReactNode;
   defaultOpen: boolean;
   feedbackEnabled: boolean;
+  variant: UiVariant;
 }) {
   const pathname = usePathname();
 
@@ -87,11 +91,18 @@ export function SideNavWithTopNav({
     >
       {/* Mail supplies its own sidebar and trigger for this shared state, so
           the global navigation and its mobile header would be duplicates. */}
-      {!isMailRoute && (
+      {variant === "next" ? (
         <>
-          <MobileHeader />
-          <SideNav name="left-sidebar" feedbackEnabled={feedbackEnabled} />
+          {!isMailRoute && <MobileHeader />}
+          <NewSideNav name="left-sidebar" />
         </>
+      ) : (
+        !isMailRoute && (
+          <>
+            <MobileHeader />
+            <SideNav name="left-sidebar" feedbackEnabled={feedbackEnabled} />
+          </>
+        )
       )}
       <ContentWrapper>{children}</ContentWrapper>
       {!isAssistantRoute ? <SidebarRight name="chat-sidebar" /> : null}

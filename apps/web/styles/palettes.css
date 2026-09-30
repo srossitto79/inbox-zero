@@ -1,0 +1,253 @@
+/*
+ * Runtime palettes. Each one overrides the shadcn tokens from globals.css by
+ * stamping `data-palette` on the document root (see components/AppearanceSection).
+ * No attribute means the classic slate tokens.
+ *
+ * The selectors carry an extra element so they win over the Mail route's
+ * `:root[data-theme="mail"]` block regardless of source order.
+ *
+ * `--brand` is the one accent that identifies the palette. The queue colors are
+ * fixed meaning (reply, waiting, ...) and only shift between light and dark.
+ */
+
+:root {
+  --brand: 222 47% 11%;
+  --queue-reply: 19 87% 45%;
+  --queue-waiting: 221 83% 53%;
+  --queue-fyi: 215 16% 47%;
+  --queue-newsletter: 263 70% 50%;
+  --queue-receipt: 142 71% 30%;
+  --queue-calendar: 331 75% 40%;
+  --radius-card: 0.875rem;
+}
+
+html:root[data-palette]:not(.dark) {
+  --queue-reply: 19 87% 45%;
+  --queue-waiting: 221 83% 53%;
+  --queue-fyi: 215 16% 47%;
+  --queue-newsletter: 263 70% 50%;
+  --queue-receipt: 142 71% 30%;
+  --queue-calendar: 331 75% 40%;
+}
+
+html:root[data-palette].dark {
+  --queue-reply: 17 88% 62%;
+  --queue-waiting: 217 91% 68%;
+  --queue-fyi: 215 20% 65%;
+  --queue-newsletter: 263 85% 76%;
+  --queue-receipt: 142 60% 55%;
+  --queue-calendar: 330 80% 70%;
+}
+
+/* Shared derived tokens so each palette only lists what is distinctive. */
+html:root[data-palette] {
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --secondary-foreground: var(--foreground);
+  --accent-foreground: var(--foreground);
+  --ring: var(--brand);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-muted-foreground: var(--muted-foreground);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-ring: var(--brand);
+  --radius: 0.75rem;
+}
+
+/* Paper: warm neutrals with a vermilion accent. */
+html:root[data-palette="paper"]:not(.dark) {
+  --background: 42 32% 94%;
+  --foreground: 35 16% 10%;
+  --card: 0 0% 100%;
+  --muted: 42 30% 91%;
+  --muted-foreground: 42 10% 45%;
+  --border: 43 25% 87%;
+  --input: 43 25% 87%;
+  --border-strong: 43 22% 80%;
+  --primary: 35 16% 10%;
+  --primary-foreground: 43 43% 97%;
+  --secondary: 43 28% 88%;
+  --accent: 42 30% 91%;
+  --brand: 19 87% 45%;
+  --sidebar-background: 43 43% 97%;
+  --sidebar-accent: 42 30% 91%;
+  --sidebar-border: 43 25% 87%;
+}
+html:root[data-palette="paper"].dark {
+  --background: 36 12% 10%;
+  --foreground: 42 26% 90%;
+  --card: 36 14% 13%;
+  --muted: 36 13% 15%;
+  --muted-foreground: 40 11% 62%;
+  --border: 40 13% 20%;
+  --input: 40 13% 20%;
+  --border-strong: 40 13% 26%;
+  --primary: 42 26% 90%;
+  --primary-foreground: 36 12% 10%;
+  --secondary: 36 13% 18%;
+  --accent: 36 13% 18%;
+  --brand: 17 88% 58%;
+  --sidebar-background: 36 13% 8%;
+  --sidebar-accent: 36 13% 15%;
+  --sidebar-border: 40 13% 17%;
+}
+
+/* Sage: muted green. */
+html:root[data-palette="sage"]:not(.dark) {
+  --background: 96 14% 93%;
+  --foreground: 128 12% 11%;
+  --card: 0 0% 100%;
+  --muted: 100 17% 90%;
+  --muted-foreground: 120 8% 42%;
+  --border: 102 17% 85%;
+  --input: 102 17% 85%;
+  --border-strong: 102 15% 77%;
+  --primary: 148 30% 17%;
+  --primary-foreground: 96 30% 97%;
+  --secondary: 100 17% 88%;
+  --accent: 100 17% 90%;
+  --brand: 154 46% 34%;
+  --sidebar-background: 96 25% 96%;
+  --sidebar-accent: 100 17% 90%;
+  --sidebar-border: 102 17% 85%;
+}
+html:root[data-palette="sage"].dark {
+  --background: 137 13% 9%;
+  --foreground: 130 15% 91%;
+  --card: 137 14% 12%;
+  --muted: 137 12% 15%;
+  --muted-foreground: 130 9% 60%;
+  --border: 137 11% 20%;
+  --input: 137 11% 20%;
+  --border-strong: 137 11% 26%;
+  --primary: 130 15% 91%;
+  --primary-foreground: 137 13% 9%;
+  --secondary: 137 12% 18%;
+  --accent: 137 12% 18%;
+  --brand: 154 50% 55%;
+  --sidebar-background: 137 14% 7%;
+  --sidebar-accent: 137 12% 15%;
+  --sidebar-border: 137 11% 17%;
+}
+
+/* Ocean: cool blue. */
+html:root[data-palette="ocean"]:not(.dark) {
+  --background: 210 33% 96%;
+  --foreground: 213 51% 12%;
+  --card: 0 0% 100%;
+  --muted: 210 35% 92%;
+  --muted-foreground: 213 18% 42%;
+  --border: 211 30% 88%;
+  --input: 211 30% 88%;
+  --border-strong: 211 26% 80%;
+  --primary: 209 62% 19%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 33% 90%;
+  --accent: 210 35% 92%;
+  --brand: 214 76% 48%;
+  --sidebar-background: 210 40% 98%;
+  --sidebar-accent: 210 35% 92%;
+  --sidebar-border: 211 30% 88%;
+}
+html:root[data-palette="ocean"].dark {
+  --background: 212 33% 9%;
+  --foreground: 210 30% 92%;
+  --card: 212 30% 12%;
+  --muted: 212 27% 15%;
+  --muted-foreground: 211 16% 62%;
+  --border: 212 24% 21%;
+  --input: 212 24% 21%;
+  --border-strong: 212 24% 27%;
+  --primary: 210 30% 92%;
+  --primary-foreground: 212 33% 9%;
+  --secondary: 212 27% 18%;
+  --accent: 212 27% 18%;
+  --brand: 212 90% 66%;
+  --sidebar-background: 212 34% 7%;
+  --sidebar-accent: 212 27% 15%;
+  --sidebar-border: 212 24% 17%;
+}
+
+/* Plum: rose and violet. */
+html:root[data-palette="plum"]:not(.dark) {
+  --background: 320 25% 95%;
+  --foreground: 316 35% 12%;
+  --card: 0 0% 100%;
+  --muted: 320 24% 91%;
+  --muted-foreground: 318 12% 43%;
+  --border: 318 20% 86%;
+  --input: 318 20% 86%;
+  --border-strong: 318 17% 78%;
+  --primary: 317 43% 19%;
+  --primary-foreground: 320 40% 97%;
+  --secondary: 320 22% 89%;
+  --accent: 320 24% 91%;
+  --brand: 331 68% 42%;
+  --sidebar-background: 320 35% 97%;
+  --sidebar-accent: 320 24% 91%;
+  --sidebar-border: 318 20% 86%;
+}
+html:root[data-palette="plum"].dark {
+  --background: 316 22% 9%;
+  --foreground: 320 25% 92%;
+  --card: 316 21% 12%;
+  --muted: 316 19% 15%;
+  --muted-foreground: 318 11% 62%;
+  --border: 316 17% 21%;
+  --input: 316 17% 21%;
+  --border-strong: 316 17% 27%;
+  --primary: 320 25% 92%;
+  --primary-foreground: 316 22% 9%;
+  --secondary: 316 19% 18%;
+  --accent: 316 19% 18%;
+  --brand: 331 75% 64%;
+  --sidebar-background: 316 23% 7%;
+  --sidebar-accent: 316 19% 15%;
+  --sidebar-border: 316 17% 17%;
+}
+
+/* Graphite: neutral gray, no color accent. */
+html:root[data-palette="graphite"]:not(.dark) {
+  --background: 0 0% 95%;
+  --foreground: 0 0% 7%;
+  --card: 0 0% 100%;
+  --muted: 0 0% 92%;
+  --muted-foreground: 0 0% 42%;
+  --border: 0 0% 88%;
+  --input: 0 0% 88%;
+  --border-strong: 0 0% 80%;
+  --primary: 0 0% 9%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 0 0% 90%;
+  --accent: 0 0% 92%;
+  --brand: 0 0% 20%;
+  --sidebar-background: 0 0% 98%;
+  --sidebar-accent: 0 0% 92%;
+  --sidebar-border: 0 0% 88%;
+}
+html:root[data-palette="graphite"].dark {
+  --background: 0 0% 7%;
+  --foreground: 0 0% 93%;
+  --card: 0 0% 10%;
+  --muted: 0 0% 13%;
+  --muted-foreground: 0 0% 62%;
+  --border: 0 0% 19%;
+  --input: 0 0% 19%;
+  --border-strong: 0 0% 25%;
+  --primary: 0 0% 93%;
+  --primary-foreground: 0 0% 7%;
+  --secondary: 0 0% 16%;
+  --accent: 0 0% 16%;
+  --brand: 0 0% 80%;
+  --sidebar-background: 0 0% 5%;
+  --sidebar-accent: 0 0% 13%;
+  --sidebar-border: 0 0% 15%;
+}
+
+/* Display type for headings that opt in with font-display. */
+html:root[data-palette] .font-display {
+  font-family: var(--font-display), Georgia, serif;
+  letter-spacing: -0.01em;
+}

@@ -23,6 +23,7 @@ import {
   MAIL_SCHEDULED_TYPE,
 } from "@/app/(app)/[emailAccountId]/mail/MailSidebar";
 import { MailShellSidebar } from "@/app/(app)/[emailAccountId]/mail/MailShellSidebar";
+import { useUiVariant } from "@/providers/UiPreferencesProvider";
 import { MailSplitTabs } from "@/app/(app)/[emailAccountId]/mail/MailSplitTabs";
 import { SelectAllCheckbox } from "@/app/(app)/[emailAccountId]/mail/SelectAllCheckbox";
 import { MailReaderPane } from "@/app/(app)/[emailAccountId]/mail/MailReaderPane";
@@ -119,6 +120,7 @@ const NO_LABELS = {};
  * referentially stable and only the parts whose inputs changed re-render.
  */
 export function MailShell() {
+  const uiVariant = useUiVariant();
   const { emailAccount, emailAccountId, userEmail, provider } = useAccount();
   const { data: accountsData } = useAccounts();
   const isGoogle = isGoogleProvider(provider);
@@ -1337,18 +1339,20 @@ export function MailShell() {
       floating={senderCommandsPanel}
       dialogs={labelPickerDialog}
     >
-      <MailShellSidebar
-        activeType={
-          scopeLabelId || scopeFolderId ? null : (scopeType ?? "inbox")
-        }
-        activeLabelId={scopeLabelId}
-        activeFolderId={scopeFolderId}
-        isAllAccounts={isAllAccounts}
-        isDesktopApp={isDesktopApp}
-        onSelectAccount={selectAccount}
-        onSelectAllAccounts={selectAllAccounts}
-        onMailboxItemDeleted={onMailboxItemDeleted}
-      />
+      {uiVariant === "classic" && (
+        <MailShellSidebar
+          activeType={
+            scopeLabelId || scopeFolderId ? null : (scopeType ?? "inbox")
+          }
+          activeLabelId={scopeLabelId}
+          activeFolderId={scopeFolderId}
+          isAllAccounts={isAllAccounts}
+          isDesktopApp={isDesktopApp}
+          onSelectAccount={selectAccount}
+          onSelectAllAccounts={selectAllAccounts}
+          onMailboxItemDeleted={onMailboxItemDeleted}
+        />
+      )}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <MailEngineConnectionBanner />
