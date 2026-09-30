@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { PenIcon, SettingsIcon } from "lucide-react";
+import { ProfileImage } from "@/components/ProfileImage";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { NavUser } from "@/components/NavUser";
 import { LlmApiStatus } from "@/components/shell/LlmApiStatus";
@@ -22,7 +23,6 @@ import {
   useMeetingRecorderEnabled,
 } from "@/hooks/useFeatureFlags";
 import { useLabels } from "@/hooks/useLabels";
-import { useSettingsDialog } from "@/hooks/useSettingsDialog";
 import { useAccount } from "@/providers/EmailAccountProvider";
 import { useComposeModal } from "@/providers/ComposeModalProvider";
 import { cn } from "@/utils";
@@ -34,8 +34,7 @@ import { prefixPath } from "@/utils/path";
  */
 export function NewSideNav({ name }: { name: string }) {
   const pathname = usePathname() ?? "";
-  const { emailAccountId } = useAccount();
-  const { openSettings } = useSettingsDialog();
+  const { emailAccountId, emailAccount } = useAccount();
   const section = getActiveSection(pathname);
   const { state } = useSidebar();
   const isOpen = state.includes(name);
@@ -47,13 +46,24 @@ export function NewSideNav({ name }: { name: string }) {
           aria-label="Areas"
           className="flex w-[4.5rem] shrink-0 flex-col items-center gap-1.5 bg-primary py-4 text-primary-foreground"
         >
-          <Link
-            href={prefixPath(emailAccountId, "/mail")}
-            aria-label="Inbox Zero"
-            className="mb-3 flex size-10 items-center justify-center rounded-xl bg-brand font-display text-xl font-semibold text-white"
-          >
-            Z
-          </Link>
+          <div className="mb-3 flex size-11 items-center justify-center">
+            <AccountSwitcher
+              trigger={
+                <button
+                  type="button"
+                  title="Accounts"
+                  aria-label="Accounts"
+                  className="rounded-full ring-2 ring-primary-foreground/25 transition-shadow hover:ring-primary-foreground/60"
+                >
+                  <ProfileImage
+                    image={emailAccount?.image ?? null}
+                    label={emailAccount?.name || emailAccount?.email || "?"}
+                    className="size-9"
+                  />
+                </button>
+              }
+            />
+          </div>
           {SHELL_SECTIONS.map((item) => (
             <Link
               key={item.id}
@@ -72,34 +82,39 @@ export function NewSideNav({ name }: { name: string }) {
             </Link>
           ))}
           <div className="flex-1" />
-          <button
-            type="button"
-            title="Settings"
-            aria-label="Settings"
-            onClick={openSettings}
-            className="flex size-11 items-center justify-center rounded-xl text-primary-foreground/55 transition-colors hover:bg-primary-foreground/10 hover:text-primary-foreground"
-          >
-            <SettingsIcon className="size-5" />
-          </button>
+          <SidebarTrigger
+            name={name}
+            className="size-11 rounded-xl text-primary-foreground/55 hover:bg-primary-foreground/10 hover:text-primary-foreground"
+          />
+          <NavUser
+            menuSide="right"
+            menuAlign="end"
+            trigger={
+              <button
+                type="button"
+                title="More options and settings"
+                aria-label="More options and settings"
+                className="flex size-11 items-center justify-center rounded-xl text-primary-foreground/55 transition-colors hover:bg-primary-foreground/10 hover:text-primary-foreground"
+              >
+                <SettingsIcon className="size-5" />
+              </button>
+            }
+          />
         </nav>
 
         {isOpen ? (
           <div className="flex min-w-0 flex-1 flex-col gap-4 border-r border-sidebar-border bg-sidebar px-4 py-4">
-            <div className="flex items-center gap-1">
-              <div className="min-w-0 flex-1">
-                <AccountSwitcher />
-              </div>
-              <SidebarTrigger name={name} className="shrink-0" />
+            <div className="px-1 pt-1 font-display text-2xl font-semibold leading-tight">
+              {section.label}
             </div>
             <ComposeButton />
             {section.id === "mail" ? (
               <MailPanel />
             ) : (
-              <SectionPanel items={section.items} label={section.label} />
+              <SectionPanel items={section.items} />
             )}
             <div className="flex-1" />
             <LlmApiStatus />
-            <NavUser />
           </div>
         ) : null}
       </div>
@@ -121,7 +136,7 @@ function ComposeButton() {
   );
 }
 
-function SectionPanel({ label, items }: { label: string; items: ShellItem[] }) {
+function SectionPanel({ items }: { items: ShellItem[] }) {
   const pathname = usePathname() ?? "";
   const { emailAccountId } = useAccount();
   const showCleaner = useCleanerEnabled();
@@ -138,7 +153,6 @@ function SectionPanel({ label, items }: { label: string; items: ShellItem[] }) {
 
   return (
     <div className="flex flex-col gap-0.5">
-      <PanelHeading>{label}</PanelHeading>
       {items
         .filter((item) => !item.flag || flags[item.flag])
         .map((item) => {

@@ -36,7 +36,16 @@ import { env } from "@/env";
 import { Referrals } from "@/components/ReferralDialog";
 import { useSettingsDialog } from "@/hooks/useSettingsDialog";
 
-export function NavUser() {
+export function NavUser({
+  trigger,
+  menuSide,
+  menuAlign,
+}: {
+  /** Replaces the sidebar row, for callers that place the menu elsewhere. */
+  trigger?: React.ReactNode;
+  menuSide?: "top" | "right" | "bottom" | "left";
+  menuAlign?: "start" | "center" | "end";
+}) {
   const { emailAccountId, emailAccount, provider } = useAccount();
   const { closeMobileSidebar, isMobile, state } = useSidebar();
   const [isReferralDialogOpen, setIsReferralDialogOpen] = useState(false);
@@ -53,39 +62,44 @@ export function NavUser() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <SidebarMenuButton
-            size="lg"
-            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-          >
-            <Avatar className="h-8 w-8 rounded-lg">
-              <AvatarImage
-                src={emailAccount?.image || ""}
-                alt={emailAccount?.name || emailAccount?.email}
-              />
-              <AvatarFallback className="rounded-lg">
-                {emailAccount?.name?.charAt(0) ||
-                  emailAccount?.email?.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-            {emailAccount ? (
-              <>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">
-                    {emailAccount.name || emailAccount.email}
-                  </span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {organizationName || emailAccount.email}
-                  </span>
-                </div>
-                <ChevronsUpDownIcon className="ml-auto size-4" />
-              </>
-            ) : null}
-          </SidebarMenuButton>
+          {trigger ?? (
+            <SidebarMenuButton
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage
+                  src={emailAccount?.image || ""}
+                  alt={emailAccount?.name || emailAccount?.email}
+                />
+                <AvatarFallback className="rounded-lg">
+                  {emailAccount?.name?.charAt(0) ||
+                    emailAccount?.email?.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              {emailAccount ? (
+                <>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-medium">
+                      {emailAccount.name || emailAccount.email}
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {organizationName || emailAccount.email}
+                    </span>
+                  </div>
+                  <ChevronsUpDownIcon className="ml-auto size-4" />
+                </>
+              ) : null}
+            </SidebarMenuButton>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="min-w-52 rounded-md md:data-[side=top]:w-[--radix-dropdown-menu-trigger-width]"
-          side={isMobile ? "bottom" : isExpandedSidebar ? "top" : "right"}
-          align={isExpandedSidebar ? "start" : "end"}
+          side={
+            menuSide ??
+            (isMobile ? "bottom" : isExpandedSidebar ? "top" : "right")
+          }
+          align={menuAlign ?? (isExpandedSidebar ? "start" : "end")}
           sideOffset={4}
         >
           <DropdownMenuGroup>
