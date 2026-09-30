@@ -39,6 +39,7 @@ export async function judgeBinary(options: {
       aiProvider: null,
       aiModel: null,
       aiApiKey: null,
+      aiBaseUrl: null,
     },
   );
 

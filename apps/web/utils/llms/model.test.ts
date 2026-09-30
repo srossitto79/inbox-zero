@@ -1326,6 +1326,44 @@ describe("Models", () => {
       expect(result.modelName).toBe("llama-3.2-3b-instruct");
     });
 
+    it("uses the user endpoint without any key and never sends the deployment key", () => {
+      const userAi = defaultUserAi({
+        aiProvider: Provider.OPENAI_COMPATIBLE,
+        aiModel: "qwen3",
+        aiBaseUrl: "http://192.168.0.210:9292/v1",
+      });
+      vi.mocked(env).OPENAI_COMPATIBLE_BASE_URL = "http://deployment:1234/v1";
+      vi.mocked(env).LLM_API_KEY = "deployment-key";
+
+      const result = getModel(userAi);
+
+      expect(result.provider).toBe(Provider.OPENAI_COMPATIBLE);
+      expect(result.modelName).toBe("qwen3");
+      expect(result.hasUserApiKey).toBe(true);
+      const options = vi.mocked(createOpenAICompatible).mock.calls.at(-1)?.[0];
+      expect(options?.baseURL).toBe("http://192.168.0.210:9292/v1");
+      expect(options).not.toHaveProperty("apiKey");
+      expect(options).not.toHaveProperty("headers");
+    });
+
+    it("sends the user key to the user endpoint", () => {
+      const userAi = defaultUserAi({
+        aiProvider: Provider.OPENAI_COMPATIBLE,
+        aiModel: "qwen3",
+        aiApiKey: "user-key",
+        aiBaseUrl: "http://192.168.0.210:9292/v1",
+      });
+
+      getModel(userAi);
+
+      expect(createOpenAICompatible).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          baseURL: "http://192.168.0.210:9292/v1",
+          apiKey: "user-key",
+        }),
+      );
+    });
+
     it("should support API-key header auth for OpenAI-compatible providers", () => {
       const userAi = defaultUserAi();
 
@@ -1467,6 +1505,7 @@ function defaultUserAi(overrides: Partial<UserAIFields> = {}): UserAIFields {
     aiApiKey: null,
     aiProvider: null,
     aiModel: null,
+    aiBaseUrl: null,
     ...overrides,
   };
 }

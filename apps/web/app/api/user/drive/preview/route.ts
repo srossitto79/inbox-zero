@@ -67,6 +67,7 @@ async function getPreviewData({
           aiProvider: true,
           aiModel: true,
           aiApiKey: true,
+          aiBaseUrl: true,
         },
       },
       account: {

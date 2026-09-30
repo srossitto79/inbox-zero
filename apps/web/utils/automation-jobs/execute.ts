@@ -56,6 +56,7 @@ export async function executeAutomationJobRun({
                       aiProvider: true,
                       aiModel: true,
                       aiApiKey: true,
+                      aiBaseUrl: true,
                     },
                   },
                 },

@@ -17,6 +17,7 @@ export function getEvalJudgeUserAi() {
     aiProvider,
     aiModel,
     aiApiKey,
+    aiBaseUrl: null,
   };
 }
 

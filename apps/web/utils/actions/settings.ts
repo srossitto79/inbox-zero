@@ -11,6 +11,7 @@ import {
   toggleDigestBody,
 } from "@/utils/actions/settings.validation";
 import { DEFAULT_PROVIDER, Provider } from "@/utils/llms/config";
+import { normalizeEndpointUrl } from "@/utils/llms/endpoint-url";
 import prisma from "@/utils/prisma";
 import {
   calculateNextScheduleDate,
@@ -50,7 +51,7 @@ export const updateAiSettingsAction = actionClientUser
   .action(
     async ({
       ctx: { userId, logger },
-      parsedInput: { aiProvider, aiModel, aiApiKey },
+      parsedInput: { aiProvider, aiModel, aiApiKey, aiBaseUrl },
     }) => {
       if (env.NEXT_PUBLIC_AI_MODEL_SETTINGS_DISABLED) {
         throw new SafeError("AI model settings are managed by the deployment.");
@@ -63,21 +64,28 @@ export const updateAiSettingsAction = actionClientUser
       }
 
       const providedAiApiKey = aiApiKey?.trim() || null;
+      const isCustomEndpoint = aiProvider === Provider.OPENAI_COMPATIBLE;
+      const nextAiBaseUrl = isCustomEndpoint
+        ? normalizeEndpointUrl(aiBaseUrl ?? "")
+        : null;
 
       let nextAiApiKey: string | null = providedAiApiKey;
 
       if (!nextAiApiKey && aiProvider !== DEFAULT_PROVIDER) {
         const existingUser = await prisma.user.findUnique({
           where: { id: userId },
-          select: { aiProvider: true, aiApiKey: true },
+          select: { aiProvider: true, aiApiKey: true, aiBaseUrl: true },
         });
 
         if (!existingUser) throw new SafeError("User not found");
 
-        nextAiApiKey =
-          existingUser.aiProvider === aiProvider ? existingUser.aiApiKey : null;
+        // A stored key is never carried over to a different endpoint.
+        const keepsStoredKey =
+          existingUser.aiProvider === aiProvider &&
+          (!isCustomEndpoint || existingUser.aiBaseUrl === nextAiBaseUrl);
+        nextAiApiKey = keepsStoredKey ? existingUser.aiApiKey : null;
 
-        if (!nextAiApiKey) {
+        if (!nextAiApiKey && !isCustomEndpoint) {
           throw new SafeError("You must provide an API key for this provider");
         }
       }
@@ -86,8 +94,18 @@ export const updateAiSettingsAction = actionClientUser
         where: { id: userId },
         data:
           aiProvider === DEFAULT_PROVIDER
-            ? { aiProvider: null, aiModel: null, aiApiKey: null }
-            : { aiProvider, aiModel, aiApiKey: nextAiApiKey },
+            ? {
+                aiProvider: null,
+                aiModel: null,
+                aiApiKey: null,
+                aiBaseUrl: null,
+              }
+            : {
+                aiProvider,
+                aiModel,
+                aiApiKey: nextAiApiKey,
+                aiBaseUrl: nextAiBaseUrl,
+              },
       });
 
       if (result.count === 0) {

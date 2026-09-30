@@ -14,6 +14,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createCerebras } from "@ai-sdk/cerebras";
 import { env } from "@/env";
 import { Provider } from "@/utils/llms/config";
+import { hasUserCustomEndpoint } from "@/utils/llms/endpoint-url";
 import type { UserAIFields } from "@/utils/llms/types";
 import { createScopedLogger } from "@/utils/logger";
 import { SafeError } from "../error";
@@ -66,7 +67,8 @@ export function getModel(
   userAi: UserAIFields,
   modelType: ModelType = "default",
 ): SelectModel {
-  const selectedModel = userAi.aiApiKey
+  const usesUserModel = !!userAi.aiApiKey || hasUserCustomEndpoint(userAi);
+  const selectedModel = usesUserModel
     ? {
         primaryModel: selectUserModel(userAi, modelType),
         fallbackModels: [],
@@ -84,7 +86,7 @@ export function getModel(
     ),
   });
 
-  return { ...primaryModel, fallbackModels, hasUserApiKey: !!userAi.aiApiKey };
+  return { ...primaryModel, fallbackModels, hasUserApiKey: usesUserModel };
 }
 
 function selectModel(
@@ -92,10 +94,12 @@ function selectModel(
     aiProvider,
     aiModel,
     aiApiKey,
+    aiBaseUrl,
   }: {
     aiProvider: string;
     aiModel: string | null;
     aiApiKey: string | null;
+    aiBaseUrl?: string | null;
   },
   modelType: ModelType,
   // biome-ignore lint/suspicious/noExplicitAny: existing loose external shape
@@ -296,13 +300,19 @@ function selectModel(
     case Provider.OPENAI_COMPATIBLE: {
       const modelName = aiModel || env.OPENAI_COMPATIBLE_MODEL;
       if (!modelName) throw new SafeError("LLM model name is not set");
-      const baseURL = getOpenAiCompatibleBaseUrl();
-      const openAiCompatibleApiKey = resolveApiKey(aiApiKey, undefined);
+      const userBaseUrl = aiBaseUrl?.trim();
+      // A user-chosen endpoint only ever receives the user's own key, never
+      // the deployment-wide LLM_API_KEY.
+      const authOptions = userBaseUrl
+        ? aiApiKey
+          ? { apiKey: aiApiKey }
+          : {}
+        : getOpenAiCompatibleAuthOptions(resolveApiKey(aiApiKey, undefined));
       const openaiCompatible = createOpenAICompatible({
         name: "openai-compatible",
-        baseURL,
+        baseURL: userBaseUrl || getOpenAiCompatibleBaseUrl(),
         supportsStructuredOutputs: true,
-        ...getOpenAiCompatibleAuthOptions(openAiCompatibleApiKey),
+        ...authOptions,
       });
       return {
         provider: Provider.OPENAI_COMPATIBLE,
@@ -438,6 +448,7 @@ function selectUserModel(
       aiProvider,
       aiModel,
       aiApiKey: userAi.aiApiKey,
+      aiBaseUrl: userAi.aiBaseUrl,
     },
     modelType,
     getOpenRouterProviderOptions(modelType, aiProvider),

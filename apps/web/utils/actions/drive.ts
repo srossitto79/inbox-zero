@@ -291,6 +291,7 @@ export const fileAttachmentAction = actionClient
               aiProvider: true,
               aiModel: true,
               aiApiKey: true,
+              aiBaseUrl: true,
             },
           },
           account: {

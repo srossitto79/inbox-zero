@@ -12,7 +12,12 @@ vi.mock("@/utils/llms/model", () => ({
 
 import { getLlmStatus, getProbeUrl, resetProbeCache } from "./llm-status";
 
-const noUserKey = { aiProvider: null, aiModel: null, aiApiKey: null };
+const noUserKey = {
+  aiProvider: null,
+  aiModel: null,
+  aiApiKey: null,
+  aiBaseUrl: null,
+};
 
 describe("getLlmStatus", () => {
   const fetchMock = vi.fn();
@@ -102,6 +107,7 @@ describe("getLlmStatus", () => {
       aiProvider: "openai",
       aiModel: "gpt-x",
       aiApiKey: "key",
+      aiBaseUrl: null,
     });
     expect(result).toMatchObject({
       status: "configured",
@@ -109,6 +115,28 @@ describe("getLlmStatus", () => {
       model: "gpt-x",
       source: "user",
     });
+  });
+});
+
+describe("getLlmStatus with a user endpoint", () => {
+  it("probes the user endpoint even without an API key", async () => {
+    resetProbeCache();
+    envMock.OPENAI_COMPATIBLE_BASE_URL = "http://deployment:1234/v1";
+    const fetchMock = vi.fn().mockResolvedValue({ status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getLlmStatus({
+      aiProvider: "openai-compatible",
+      aiModel: "qwen3",
+      aiApiKey: null,
+      aiBaseUrl: "http://192.168.0.210:9292/v1",
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "http://192.168.0.210:9292/v1/models",
+    );
+    expect(result).toMatchObject({ status: "online", source: "user" });
+    vi.unstubAllGlobals();
   });
 });
 
@@ -120,6 +148,13 @@ describe("getProbeUrl", () => {
   it("defaults the OpenAI-compatible base URL", () => {
     expect(getProbeUrl("openai-compatible")).toBe(
       "http://localhost:1234/v1/models",
+    );
+  });
+
+  it("prefers the user base URL over the deployment one", () => {
+    envMock.OPENAI_COMPATIBLE_BASE_URL = "http://deployment:1234/v1";
+    expect(getProbeUrl("openai-compatible", "http://lan:9292/v1/")).toBe(
+      "http://lan:9292/v1/models",
     );
   });
 

@@ -333,6 +333,7 @@ async function getEmailAccountWithRules({
           aiProvider: true,
           aiModel: true,
           aiApiKey: true,
+          aiBaseUrl: true,
         },
       },
       account: {

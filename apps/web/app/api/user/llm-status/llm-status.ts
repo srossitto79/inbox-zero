@@ -1,6 +1,7 @@
 import { env } from "@/env";
 import { Provider } from "@/utils/llms/config";
 import { getResolvedDeploymentRolePrimaryModelEntry } from "@/utils/llms/model";
+import { hasUserCustomEndpoint } from "@/utils/llms/endpoint-url";
 
 const PROBE_TIMEOUT_MS = 2500;
 const PROBE_CACHE_TTL_MS = 30_000;
@@ -25,6 +26,7 @@ type UserAi = {
   aiProvider: string | null;
   aiModel: string | null;
   aiApiKey: string | null;
+  aiBaseUrl: string | null;
 };
 
 type ProbeResult = { reachable: boolean; latencyMs: number };
@@ -34,7 +36,7 @@ const probeCache = new Map<string, { at: number; result: ProbeResult }>();
 
 export async function getLlmStatus(userAi: UserAi): Promise<LlmStatusResult> {
   const deployment = getResolvedDeploymentRolePrimaryModelEntry("default");
-  const usesUserKey = !!userAi.aiApiKey;
+  const usesUserKey = !!userAi.aiApiKey || hasUserCustomEndpoint(userAi);
 
   const provider = usesUserKey
     ? userAi.aiProvider || deployment?.provider || null
@@ -53,7 +55,7 @@ export async function getLlmStatus(userAi: UserAi): Promise<LlmStatusResult> {
     source: usesUserKey ? ("user" as const) : ("deployment" as const),
   };
 
-  const probeUrl = getProbeUrl(provider);
+  const probeUrl = getProbeUrl(provider, usesUserKey ? userAi.aiBaseUrl : null);
   if (!probeUrl) return { ...base, status: "configured", latencyMs: null };
 
   const probe = await probeEndpoint(probeUrl);
@@ -64,9 +66,13 @@ export async function getLlmStatus(userAi: UserAi): Promise<LlmStatusResult> {
   };
 }
 
-export function getProbeUrl(provider: string): string | null {
+export function getProbeUrl(
+  provider: string,
+  userBaseUrl?: string | null,
+): string | null {
   if (provider === Provider.OPENAI_COMPATIBLE) {
     const baseUrl =
+      userBaseUrl?.trim() ||
       env.OPENAI_COMPATIBLE_BASE_URL ||
       process.env.OPENAI_COMPATIBLE_BASE_URL ||
       DEFAULT_OPENAI_COMPATIBLE_BASE_URL;
