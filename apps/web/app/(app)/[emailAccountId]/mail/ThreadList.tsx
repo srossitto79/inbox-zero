@@ -20,6 +20,12 @@ import { cn } from "@/utils";
 import { formatDateGroupLabel } from "@/utils/date";
 import { getThreadTimestamp } from "@/utils/threads/sort";
 import { GmailLabel } from "@/utils/gmail/label";
+import {
+  QUEUE_DOT_CLASS,
+  getQueueIdByName,
+  getQueueName,
+  type QueueId,
+} from "@/app/(app)/[emailAccountId]/mail/queue-grouping";
 
 const NO_LABELS: EmailLabels = {};
 
@@ -45,6 +51,8 @@ export type ThreadListProps = {
   /** Identity of the current view so prefetch state does not leak across splits. */
   listKey: string;
   showSentOpenStatus?: boolean;
+  /** Groups by queue instead of date; `threads` must already be in queue order. */
+  getQueueId?: (thread: ListThread) => QueueId | null;
 };
 
 export const ThreadList = memo(function ThreadList({
@@ -67,6 +75,7 @@ export const ThreadList = memo(function ThreadList({
   onLoadMore,
   listKey,
   showSentOpenStatus = false,
+  getQueueId,
 }: ThreadListProps) {
   const isMobile = useIsMobile();
   const isNext = useUiVariant() === "next";
@@ -93,12 +102,13 @@ export const ThreadList = memo(function ThreadList({
   );
   const getGroupLabel = useCallback(
     (thread: ListThread) => {
+      if (getQueueId) return getQueueName(getQueueId(thread));
       const timestamp = getThreadTimestamp(thread);
       return timestamp
         ? formatDateGroupLabel(new Date(timestamp), new Date(dayStart))
         : null;
     },
-    [dayStart],
+    [dayStart, getQueueId],
   );
 
   return (
@@ -107,6 +117,27 @@ export const ThreadList = memo(function ThreadList({
       focusedIndex={focusedIndex}
       getGroupLabel={getGroupLabel}
       getKey={getListThreadKey}
+      renderGroupHeader={
+        getQueueId
+          ? ({ label, count }) => {
+              const queueId = getQueueIdByName(label);
+              return (
+                <span className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "size-2 rounded-full",
+                      queueId
+                        ? QUEUE_DOT_CLASS[queueId]
+                        : "bg-muted-foreground/40",
+                    )}
+                  />
+                  {label}
+                  <span className="font-normal">{count}</span>
+                </span>
+              );
+            }
+          : undefined
+      }
       groupHeaderClassName={groupHeaderClassName}
       isLoadingMore={isLoadingMore}
       isSelected={isSelected}

@@ -18,6 +18,8 @@ import { MailLabelChip } from "@/app/(app)/[emailAccountId]/mail/MailLabelChip";
 import type { EmailMessageCellLabel } from "@/components/EmailMessageCellLabels";
 import { Tooltip } from "@/components/Tooltip";
 import { Button } from "@/components/ui/button";
+import { SnoozeButton } from "@/app/(app)/[emailAccountId]/mail/SnoozeButton";
+import { useUiVariant } from "@/providers/UiPreferencesProvider";
 
 type ReaderToolbarProps = {
   subject: string;
@@ -37,6 +39,8 @@ type ReaderToolbarProps = {
   onMoveToInbox?: () => void;
   onMarkRead: () => void;
   onMarkUnread: () => void;
+  /** Snoozes the open thread; the Snooze button shows in the new interface only. */
+  onSnooze?: (until: Date) => void;
   /** The ⋯ dropdown, i.e. `ThreadActionsMenu`, composed by the shell. */
   menu?: ReactNode;
   messageExpansion?: {
@@ -62,9 +66,11 @@ export function ReaderToolbar({
   onMoveToInbox,
   onMarkRead,
   onMarkUnread,
+  onSnooze,
   menu,
   messageExpansion,
 }: ReaderToolbarProps) {
+  const isNext = useUiVariant() === "next";
   return (
     <MailReaderToolbar
       icons={{
@@ -87,6 +93,9 @@ export function ReaderToolbar({
           onRemove={onRemoveLabel ? () => onRemoveLabel(label.id) : undefined}
         />
       ))}
+      extraActions={
+        isNext && onSnooze ? <SnoozeButton onSnooze={onSnooze} /> : undefined
+      }
       menu={menu}
       messageExpansion={messageExpansion}
       onArchive={onArchive}

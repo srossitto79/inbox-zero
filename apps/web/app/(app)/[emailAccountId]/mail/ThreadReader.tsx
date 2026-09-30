@@ -73,6 +73,7 @@ export type ThreadReaderProps = {
   isUnread: boolean;
   onMarkRead: () => void;
   onMarkUnread: () => void;
+  onSnooze?: (until: Date) => void;
   /** Refreshes the open thread after a reply is sent or a draft changes. */
   refetch: () => void;
   /** Opens a different provider thread when a sent message starts one. */
@@ -111,6 +112,7 @@ export function ThreadReader({
   isUnread,
   onMarkRead,
   onMarkUnread,
+  onSnooze,
   refetch,
   onSendSuccess,
   autoOpenReplyForMessageId,
@@ -177,6 +179,7 @@ export function ThreadReader({
       onMoveToInbox={onMoveToInbox}
       onMarkRead={onMarkRead}
       onMarkUnread={onMarkUnread}
+      onSnooze={onSnooze}
       onBackToInbox={onBackToInbox}
       onRemoveLabel={onRemoveLabel}
       subject={headerMessage?.headers.subject ?? "Conversation"}

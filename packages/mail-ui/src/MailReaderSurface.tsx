@@ -29,6 +29,8 @@ export type MailReaderToolbarProps = {
   onMarkRead: () => void;
   onMarkUnread: () => void;
   menu?: ReactNode;
+  /** Extra controls shown between the read-state button and `menu`. */
+  extraActions?: ReactNode;
   messageExpansion?: {
     allExpanded: boolean;
     canExpand: boolean;
@@ -53,6 +55,7 @@ export function MailReaderToolbar({
   onMarkRead,
   onMarkUnread,
   menu,
+  extraActions,
   messageExpansion,
   icons,
   renderButton = defaultToolbarButton,
@@ -141,6 +144,7 @@ export function MailReaderToolbar({
           icon: icons?.[readAction],
           onClick: isUnread ? onMarkRead : onMarkUnread,
         })}
+        {extraActions}
         {menu}
       </div>
     </div>

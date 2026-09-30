@@ -15,6 +15,12 @@ import {
 } from "react";
 import { parseAsString, useQueryState, useQueryStates } from "nuqs";
 import { toast } from "sonner";
+import {
+  buildQueueLabelLookup,
+  getThreadQueueId,
+  orderThreadsByQueue,
+} from "@/app/(app)/[emailAccountId]/mail/queue-grouping";
+import { useQueueViewMode } from "@/app/(app)/[emailAccountId]/mail/use-queue-view-mode";
 import { ListToolbar } from "@/app/(app)/[emailAccountId]/mail/ListToolbar";
 import { getMailSearchFolders } from "@/app/(app)/[emailAccountId]/mail/outlook-folder-list";
 import { MailAccountSwitcher } from "@/app/(app)/[emailAccountId]/mail/MailAccountSwitcher";
@@ -409,7 +415,44 @@ export function MailShell() {
     ? combinedThreadState
     : accountThreadState;
   const hasProviderResponse = searchSettled && providerState.hasRemoteResponse;
-  const threads = searchSettled ? remoteThreads : EMPTY_SEARCH_THREADS;
+  const providerThreads = searchSettled ? remoteThreads : EMPTY_SEARCH_THREADS;
+  // Queue grouping reorders the list itself, so selection, J/K and reader
+  // navigation all follow the order on screen.
+  const [queueViewMode, setQueueViewMode] = useQueueViewMode();
+  const canGroupByQueue =
+    uiVariant === "next" && !isScoped && !searchQuery && !isScheduledView;
+  const groupByQueue = canGroupByQueue && queueViewMode === "queues";
+  const queueLookups = useMemo(() => {
+    const byAccount = new Map<
+      string,
+      ReturnType<typeof buildQueueLabelLookup>
+    >();
+    for (const [accountId, labels] of Object.entries(labelsByAccount ?? {})) {
+      byAccount.set(accountId, buildQueueLabelLookup(labels));
+    }
+    return {
+      byAccount,
+      current: buildQueueLabelLookup(isAllAccounts ? {} : userLabels),
+    };
+  }, [isAllAccounts, labelsByAccount, userLabels]);
+  const getQueueId = useCallback(
+    (thread: ListThread) =>
+      getThreadQueueId(
+        thread.messages,
+        "account" in thread
+          ? (queueLookups.byAccount.get(thread.account.id) ??
+              queueLookups.current)
+          : queueLookups.current,
+      ),
+    [queueLookups],
+  );
+  const threads = useMemo(
+    () =>
+      groupByQueue
+        ? orderThreadsByQueue(providerThreads, getQueueId)
+        : providerThreads,
+    [getQueueId, groupByQueue, providerThreads],
+  );
   const searchViewIdentity = JSON.stringify([
     emailAccountId,
     isAllAccounts,
@@ -1382,6 +1425,8 @@ export function MailShell() {
                   isAllAccounts,
                   isOutlook,
                 })}
+                queueViewMode={canGroupByQueue ? queueViewMode : undefined}
+                onQueueViewModeChange={setQueueViewMode}
                 onToggleLayout={toggleLayout}
                 expandedPreview={expandedPreview}
                 onTogglePreview={togglePreview}
@@ -1445,6 +1490,7 @@ export function MailShell() {
                   >
                     <ThreadList
                       threads={threads}
+                      getQueueId={groupByQueue ? getQueueId : undefined}
                       emptyMessage={emptySearchMessage}
                       layout={layout}
                       expandedPreview={expandedPreview}
@@ -1531,6 +1577,7 @@ export function MailShell() {
                 isUnread={isOpenThreadUnread}
                 onMarkRead={markOpenThreadRead}
                 onMarkUnread={markUnreadTargets}
+                onSnooze={snoozeTargets}
                 refetch={refetchReader}
                 onSendSuccess={onSendSuccess}
                 autoOpenReplyForMessageId={replyToMessageId}

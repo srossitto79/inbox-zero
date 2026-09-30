@@ -39,6 +39,8 @@ import { parseMailSearchQuery } from "@/app/(app)/[emailAccountId]/mail/mail-sea
 import { parseOutlookSearchQuery } from "@/app/(app)/[emailAccountId]/mail/outlook-search-query";
 import type { MailLayoutMode } from "@/app/(app)/[emailAccountId]/mail/types";
 import { Tooltip } from "@/components/Tooltip";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import type { QueueViewMode } from "@/app/(app)/[emailAccountId]/mail/queue-grouping";
 import {
   Popover,
   PopoverAnchor,
@@ -64,6 +66,9 @@ export type ListToolbarProps = {
   searchLabels?: { name: string }[];
   searchFolders?: { name: string }[];
   searchVariant?: "gmail" | "outlook" | "common";
+  /** Set only where the list can group by queue (new interface, inbox). */
+  queueViewMode?: QueueViewMode;
+  onQueueViewModeChange?: (mode: QueueViewMode) => void;
   onToggleLayout: () => void;
   onTogglePreview: () => void;
   onToggleAssistant: () => void;
@@ -95,6 +100,8 @@ export const ListToolbar = memo(function ListToolbar({
   searchLabels,
   searchFolders,
   searchVariant = "gmail",
+  queueViewMode,
+  onQueueViewModeChange,
   onToggleLayout,
   onTogglePreview,
   onToggleAssistant,
@@ -221,6 +228,19 @@ export const ListToolbar = memo(function ListToolbar({
           searchVariant={searchVariant}
         />
       )}
+
+      {queueViewMode && onQueueViewModeChange && selectedCount === 0 ? (
+        <SegmentedControl
+          aria-label="List grouping"
+          className="shrink-0 text-xs"
+          onChange={onQueueViewModeChange}
+          options={[
+            { label: "Queues", value: "queues" },
+            { label: "Timeline", value: "timeline" },
+          ]}
+          value={queueViewMode}
+        />
+      ) : null}
 
       {selectedCount === 0 ? (
         <Tooltip
