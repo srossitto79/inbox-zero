@@ -10,6 +10,11 @@ import { getAccountLinkingUrl } from "@/utils/account-linking";
 import { isMicrosoftProvider } from "@/utils/email/provider-types";
 import { mailEngineConnectionCopy } from "@/utils/mail-engine/connection-notice";
 import { redirectToSafeUrl } from "@/utils/redirect";
+import { RefreshCwIcon } from "lucide-react";
+import { Tooltip } from "@/components/Tooltip";
+import { useMailboxDownload } from "@/hooks/useMailboxDownload";
+import { cn } from "@/utils";
+import { formatDuration } from "@/utils/mail-engine/download-progress";
 
 export const MailEngineConnectionBanner = memo(
   function MailEngineConnectionBanner() {
@@ -20,6 +25,9 @@ export const MailEngineConnectionBanner = memo(
     >();
     const [reconnecting, setReconnecting] = useState(false);
     const copy = mailEngineConnectionCopy(connection);
+    const { progress, syncing } = useMailboxDownload(emailAccountId);
+    const [requesting, setRequesting] = useState(false);
+    const busy = syncing || requesting;
 
     useEffect(() => {
       if (!client || !emailAccountId) {
@@ -44,18 +52,58 @@ export const MailEngineConnectionBanner = memo(
       };
     }, [client, emailAccountId]);
 
-    if (!copy) return null;
+    const downloading =
+      connection === "ready" && progress && !progress.complete;
 
-    if (connection === "offline") {
+    if (!copy && !downloading) return null;
+
+    if (connection === "offline" || downloading) {
       return (
-        <p
-          className="border-border border-b px-4 py-2 text-muted-foreground text-sm"
+        <div
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 border-border border-b px-4 py-2 text-muted-foreground text-sm"
           role="status"
         >
-          {copy.title} {copy.description}
-        </p>
+          <span>
+            {copy
+              ? `${copy.title} ${copy.description}`
+              : "Downloading mailbox."}
+          </span>
+          {progress && !progress.complete ? (
+            <DownloadProgress progress={progress} />
+          ) : (
+            <span className="flex-1" />
+          )}
+          <Tooltip content={busy ? "Syncing" : "Sync now"}>
+            <Button
+              aria-label="Sync now"
+              disabled={busy || !client}
+              onClick={() => {
+                if (!client) return;
+                setRequesting(true);
+                client
+                  .requestSync([emailAccountId])
+                  .catch((error: unknown) => {
+                    toastError({
+                      title: "Sync failed",
+                      description:
+                        error instanceof Error ? error.message : undefined,
+                    });
+                  })
+                  .finally(() => setRequesting(false));
+              }}
+              size="iconXs"
+              variant="outline"
+            >
+              <RefreshCwIcon
+                className={cn("size-3.5", busy && "animate-spin")}
+              />
+            </Button>
+          </Tooltip>
+        </div>
       );
     }
+
+    if (!copy) return null;
 
     return (
       <AppAlertBanner
@@ -95,3 +143,33 @@ export const MailEngineConnectionBanner = memo(
     );
   },
 );
+
+function DownloadProgress({
+  progress,
+}: {
+  progress: {
+    total: number;
+    downloaded: number;
+    percent: number;
+    minutesLeft: number | null;
+  };
+}) {
+  const formatter = new Intl.NumberFormat();
+  return (
+    <div className="flex min-w-48 flex-1 items-center gap-3">
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-brand"
+          style={{ width: `${progress.percent}%` }}
+        />
+      </div>
+      <span className="whitespace-nowrap text-xs">
+        {formatter.format(progress.downloaded)} of{" "}
+        {formatter.format(progress.total)} · {progress.percent}%
+        {progress.minutesLeft === null
+          ? ""
+          : ` · ~${formatDuration(progress.minutesLeft)}`}
+      </span>
+    </div>
+  );
+}

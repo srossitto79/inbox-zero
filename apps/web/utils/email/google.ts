@@ -220,6 +220,22 @@ export class GmailProvider implements EmailProvider {
     });
   }
 
+  async getMailboxThreadTotal(): Promise<number | null> {
+    const [profile, ...excluded] = await Promise.all([
+      withGmailRetry(() => this.client.users.getProfile({ userId: "me" })),
+      ...["SPAM", "TRASH", "DRAFT"].map((id) =>
+        getLabelById({ gmail: this.client, id }),
+      ),
+    ]);
+    const total = profile.data.threadsTotal;
+    if (typeof total !== "number") return null;
+    return Math.max(
+      0,
+      total -
+        excluded.reduce((sum, label) => sum + (label.threadsTotal ?? 0), 0),
+    );
+  }
+
   async getLabelById(labelId: string): Promise<EmailLabel | null> {
     try {
       const label = await getLabelById({
