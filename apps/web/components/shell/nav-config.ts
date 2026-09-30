@@ -1,6 +1,6 @@
 import {
   BarChartBigIcon,
-  BrushIcon,
+  BroomIcon,
   InboxIcon,
   SparklesIcon,
   WrenchIcon,
@@ -49,7 +49,7 @@ export const SHELL_SECTIONS: ShellSection[] = [
   {
     id: "cleanup",
     label: "Cleanup",
-    icon: BrushIcon,
+    icon: BroomIcon,
     path: "/bulk-unsubscribe",
     segments: [
       "bulk-unsubscribe",

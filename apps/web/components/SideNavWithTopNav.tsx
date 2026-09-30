@@ -85,6 +85,7 @@ export function SideNavWithTopNav({
 
   return (
     <SidebarProvider
+      style={variant === "next" ? NEXT_SHELL_WIDTHS : undefined}
       defaultOpen={defaultOpen ? ["left-sidebar"] : []}
       sidebarNames={["left-sidebar", "chat-sidebar"]}
       keyboardShortcutName="left-sidebar"
@@ -109,6 +110,12 @@ export function SideNavWithTopNav({
     </SidebarProvider>
   );
 }
+
+// Set on the provider: the gap beside the fixed panel reads these from there.
+const NEXT_SHELL_WIDTHS = {
+  "--sidebar-width": "19.5rem",
+  "--sidebar-width-icon": "4.5rem",
+} as React.CSSProperties;
 
 function MobileHeader() {
   return (

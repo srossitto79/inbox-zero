@@ -41,16 +41,7 @@ export function NewSideNav({ name }: { name: string }) {
   const isOpen = state.includes(name);
 
   return (
-    <Sidebar
-      name={name}
-      collapsible="icon"
-      style={
-        {
-          "--sidebar-width": "19.5rem",
-          "--sidebar-width-icon": "4.5rem",
-        } as React.CSSProperties
-      }
-    >
+    <Sidebar name={name} collapsible="icon">
       <div className="flex h-full min-w-0">
         <nav
           aria-label="Areas"
