@@ -63,7 +63,7 @@ const NO_FOLDERS: OutlookFolder[] = [];
 const NO_CATEGORIES: MailCategory[] = [];
 const ASSISTANT_LINKS: {
   name: string;
-  path: string;
+  path: `/${string}`;
   Icon: AssistantLink["Icon"];
 }[] = [
   { name: "Chat", path: "/assistant", Icon: MessageSquareIcon },
