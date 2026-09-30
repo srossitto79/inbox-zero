@@ -24,7 +24,9 @@ export default async function WelcomeRedirectPage(props: {
   if (!user) redirect("/logout");
   if (searchParams.force) redirect("/onboarding");
   if (user.completedOnboardingAt) {
-    await redirectToEmailAccountPath("/mail");
+    await redirectToEmailAccountPath(
+      searchParams.mode === "mail" ? "/mail" : "/automation",
+    );
   }
 
   if (user.premiumId) {

@@ -57,14 +57,6 @@ export type MailNavTarget =
   | { kind: "label"; labelId: string }
   | { kind: "folder"; folderId: string };
 
-export type AssistantLink = {
-  name: string;
-  href: string;
-  Icon: LucideIcon;
-};
-
-const ASSISTANT_OPEN_STORAGE_KEY = "mail-sidebar-assistant-open";
-
 export type MailSidebarProps = {
   /** `?type=` of the current view — `inbox` when nothing is selected. */
   activeType: string | null;
@@ -80,8 +72,6 @@ export type MailSidebarProps = {
   countsById: Map<string, MailboxLabelCount>;
   categories: MailCategory[];
   categoryHeading: string;
-  /** Links to the assistant pages that live outside the mail screen. */
-  assistantLinks?: AssistantLink[];
   labelsHeading: string;
   labelSingular: string;
   backToAppHref: string;
@@ -178,7 +168,6 @@ export function MailSidebar({
   countsById,
   categories,
   categoryHeading,
-  assistantLinks = [],
   labelsHeading,
   labelSingular,
   backToAppHref,
@@ -218,7 +207,6 @@ export function MailSidebar({
     !activeFolderId &&
     categories.some((category) => category.type === activeType);
   const [showCategories, setShowCategories] = useState(isCategoryActive);
-  const [showAssistant, setShowAssistant] = useState(false);
   const [showLabels, setShowLabels] = useState(true);
   const [showHiddenLabels, setShowHiddenLabels] = useState(false);
   // Nothing in the rail can toggle a group, so there a group follows the open
@@ -237,27 +225,6 @@ export function MailSidebar({
   useEffect(() => {
     if (isCategoryActive) setShowCategories(true);
   }, [isCategoryActive]);
-
-  // Read after mount so the server and first client render agree.
-  useEffect(() => {
-    try {
-      setShowAssistant(
-        window.localStorage.getItem(ASSISTANT_OPEN_STORAGE_KEY) === "true",
-      );
-    } catch {
-      // Storage can be blocked; the group just starts collapsed.
-    }
-  }, []);
-
-  const toggleAssistant = () => {
-    const next = !showAssistant;
-    setShowAssistant(next);
-    try {
-      window.localStorage.setItem(ASSISTANT_OPEN_STORAGE_KEY, String(next));
-    } catch {
-      // Not remembering the choice is harmless.
-    }
-  };
 
   useEffect(() => {
     if (isMailboxActive) setShowMailboxes(true);
@@ -427,28 +394,6 @@ export function MailSidebar({
               )}
             </>
           )}
-
-        {!unified && !collapsed && assistantLinks.length > 0 && (
-          <>
-            <GroupHeading expanded={showAssistant} onToggle={toggleAssistant}>
-              Assistant
-            </GroupHeading>
-            {showAssistant && (
-              <nav className="flex flex-col gap-px">
-                {assistantLinks.map(({ name, href, Icon }) => (
-                  <NavRow
-                    key={href}
-                    href={href}
-                    active={false}
-                    icon={<Icon className="size-3.5 shrink-0" />}
-                    name={name}
-                    count={null}
-                  />
-                ))}
-              </nav>
-            )}
-          </>
-        )}
 
         {!unified && sidebarFolders.length > 0 && (
           <>
