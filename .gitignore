@@ -119,3 +119,4 @@ eval-results/
 .context/
 .deepsec/
 .tmp/
+google_creds/**/*
