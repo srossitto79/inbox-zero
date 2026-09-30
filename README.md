@@ -30,7 +30,12 @@
 
 ## About this fork
 
-This is a fork of [elie222/inbox-zero](https://github.com/elie222/inbox-zero) with one addition: a Gmail polling fallback for self-hosted setups that cannot expose a public Pub/Sub push endpoint.
+This is a fork of [elie222/inbox-zero](https://github.com/elie222/inbox-zero) with two changes:
+
+1. A Gmail polling fallback for self-hosted setups that cannot expose a public Pub/Sub push endpoint.
+2. A mail-first interface: the app opens on the inbox, the main sidebar starts with Compose and Inbox, Drafts, Sent and Archived, and the mail screen's sidebar has a collapsed Assistant group linking to Chat, Rules, Sender categories, Bulk unsubscribe, Bulk archive and Analytics.
+
+### Gmail polling fallback
 
 Upstream processes incoming mail only when Google Pub/Sub calls `/api/google/webhook`, which needs a public HTTPS URL. Without it the Gmail watch is never registered, and rules, labeling, archiving and auto-drafts do not run on new mail. The fork adds `/api/cron/poll-gmail`, which reads each account's current history ID from Gmail and passes it to the same `processHistoryForUser` code the webhook uses. Accounts with an active watch are skipped, so enabling Pub/Sub later does not cause double processing.
 
@@ -42,6 +47,12 @@ docker compose -f docker-compose.yml -f docker-compose.fork.yml \
 ```
 
 The overlay builds the web image from `docker/Dockerfile.prod` and starts a `gmail-poller` service that calls the route every 60 seconds. Files changed relative to upstream: `apps/web/utils/webhook/google/poll-gmail.ts`, `apps/web/app/api/cron/poll-gmail/`, the `GMAIL_POLLING_ENABLED` entry in `env.ts`, `.env.example` and `turbo.json`, and `docker-compose.fork.yml`.
+
+`build_docker.sh` runs the same command.
+
+The interface change touches `apps/web/components/SideNav.tsx`, the mail sidebar components under `apps/web/app/(app)/[emailAccountId]/mail/`, the landing redirects in `apps/web/next.config.ts` and `apps/web/app/(landing)/welcome-redirect/`, and the account links in `apps/web/app/(app)/accounts/page.tsx` and `apps/web/components/AccountCommandList.tsx`.
+
+### Updating
 
 To pick up upstream changes: `git fetch upstream && git merge upstream/main`.
 
