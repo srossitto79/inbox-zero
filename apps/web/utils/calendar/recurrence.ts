@@ -73,15 +73,18 @@ export function expandRecurringEvent(
 
   for (const rule of rules.rrules) {
     const iterator = ICAL.Recur.fromString(rule).iterator(
-      new ICAL.Time({
-        year: startWall.year,
-        month: startWall.month,
-        day: startWall.day,
-        hour: startWall.hour,
-        minute: startWall.minute,
-        second: startWall.second,
-        isDate: master.isAllDay,
-      }),
+      new ICAL.Time(
+        {
+          year: startWall.year,
+          month: startWall.month,
+          day: startWall.day,
+          hour: startWall.hour,
+          minute: startWall.minute,
+          second: startWall.second,
+          isDate: master.isAllDay,
+        },
+        ICAL.Timezone.localTimezone,
+      ),
     );
     let iterations = 0;
     let next = iterator.next();

@@ -11,6 +11,9 @@ export const toggleCalendarBody = z.object({
 });
 export type ToggleCalendarBody = z.infer<typeof toggleCalendarBody>;
 
+export const syncCalendarsBody = z.object({});
+export type SyncCalendarsBody = z.infer<typeof syncCalendarsBody>;
+
 export const updateTimezoneBody = z.object({
   timezone: z.string().min(1, "Timezone is required"),
 });

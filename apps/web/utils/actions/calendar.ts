@@ -1,9 +1,12 @@
 "use server";
 
+import { after } from "next/server";
+import { syncEmailAccountCalendars } from "@/utils/calendar/sync/sync-calendars";
 import { actionClient } from "@/utils/actions/safe-action";
 import {
   disconnectCalendarBody,
   toggleCalendarBody,
+  syncCalendarsBody,
   updateTimezoneBody,
   updateBookingLinkBody,
 } from "@/utils/actions/calendar.validation";
@@ -59,6 +62,27 @@ export const toggleCalendarAction = actionClient
       return { success: true };
     },
   );
+
+// Runs after the response so the first sync of a large calendar does not hold
+// the request open; the views follow progress through the calendar statuses.
+export const syncCalendarsAction = actionClient
+  .metadata({ name: "syncCalendars" })
+  .inputSchema(syncCalendarsBody)
+  .action(async ({ ctx: { emailAccountId, logger } }) => {
+    after(async () => {
+      try {
+        await syncEmailAccountCalendars({
+          emailAccountId,
+          force: true,
+          logger,
+        });
+      } catch (error) {
+        logger.error("Calendar sync failed", { error });
+      }
+    });
+
+    return { started: true };
+  });
 
 export const updateEmailAccountTimezoneAction = actionClient
   .metadata({ name: "updateTimezone" })
