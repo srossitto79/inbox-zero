@@ -217,6 +217,7 @@ model EmailAccount {
   labels              Label[]
   rules               Rule[]
   executedRules       ExecutedRule[]
+  backgroundJobs      BackgroundJob[]
   newsletters         Newsletter[]
   coldEmails          ColdEmail[] // @deprecated - kept for backward compatibility during migration
   groups              Group[]
@@ -2754,4 +2755,47 @@ model ScimIdentityLink {
 
   @@unique([connectionId, externalId])
   @@index([userId])
+}
+
+enum BackgroundJobKind {
+  BULK_RULES
+  CHAT_REPLY
+  CLEANUP
+  CATEGORIZE_SENDERS
+}
+
+enum BackgroundJobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+// Durable server-side work that continues without any page open. `payload`
+// holds the parameters and the resume cursor; the worker advances it chunk by
+// chunk, so a restarted server continues from the last saved chunk.
+model BackgroundJob {
+  id              String              @id @default(cuid())
+  emailAccountId  String
+  emailAccount    EmailAccount        @relation(fields: [emailAccountId], references: [id], onDelete: Cascade)
+  kind            BackgroundJobKind
+  status          BackgroundJobStatus @default(QUEUED)
+  progressDone    Int                 @default(0)
+  progressTotal   Int?
+  payload         Json
+  result          Json?
+  error           String?
+  cancelRequested Boolean             @default(false)
+  nextRunAt       DateTime? // A queued job is not picked up before this time
+  createdAt       DateTime            @default(now())
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  heartbeatAt     DateTime?
+  seenAt          DateTime? // Set once the user has acknowledged a finished job
+
+  @@index([status, nextRunAt])
+  @@index([status, heartbeatAt])
+  @@index([emailAccountId, status])
+  @@index([emailAccountId, createdAt])
 }
