@@ -9,6 +9,7 @@ import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { NavUser } from "@/components/NavUser";
 import { BackgroundJobsStatus } from "@/components/shell/BackgroundJobsStatus";
 import { LlmApiStatus } from "@/components/shell/LlmApiStatus";
+import { CalendarClock } from "@/components/shell/CalendarClock";
 import { CalendarPanel } from "@/components/shell/CalendarPanel";
 import {
   getActiveSection,
@@ -108,8 +109,11 @@ export function NewSideNav({ name }: { name: string }) {
 
         {isOpen ? (
           <div className="flex min-w-0 flex-1 flex-col gap-4 border-r border-sidebar-border bg-sidebar px-4 py-4">
-            <div className="px-1 pt-1 font-display text-2xl font-semibold leading-tight">
-              {section.label}
+            <div>
+              <div className="px-1 pt-1 font-display text-2xl font-semibold leading-tight">
+                {section.label}
+              </div>
+              {section.id === "calendar" ? <CalendarClock /> : null}
             </div>
             {section.id === "calendar" ? (
               <CalendarPanel />
