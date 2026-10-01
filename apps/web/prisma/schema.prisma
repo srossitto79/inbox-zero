@@ -245,6 +245,7 @@ model EmailAccount {
   invitations            Invitation[]
   ssoproviders           SsoProvider[]
   calendarConnections    CalendarConnection[]
+  calendarPreference     CalendarPreference?
   availabilitySchedules  AvailabilitySchedule[]
   bookingLinks           BookingLink[]
   bookings               Booking[]
@@ -1424,6 +1425,18 @@ model CalendarConnection {
   calendars Calendar[]
 
   @@unique([emailAccountId, provider, email]) // Allow multiple Google accounts per user
+}
+
+model CalendarPreference {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Validated by calendarPreferencesSchema; absent keys fall back to defaults.
+  settings Json @default("{}")
+
+  emailAccountId String       @unique
+  emailAccount   EmailAccount @relation(fields: [emailAccountId], references: [id], onDelete: Cascade)
 }
 
 model Calendar {

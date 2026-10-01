@@ -32,6 +32,7 @@ export const CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/calendar.freebusy", // For checking free/busy status
   "https://www.googleapis.com/auth/calendar.settings.readonly", // For reading calendar settings
   "https://www.googleapis.com/auth/calendar.calendars", // For creating/managing calendars
+  "https://www.googleapis.com/auth/calendar.calendarlist", // For colors, visibility and unsubscribing in the calendar list
   // "https://www.googleapis.com/auth/calendar.settings", // For modifying calendar settings
   // "https://www.googleapis.com/auth/calendar.calendars.readonly", // For reading calendar metadata
 ];
