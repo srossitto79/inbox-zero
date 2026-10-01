@@ -22,6 +22,8 @@ import {
   hasDesktopMailEngineIpc,
 } from "@/utils/mail-engine/desktop-ipc";
 import { selectMailEngineRuntimeMode } from "@/utils/mail-engine/runtime-mode";
+import { isServerMailStore } from "@/utils/mail-engine/mail-store-mode";
+import { createServerMailClient } from "@/utils/mail-engine/server-client";
 import { isMicrosoftProvider } from "@/utils/email/provider-types";
 import { browserMailEngineCapabilities } from "@/utils/mail-engine/worker-protocol";
 import {
@@ -43,7 +45,7 @@ type MailEngineRuntimeStatus = {
   unavailable: boolean;
 };
 
-type MailEngineInspectTransport = "browser" | "desktop-ipc";
+type MailEngineInspectTransport = "browser" | "desktop-ipc" | "server";
 
 const MailEngineRuntimeStatusContext = createContext<MailEngineRuntimeStatus>({
   client: null,
@@ -80,6 +82,7 @@ export function MailCoverageGate({ children }: { children: ReactNode }) {
   }
   const mode = selectMailEngineRuntimeMode({
     desktopIpc: hasDesktopMailEngineIpc(),
+    server: isServerMailStore(),
     opfs: browserMailEngineCapabilities().opfs,
   });
   if (status.unavailable || mode === "unavailable") {
@@ -104,6 +107,7 @@ function MailEngineRuntimeInner({ children }: { children: ReactNode }) {
     if (!emailAccountId) return;
     const mode = selectMailEngineRuntimeMode({
       desktopIpc: hasDesktopMailEngineIpc(),
+      server: isServerMailStore(),
       opfs: browserMailEngineCapabilities().opfs,
     });
     if (mode === "unavailable") {
@@ -126,11 +130,18 @@ function MailEngineRuntimeInner({ children }: { children: ReactNode }) {
       setClient(next);
     }
 
-    if (mode === "desktop-ipc") {
-      const client = createDesktopIpcMailClient({
-        provider: isMicrosoftProvider(provider) ? "microsoft" : "google",
-      });
-      publishClient(client, "owner", "desktop-ipc").catch(() => {
+    if (mode === "desktop-ipc" || mode === "server") {
+      const accountProvider = isMicrosoftProvider(provider)
+        ? "microsoft"
+        : "google";
+      const client =
+        mode === "server"
+          ? createServerMailClient({
+              accountId: emailAccountId,
+              provider: accountProvider,
+            })
+          : createDesktopIpcMailClient({ provider: accountProvider });
+      publishClient(client, "owner", mode).catch(() => {
         if (!abort.signal.aborted) setUnavailable(true);
       });
       client.requestSync([emailAccountId]).catch(() => undefined);
@@ -139,6 +150,8 @@ function MailEngineRuntimeInner({ children }: { children: ReactNode }) {
         unsubscribeLogout();
         abort.abort();
         if (published) disposeTabFollowerClient(published);
+        // The server client holds an open stream that only close() ends.
+        if (mode === "server") client.close?.().catch(() => undefined);
         clearMailEngineInspect();
         setActiveMailClient(null);
         setClient(null);

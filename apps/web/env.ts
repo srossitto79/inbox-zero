@@ -53,6 +53,7 @@ const parsedEnv = createEnv({
   server: {
     NODE_ENV: z.enum(["development", "production", "test"]),
     MAIL_UPLOAD_DIR: z.string().min(1).optional(),
+    MAIL_STORE_DIR: z.string().min(1).optional(),
     INBOX_ZERO_ENV_FILE: z.string().optional(),
     DATABASE_URL: z.string().url(),
     DATABASE_URL_UNPOOLED: z.string().url().optional(),
@@ -461,6 +462,8 @@ const parsedEnv = createEnv({
     NEXT_PUBLIC_MAIL_ENGINE_TEST_INSPECT: booleanString
       .optional()
       .default(false),
+    // A plain string: Docker builds bake a placeholder that is swapped at start.
+    NEXT_PUBLIC_MAIL_STORE: z.string().optional(),
     NEXT_PUBLIC_GMAIL_OTHER_CONTACTS_ENABLED: booleanString
       .optional()
       .default(false),
@@ -574,6 +577,7 @@ const parsedEnv = createEnv({
     NEXT_PUBLIC_CONTACTS_ENABLED: process.env.NEXT_PUBLIC_CONTACTS_ENABLED,
     NEXT_PUBLIC_MAIL_ENGINE_TEST_INSPECT:
       process.env.NEXT_PUBLIC_MAIL_ENGINE_TEST_INSPECT,
+    NEXT_PUBLIC_MAIL_STORE: process.env.NEXT_PUBLIC_MAIL_STORE,
     NEXT_PUBLIC_GMAIL_OTHER_CONTACTS_ENABLED:
       process.env.NEXT_PUBLIC_GMAIL_OTHER_CONTACTS_ENABLED,
     NEXT_PUBLIC_EMAIL_SEND_ENABLED: process.env.NEXT_PUBLIC_EMAIL_SEND_ENABLED,

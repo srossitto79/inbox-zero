@@ -11,7 +11,7 @@ import {
   isObservationRequest,
   openMailIpcObservation,
   parseMailIpcRequest,
-} from "./ipc";
+} from "@inboxzero/mail-core/protocol/mail-ipc-host";
 import {
   createDesktopMailStore,
   nodeMailCrypto,

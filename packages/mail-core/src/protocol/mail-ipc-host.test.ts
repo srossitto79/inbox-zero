@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dispatchMailIpc } from "./ipc";
+import { dispatchMailIpc } from "./mail-ipc-host";
 
 describe("dispatchMailIpc", () => {
   it("rejects an older IPC protocol version without touching the engine", async () => {
