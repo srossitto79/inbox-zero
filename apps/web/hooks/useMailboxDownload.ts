@@ -4,6 +4,7 @@ import type { MailDiagnostics } from "@inboxzero/mail-core/engine";
 import { useOptionalMailClient } from "@inboxzero/mail-react/MailEngineProvider";
 import { mailboxPredicate } from "@inboxzero/mail-core/queries";
 import type { GetMailboxSizeResponse } from "@/app/api/user/mailbox-size/route";
+import { fetchMailboxSize } from "@/utils/mail-engine/fetch-mailbox-size";
 import {
   downloadRatePerMinute,
   downloadRemainingMinutes,
@@ -19,7 +20,7 @@ export function useMailboxDownload(emailAccountId: string) {
   const client = useOptionalMailClient();
   const { data: size } = useSWR<GetMailboxSizeResponse>(
     emailAccountId ? ["/api/user/mailbox-size", emailAccountId] : null,
-    ([url]: [string]) => fetch(url).then((response) => response.json()),
+    ([, accountId]: [string, string]) => fetchMailboxSize(accountId),
     { refreshInterval: SIZE_REFRESH_MS },
   );
   const [samples, setSamples] = useState<DownloadSample[]>([]);
