@@ -21,7 +21,10 @@ export const SCOPES = [
   ...(env.NEXT_PUBLIC_CONTACTS_ENABLED ? ["Contacts.Read", "People.Read"] : []),
 ] as const;
 
-export const CALENDAR_SCOPES = [
+// Scopes every existing calendar connection was consented to. Token refreshes
+// request exactly these: asking a refresh token for a scope it was never
+// granted fails the whole refresh instead of leaving the connection usable.
+export const CALENDAR_BASE_SCOPES = [
   "openid",
   "profile",
   "email",
@@ -29,4 +32,11 @@ export const CALENDAR_SCOPES = [
   "offline_access", // Required for refresh tokens
   "Calendars.Read", // Read user calendars
   "Calendars.ReadWrite", // Read and write user calendars
+] as const;
+
+// Requested when a calendar is connected or reconnected.
+export const CALENDAR_SCOPES = [
+  ...CALENDAR_BASE_SCOPES,
+  "Calendars.ReadWrite.Shared", // Shared and delegated calendars
+  "MailboxSettings.Read", // Working hours and time zone
 ] as const;

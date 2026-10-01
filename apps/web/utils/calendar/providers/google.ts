@@ -23,7 +23,7 @@ export function createGoogleCalendarProvider(
       const googleAuth = getCalendarOAuth2Client();
 
       const { tokens } = await googleAuth.getToken(code);
-      const { access_token, refresh_token, expiry_date } = tokens;
+      const { access_token, refresh_token, expiry_date, scope } = tokens;
 
       if (!access_token || !refresh_token) {
         throw new Error("No refresh_token returned from Google");
@@ -43,6 +43,7 @@ export function createGoogleCalendarProvider(
         refreshToken: refresh_token,
         expiresAt: expiry_date ? new Date(expiry_date) : null,
         email,
+        scope: scope ?? undefined,
       };
     },
 
@@ -83,6 +84,8 @@ export function createGoogleCalendarProvider(
               description: googleCalendar.description,
               timezone: googleCalendar.timeZone,
               primary: googleCalendar.primary ?? false,
+              color: googleCalendar.backgroundColor ?? null,
+              canEdit: isWritableGoogleRole(googleCalendar.accessRole),
             },
             create: {
               connectionId,
@@ -91,6 +94,8 @@ export function createGoogleCalendarProvider(
               description: googleCalendar.description,
               timezone: googleCalendar.timeZone,
               primary: googleCalendar.primary ?? false,
+              color: googleCalendar.backgroundColor ?? null,
+              canEdit: isWritableGoogleRole(googleCalendar.accessRole),
               isEnabled: true,
             },
           });
@@ -107,6 +112,10 @@ export function createGoogleCalendarProvider(
       }
     },
   };
+}
+
+function isWritableGoogleRole(accessRole: string | null | undefined) {
+  return accessRole === "owner" || accessRole === "writer";
 }
 
 async function verifyGoogleIdTokenPayload(

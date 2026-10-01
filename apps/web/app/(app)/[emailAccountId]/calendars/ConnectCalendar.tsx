@@ -16,9 +16,13 @@ import { redirectToSafeUrl } from "@/utils/redirect";
 export function ConnectCalendar({
   analyticsPage,
   onboardingReturnPath,
+  provider,
+  reconnect = false,
 }: {
   analyticsPage?: AppPage;
   onboardingReturnPath?: string;
+  provider?: "google" | "microsoft";
+  reconnect?: boolean;
 }) {
   const { emailAccountId } = useAccount();
   const analytics = useProductAnalytics(analyticsPage);
@@ -103,37 +107,49 @@ export function ConnectCalendar({
 
   return (
     <div className="flex gap-2 flex-wrap md:flex-nowrap">
-      <Button
-        onClick={handleConnectGoogle}
-        disabled={isConnectingGoogle || isConnectingMicrosoft}
-        variant="outline"
-        className="flex items-center gap-2 w-full md:w-auto"
-      >
-        <Image
-          src="/images/google.svg"
-          alt="Google"
-          width={16}
-          height={16}
-          unoptimized
-        />
-        {isConnectingGoogle ? "Connecting..." : "Add Google Calendar"}
-      </Button>
+      {provider !== "microsoft" ? (
+        <Button
+          onClick={handleConnectGoogle}
+          disabled={isConnectingGoogle || isConnectingMicrosoft}
+          variant="outline"
+          className="flex w-full items-center gap-2 md:w-auto"
+        >
+          <Image
+            src="/images/google.svg"
+            alt="Google"
+            width={16}
+            height={16}
+            unoptimized
+          />
+          {isConnectingGoogle
+            ? "Connecting..."
+            : reconnect
+              ? "Reconnect Google Calendar"
+              : "Add Google Calendar"}
+        </Button>
+      ) : null}
 
-      <Button
-        onClick={handleConnectMicrosoft}
-        disabled={isConnectingGoogle || isConnectingMicrosoft}
-        variant="outline"
-        className="flex items-center gap-2 w-full md:w-auto"
-      >
-        <Image
-          src="/images/microsoft.svg"
-          alt="Microsoft"
-          width={16}
-          height={16}
-          unoptimized
-        />
-        {isConnectingMicrosoft ? "Connecting..." : "Add Outlook Calendar"}
-      </Button>
+      {provider !== "google" ? (
+        <Button
+          onClick={handleConnectMicrosoft}
+          disabled={isConnectingGoogle || isConnectingMicrosoft}
+          variant="outline"
+          className="flex w-full items-center gap-2 md:w-auto"
+        >
+          <Image
+            src="/images/microsoft.svg"
+            alt="Microsoft"
+            width={16}
+            height={16}
+            unoptimized
+          />
+          {isConnectingMicrosoft
+            ? "Connecting..."
+            : reconnect
+              ? "Reconnect Outlook Calendar"
+              : "Add Outlook Calendar"}
+        </Button>
+      ) : null}
     </div>
   );
 }

@@ -5,6 +5,8 @@ export interface CalendarTokens {
   email: string;
   expiresAt: Date | null;
   refreshToken: string;
+  /** Space-separated scopes the provider granted. */
+  scope?: string;
 }
 
 export interface CalendarOAuthProvider {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCalendarConnectionState } from "@/utils/calendar/connection-scopes";
 import prisma from "@/utils/prisma";
 import { withEmailAccount } from "@/utils/middleware";
 
@@ -23,6 +24,7 @@ async function getData({ emailAccountId }: { emailAccountId: string }) {
           email: true,
           provider: true,
           isConnected: true,
+          scope: true,
           calendars: {
             select: {
               id: true,
@@ -31,6 +33,12 @@ async function getData({ emailAccountId }: { emailAccountId: string }) {
               primary: true,
               description: true,
               timezone: true,
+              color: true,
+              canEdit: true,
+              syncStatus: true,
+              lastSyncedAt: true,
+              syncRetryAt: true,
+              syncError: true,
             },
             orderBy: {
               name: "asc",
@@ -42,8 +50,15 @@ async function getData({ emailAccountId }: { emailAccountId: string }) {
     },
   });
 
+  const connections = (emailAccount?.calendarConnections || []).map(
+    ({ scope, ...connection }) => ({
+      ...connection,
+      state: getCalendarConnectionState({ ...connection, scope }),
+    }),
+  );
+
   return {
-    connections: emailAccount?.calendarConnections || [],
+    connections,
     timezone: emailAccount?.timezone || null,
     calendarBookingLink: emailAccount?.calendarBookingLink || null,
   };

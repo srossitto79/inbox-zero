@@ -5,7 +5,7 @@ import {
   getMicrosoftOauthAuthorizeUrl,
   requestMicrosoftToken,
 } from "@/utils/microsoft/oauth";
-import { CALENDAR_SCOPES } from "@/utils/outlook/scopes";
+import { CALENDAR_BASE_SCOPES, CALENDAR_SCOPES } from "@/utils/outlook/scopes";
 import { isInvalidGrantError, SafeError } from "@/utils/error";
 import prisma from "@/utils/prisma";
 import { saveCalendarTokens } from "@/utils/calendar/save-calendar-tokens";
@@ -49,12 +49,14 @@ export const getCalendarClientWithRefresh = async ({
   refreshToken,
   expiresAt,
   emailAccountId,
+  connectionId,
   logger,
 }: {
   accessToken?: string | null;
   refreshToken: string | null;
   expiresAt: number | null;
   emailAccountId: string;
+  connectionId?: string;
   logger: Logger;
 }): Promise<Client> => {
   if (!refreshToken) throw new SafeError("No refresh token");
@@ -83,7 +85,7 @@ export const getCalendarClientWithRefresh = async ({
       client_secret: env.MICROSOFT_CLIENT_SECRET,
       refresh_token: refreshToken,
       grant_type: "refresh_token",
-      scope: CALENDAR_SCOPES.join(" "),
+      scope: CALENDAR_BASE_SCOPES.join(" "),
     });
 
     const tokens = await response.json();
@@ -101,10 +103,9 @@ export const getCalendarClientWithRefresh = async ({
 
     // Find the calendar connection to update
     const calendarConnection = await prisma.calendarConnection.findFirst({
-      where: {
-        emailAccountId,
-        provider: "microsoft",
-      },
+      where: connectionId
+        ? { id: connectionId, emailAccountId, provider: "microsoft" }
+        : { emailAccountId, provider: "microsoft" },
       select: { id: true },
     });
 
@@ -184,12 +185,14 @@ export async function fetchMicrosoftCalendars(
     name?: string;
     description?: string;
     isDefaultCalendar?: boolean;
+    hexColor?: string;
+    canEdit?: boolean;
   }>
 > {
   try {
     const response = await calendarClient
       .api("/me/calendars")
-      .select("id,name,color,isDefaultCalendar,canEdit,owner")
+      .select("id,name,color,hexColor,isDefaultCalendar,canEdit,owner")
       .get();
 
     return response.value || [];
