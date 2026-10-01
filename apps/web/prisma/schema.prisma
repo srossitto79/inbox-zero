@@ -1413,6 +1413,9 @@ model CalendarConnection {
   refreshToken String?
   expiresAt    DateTime?
   isConnected  Boolean   @default(true)
+  scope        String? // Scopes granted at the last consent; null until the connection is reconnected
+
+  calendarListSyncedAt DateTime? // Last time the provider's calendar list was refreshed
 
   emailAccountId String
   emailAccount   EmailAccount @relation(fields: [emailAccountId], references: [id], onDelete: Cascade)
@@ -1433,12 +1436,95 @@ model Calendar {
   primary     Boolean @default(false)
   isEnabled   Boolean @default(true)
   timezone    String?
+  color       String? // Provider-assigned hex color, e.g. "#9fe1e7"
+  canEdit     Boolean @default(false)
+
+  // Event sync state. syncCursor is the Google syncToken or the Microsoft
+  // deltaLink; syncPageToken resumes an interrupted full sync.
+  syncStatus           CalendarSyncStatus @default(IDLE)
+  syncCursor           String?
+  syncPageToken        String?
+  fullSyncStartedAt    DateTime?
+  syncStartedAt        DateTime?
+  lastSyncedAt         DateTime?
+  syncWindowStart      DateTime?
+  syncWindowEnd        DateTime?
+  syncError            String?
+  syncRetryAt          DateTime?
 
   connectionId String
   connection   CalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   bookingLinks BookingLink[]
+  events       CalendarEvent[]
 
   @@unique([connectionId, calendarId])
+}
+
+enum CalendarSyncStatus {
+  IDLE
+  SYNCING
+  PAUSED // Provider rate limit; syncRetryAt says when to resume
+  ERROR
+  NEEDS_RECONNECT
+}
+
+enum CalendarEventStatus {
+  CONFIRMED
+  TENTATIVE
+  CANCELLED
+}
+
+// Local copy of provider events, written only by the calendar sync.
+//
+// Recurring events: Google series are stored as one master row (recurrence
+// holds the RRULE/EXDATE/RDATE lines) plus one row per modified or cancelled
+// instance (recurringEventId + originalStartTime). Occurrences are expanded at
+// read time. Microsoft only exposes occurrences through calendarView, so those
+// are stored as individual rows that carry recurringEventId (the series
+// master id) and originalStartTime, with an empty recurrence.
+//
+// All-day events store the date at 00:00 UTC in startTime and the exclusive
+// end date at 00:00 UTC in endTime. They are floating dates, not instants.
+model CalendarEvent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  calendarId String
+  calendar   Calendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+
+  providerEventId   String
+  iCalUid           String?
+  etag              String?
+  providerUpdatedAt DateTime? @db.Timestamptz(3)
+
+  title       String
+  description String?             @db.Text
+  location    String?
+  startTime   DateTime            @db.Timestamptz(3)
+  endTime     DateTime            @db.Timestamptz(3)
+  isAllDay    Boolean             @default(false)
+  timezone    String? // IANA zone the event was authored in
+  status      CalendarEventStatus @default(CONFIRMED)
+  isBusy      Boolean             @default(true)
+
+  organizerEmail     String?
+  organizerName      String?
+  isOrganizer        Boolean @default(false)
+  selfResponseStatus String? // needsAction | accepted | declined | tentative
+  attendees          Json? // [{ email, name, responseStatus, isSelf, isOrganizer }]
+
+  recurringEventId  String? // Provider id of the series master
+  recurrence        String[] // RRULE/EXDATE/RDATE lines; non-empty only on a series master
+  originalStartTime DateTime? @db.Timestamptz(3) // Slot an exception replaces
+
+  videoLink String?
+  htmlLink  String?
+
+  @@unique([calendarId, providerEventId])
+  @@index([calendarId, startTime, endTime])
+  @@index([calendarId, recurringEventId])
+  @@index([iCalUid])
 }
 
 model BookingLink {
