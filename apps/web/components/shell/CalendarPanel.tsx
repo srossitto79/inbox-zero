@@ -66,7 +66,7 @@ export function CalendarPanel() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">
+    <div className="flex min-h-0 flex-col gap-5 overflow-y-auto overflow-x-hidden [scrollbar-width:thin]">
       <Calendar
         mode="single"
         selected={selected}
