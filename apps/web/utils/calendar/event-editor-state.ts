@@ -259,6 +259,36 @@ export function editorStateToUpdatePayload({
 }
 
 /**
+ * Re-creates a deleted event from the copy the screen holds. The Meet link is
+ * not carried over; a new one is requested instead.
+ */
+export function eventToRestorePayload(
+  event: CalendarViewEvent,
+  viewerTimeZone: string,
+) {
+  const state = eventToEditorState(event, viewerTimeZone);
+  const timing: Timing = event.isAllDay
+    ? { isAllDay: true, startDate: event.start, endDate: event.end }
+    : {
+        isAllDay: false,
+        start: event.start,
+        end: event.end,
+        timeZone: state.timeZone,
+      };
+  return {
+    calendarId: event.calendarId,
+    title: event.title,
+    description: event.description ?? undefined,
+    location: event.location ?? undefined,
+    timing,
+    guests: state.guests.map((email) => ({ email })),
+    reminders: state.reminders,
+    addVideoConference: Boolean(event.videoLink?.includes("meet.google.com")),
+    sendUpdates: state.guests.length > 0 ? ("all" as const) : ("none" as const),
+  };
+}
+
+/**
  * Changes the start and moves the end with it, so the length stays. Editing
  * the end alone never touches the start.
  */

@@ -87,6 +87,21 @@ export function computeCreateRange({
   currentMinutes: number;
   timeZone: string;
 }) {
+  const { start, end } = computeCreateRangeMinutes(
+    anchorMinutes,
+    currentMinutes,
+  );
+  return {
+    start: minutesToInstant(dateKey, start, timeZone),
+    end: minutesToInstant(dateKey, end, timeZone),
+  };
+}
+
+/** The dragged range as minutes of the day, for drawing the preview. */
+export function computeCreateRangeMinutes(
+  anchorMinutes: number,
+  currentMinutes: number,
+) {
   const low = Math.min(anchorMinutes, currentMinutes);
   const high = Math.max(anchorMinutes, currentMinutes);
   let start = Math.floor(low / SNAP_MINUTES) * SNAP_MINUTES;
@@ -96,10 +111,7 @@ export function computeCreateRange({
     end = MINUTES_PER_DAY;
     start = Math.min(start, MINUTES_PER_DAY - SNAP_MINUTES);
   }
-  return {
-    start: minutesToInstant(dateKey, start, timeZone),
-    end: minutesToInstant(dateKey, end, timeZone),
-  };
+  return { start, end };
 }
 
 /** A click on an empty slot: the slot's start with the default length. */

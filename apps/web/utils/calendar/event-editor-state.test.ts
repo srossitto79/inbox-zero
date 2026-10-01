@@ -7,6 +7,7 @@ import {
   editorStateToTiming,
   editorStateToUpdatePayload,
   eventToEditorState,
+  eventToRestorePayload,
   getEditorProblem,
   parseGuestInput,
   withStart,
@@ -454,5 +455,59 @@ describe("guest input", () => {
     expect(
       addGuests(["a@example.com"], ["A@example.com", "b@example.com"]),
     ).toEqual(["a@example.com", "b@example.com"]);
+  });
+});
+
+describe("eventToRestorePayload", () => {
+  it("re-creates a timed event with its guests and reminders", () => {
+    const payload = eventToRestorePayload(
+      viewEvent({
+        description: "Agenda",
+        videoLink: "https://meet.google.com/aaa-bbbb-ccc",
+        attendees: [
+          { email: "me@example.com", isSelf: true },
+          { email: "a@example.com" },
+        ],
+        reminders: {
+          useDefault: false,
+          overrides: [{ method: "popup", minutes: 10 }],
+        },
+      }),
+      ROME,
+    );
+
+    expect(payload).toEqual({
+      calendarId: "cal-1",
+      title: "Planning",
+      description: "Agenda",
+      location: undefined,
+      timing: {
+        isAllDay: false,
+        start: "2026-10-05T07:00:00.000Z",
+        end: "2026-10-05T08:00:00.000Z",
+        timeZone: ROME,
+      },
+      guests: [{ email: "a@example.com" }],
+      reminders: {
+        useDefault: false,
+        overrides: [{ method: "popup", minutes: 10 }],
+      },
+      addVideoConference: true,
+      sendUpdates: "all",
+    });
+  });
+
+  it("keeps the exclusive end of an all-day event", () => {
+    const payload = eventToRestorePayload(
+      viewEvent({ isAllDay: true, start: "2026-10-05", end: "2026-10-07" }),
+      ROME,
+    );
+
+    expect(payload.timing).toEqual({
+      isAllDay: true,
+      startDate: "2026-10-05",
+      endDate: "2026-10-07",
+    });
+    expect(payload.sendUpdates).toBe("none");
   });
 });
