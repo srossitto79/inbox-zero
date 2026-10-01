@@ -1,4 +1,4 @@
-import { after } from "next/server";
+import { afterResponseOrNow } from "@/utils/after-response";
 import { PostHog } from "posthog-node";
 import type { Properties } from "posthog-js";
 import { env } from "@/env";
@@ -53,7 +53,7 @@ export async function getServerFeatureFlagVariant({
         setTimeout(resolve, FEATURE_FLAG_TIMEOUT_MS),
       ),
     ]);
-    after(() =>
+    afterResponseOrNow(() =>
       client.flush().catch((error) => {
         logger.warn("Failed to flush feature flag exposure", { key, error });
       }),

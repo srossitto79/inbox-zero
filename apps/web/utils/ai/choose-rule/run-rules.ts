@@ -1,4 +1,4 @@
-import { after } from "next/server";
+import { afterResponseOrNow } from "@/utils/after-response";
 import type { ParsedMessage, RuleWithActions } from "@/utils/types";
 import {
   ActionType,
@@ -518,7 +518,7 @@ async function executeMatchedRule(
     { logger },
   );
 
-  after(() =>
+  afterResponseOrNow(() =>
     trackFirstTimeEvent({
       emailAccountId: emailAccount.id,
       event: FIRST_TIME_EVENTS.FIRST_AUTOMATED_RULE_RUN,
@@ -697,7 +697,7 @@ async function analyzeSenderPatternIfAiMatch({
       if (queuedSenderPatternAnalyses.has(analysisKey)) return;
       queuedSenderPatternAnalyses.add(analysisKey);
 
-      after(async () => {
+      afterResponseOrNow(async () => {
         let senderAlreadyAnalyzed = false;
         try {
           senderAlreadyAnalyzed = await isSenderPatternAlreadyAnalyzed({

@@ -1,5 +1,5 @@
 import { Client, type FlowControl, type HeadersInit } from "@upstash/qstash";
-import { after } from "next/server";
+import { afterResponseOrNow } from "@/utils/after-response";
 import { getInternalApiHeaders, getInternalApiUrl } from "@/utils/internal-api";
 import { env } from "@/env";
 import { createScopedLogger } from "@/utils/logger";
@@ -192,7 +192,7 @@ async function fallbackPublishToQstash<T>(
     }
   }
 
-  after(async () => {
+  afterResponseOrNow(async () => {
     try {
       await fetch(url, {
         method: "POST",
