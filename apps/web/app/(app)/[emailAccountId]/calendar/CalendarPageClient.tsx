@@ -6,6 +6,7 @@ import { useAction } from "next-safe-action/hooks";
 import { useHotkeys } from "react-hotkeys-hook";
 import {
   CalendarDaysIcon,
+  CalendarSearchIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   RefreshCwIcon,
@@ -14,6 +15,10 @@ import {
 import { ConnectCalendar } from "@/app/(app)/[emailAccountId]/calendars/ConnectCalendar";
 import { PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  FindATimeDialog,
+  type FindATimeSlot,
+} from "@/components/calendar/FindATimeDialog";
 import {
   Empty,
   EmptyContent,
@@ -181,6 +186,7 @@ export function CalendarPageClient() {
     mutateEvents,
   });
   const [session, setSession] = useState<EditorSession | null>(null);
+  const [findTimeOpen, setFindTimeOpen] = useState(false);
   const sessionKeyRef = useRef(0);
   const focusedEventIdRef = useRef<string | null>(null);
   const setOpenEventId = useCallback((id: string | null) => {
@@ -400,6 +406,15 @@ export function CalendarPageClient() {
           New event
         </Button>
         <Button
+          variant="outline"
+          size="sm"
+          Icon={CalendarSearchIcon}
+          disabled={!defaultCalendarId || Boolean(createBlock)}
+          onClick={() => setFindTimeOpen(true)}
+        >
+          Find a time
+        </Button>
+        <Button
           variant="ghostMuted"
           size="iconSm"
           aria-label="Sync now"
@@ -476,6 +491,17 @@ export function CalendarPageClient() {
         onClose={() => setSession(null)}
         onSave={saveSession}
         onDelete={(event) => mutations.remove(event)}
+      />
+      <FindATimeDialog
+        open={findTimeOpen}
+        onOpenChange={setFindTimeOpen}
+        attendees={[]}
+        durationMinutes={preferences.defaultDurationMinutes}
+        timeZone={timezone}
+        onPick={(slot: FindATimeSlot) => {
+          setFindTimeOpen(false);
+          startCreate(slot);
+        }}
       />
     </main>
   );
