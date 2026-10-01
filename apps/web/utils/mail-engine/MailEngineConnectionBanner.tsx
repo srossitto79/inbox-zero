@@ -168,15 +168,19 @@ function syncStatusText({
   nowMs: number;
   providerLabel: string;
 }) {
-  if (!paused) return "Downloading mailbox";
-  const reason =
-    PAUSE_REASONS[backfill?.pauseReason ?? ""]?.(providerLabel) ??
-    "Sync paused";
+  // The download's own schedule wins: the account-wide paused flag stays set
+  // after a rejected catch-up even while the download keeps going.
   const nextAttemptAtMs = backfill?.nextAttemptAtMs;
-  if (!nextAttemptAtMs || !nowMs) return reason;
-  return `${reason} · next try ${format(nextAttemptAtMs, "p")} (${formatWait(
-    nextAttemptAtMs - nowMs,
-  )})`;
+  if (nextAttemptAtMs && nowMs && nextAttemptAtMs > nowMs) {
+    const reason =
+      PAUSE_REASONS[backfill?.pauseReason ?? ""]?.(providerLabel) ??
+      "Download paused";
+    return `${reason} · next try ${format(nextAttemptAtMs, "p")} (${formatWait(
+      nextAttemptAtMs - nowMs,
+    )})`;
+  }
+  if (backfill || !paused) return "Downloading mailbox";
+  return "Sync paused";
 }
 
 const PAUSE_REASONS: Record<string, (provider: string) => string> = {
