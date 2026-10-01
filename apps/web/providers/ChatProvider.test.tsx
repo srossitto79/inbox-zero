@@ -111,6 +111,11 @@ vi.mock("@/utils/error", () => ({
 
 vi.mock("@/components/Toast", () => ({
   toastError: mockToastError,
+  toastSuccess: vi.fn(),
+}));
+
+vi.mock("@/utils/actions/background-job", () => ({
+  cancelBackgroundJobAction: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock("@/utils/logger-client", () => ({

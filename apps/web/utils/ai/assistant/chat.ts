@@ -90,6 +90,7 @@ export async function aiProcessAssistantChat({
   onStepEnd,
   onModelResolved,
   onEnd,
+  abortSignal,
   logger,
 }: {
   messages: ModelMessage[];
@@ -108,6 +109,7 @@ export async function aiProcessAssistantChat({
   onStepEnd?: AssistantChatOnStepEnd;
   onModelResolved?: AssistantChatOnModelResolved;
   onEnd?: AssistantChatOnEnd;
+  abortSignal?: AbortSignal;
   logger: Logger;
 }) {
   const startedAt = Date.now();
@@ -361,6 +363,7 @@ export async function aiProcessAssistantChat({
       onModelResolved?.(resolvedModel);
     },
     onEnd,
+    abortSignal,
     stopWhen: () => false,
     prepareStep: ({ messages: stepMessages }) => {
       const trimmedMessages = trimStaleToolResults(stepMessages);

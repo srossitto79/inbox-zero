@@ -45,6 +45,16 @@ describe("background job display", () => {
     ).toBe("Failed");
   });
 
+  it("states that a stopped reply was stopped", () => {
+    expect(
+      getBackgroundJobStatusText({
+        ...base,
+        kind: "CHAT_REPLY",
+        status: "CANCELLED",
+      }),
+    ).toBe("Reply stopped");
+  });
+
   it("shows the failed count of a bulk run", () => {
     expect(
       getBackgroundJobStatusText({

@@ -68,6 +68,7 @@ export function Chat({
     input,
     persistedMessageIds,
     isReplyPending,
+    stopReply,
     setInput,
     handleSubmit,
     setNewChat,
@@ -77,7 +78,9 @@ export function Chat({
     setAttachments,
     submitTextMessage,
   } = useChat();
-  const { messages, status, stop, regenerate, setMessages } = chat;
+  const { messages, status, regenerate, setMessages } = chat;
+  const isGenerating =
+    status === "streaming" || status === "submitted" || isReplyPending;
   const [localStorageInput, setLocalStorageInput] = useLocalStorage(
     "input",
     "",
@@ -294,30 +297,28 @@ export function Chat({
             </Button>
           </Tooltip>
 
-          <PromptInputSubmit
-            status={
-              status === "streaming"
-                ? "streaming"
-                : status === "submitted"
+          <Tooltip content="Stop" hide={!isGenerating}>
+            <PromptInputSubmit
+              status={
+                status === "submitted" && !isReplyPending
                   ? "submitted"
-                  : "ready"
-            }
-            disabled={
-              status === "ready" || status === "error"
-                ? !hasContent || isReplyPending
-                : false
-            }
-            onClick={(e) => {
-              if (status === "streaming" || status === "submitted") {
+                  : isGenerating
+                    ? "streaming"
+                    : "ready"
+              }
+              aria-label={isGenerating ? "Stop" : "Send"}
+              disabled={!isGenerating && !hasContent}
+              onClick={(e) => {
+                if (!isGenerating) return;
                 analytics.captureAction("chat_generation_stopped", {
                   status,
                 });
                 e.preventDefault();
-                stop();
+                stopReply();
                 setMessages((messages) => messages);
-              }
-            }}
-          />
+              }}
+            />
+          </Tooltip>
         </div>
       </PromptInput>
     </div>

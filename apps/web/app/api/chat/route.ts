@@ -343,6 +343,7 @@ export const POST = withEmailAccount("chat", async (request) => {
       onEnd: (result) => {
         assistantRun.finishReason = result.finishReason;
       },
+      abortSignal: replyJob.signal,
       logger: runLogger,
     });
 
@@ -425,11 +426,7 @@ export const POST = withEmailAccount("chat", async (request) => {
             flushReason: "chat-stream-finish",
           });
         } finally {
-          await replyJob.finish(
-            outcome?.status === "failed"
-              ? { status: "FAILED", error: "Reply generation failed" }
-              : { status: "SUCCEEDED" },
-          );
+          await replyJob.finish(getReplyJobOutcome(replyJob.signal, outcome));
         }
       },
     });
@@ -616,4 +613,15 @@ function getInvalidChatRequestMetadata(value: unknown) {
     },
     { attachmentCount: 0, textLength: 0 },
   );
+}
+
+function getReplyJobOutcome(
+  signal: AbortSignal,
+  outcome: { status: string } | undefined,
+) {
+  if (signal.aborted) return { status: "CANCELLED" as const };
+  if (outcome?.status === "failed") {
+    return { status: "FAILED" as const, error: "Reply generation failed" };
+  }
+  return { status: "SUCCEEDED" as const };
 }
