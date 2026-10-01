@@ -1,4 +1,4 @@
-import { after } from "next/server";
+import { afterResponseOrNow } from "@/utils/after-response";
 import { ActionType, DraftEmailStatus } from "@/generated/prisma/enums";
 import type { ParsedMessage } from "@/utils/types";
 import prisma from "@/utils/prisma";
@@ -225,7 +225,7 @@ export async function trackSentDraftStatus({
   );
 
   if (wasLikelyDraftSent) {
-    after(() =>
+    afterResponseOrNow(() =>
       trackFirstTimeEvent({
         emailAccountId,
         event: FIRST_TIME_EVENTS.FIRST_DRAFT_SENT,
@@ -507,7 +507,7 @@ function queueReplyMemoryLearning({
     return;
   }
 
-  after(async () => {
+  afterResponseOrNow(async () => {
     try {
       await saveDraftSendLogReplyMemory({
         draftSendLogId,

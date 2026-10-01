@@ -1,4 +1,4 @@
-import { after } from "next/server";
+import { afterResponseOrNow } from "@/utils/after-response";
 import { ActionType, MessagingMessageStatus } from "@/generated/prisma/enums";
 import type { Logger } from "@/utils/logger";
 import { callWebhook } from "@/utils/webhook";
@@ -181,7 +181,7 @@ const label: ActionFunction<{
   });
 
   if (!originalLabelId && labelIdToUse && args.label) {
-    after(() =>
+    afterResponseOrNow(() =>
       lazyUpdateActionLabelId({
         labelName: args.label!,
         labelId: labelIdToUse!,
@@ -587,7 +587,7 @@ const move_folder: ActionFunction<{
 
   // lazy-update the folderId in the database for future runs
   if (!originalFolderId && folderIdToUse && args.folderName) {
-    after(() =>
+    afterResponseOrNow(() =>
       lazyUpdateActionFolderId({
         folderName: args.folderName!,
         folderId: folderIdToUse!,
