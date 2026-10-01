@@ -194,7 +194,10 @@ function toInstant(property: ICAL.Property, context: ParseContext): Date {
 
   const definition = tzid ? context.zones.get(tzid) : undefined;
   if (definition) {
-    const local = new ICAL.Time({ ...wall, isDate: false });
+    const local = new ICAL.Time(
+      { ...wall, isDate: false },
+      ICAL.Timezone.localTimezone,
+    );
     const offsetSeconds = definition.utcOffset(local);
     return new Date(
       Date.UTC(
