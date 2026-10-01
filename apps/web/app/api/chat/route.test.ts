@@ -41,6 +41,7 @@ const {
 }));
 
 vi.mock("ai", () => ({
+  consumeStream: vi.fn(),
   convertToModelMessages: mockConvertToModelMessages,
   createUIMessageStream: mockCreateUIMessageStream,
   createUIMessageStreamResponse: mockCreateUIMessageStreamResponse,
