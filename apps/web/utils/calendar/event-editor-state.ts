@@ -107,7 +107,9 @@ export function eventToEditorState(
     reminders: event.reminders
       ? {
           useDefault: event.reminders.useDefault,
-          overrides: event.reminders.overrides.flatMap((override) =>
+          overrides: event.reminders.overrides.flatMap<
+            EditorReminders["overrides"][number]
+          >((override) =>
             override.method === "popup" || override.method === "email"
               ? [{ method: override.method, minutes: override.minutes }]
               : [],
