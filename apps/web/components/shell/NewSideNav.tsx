@@ -8,6 +8,7 @@ import { ProfileImage } from "@/components/ProfileImage";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { NavUser } from "@/components/NavUser";
 import { LlmApiStatus } from "@/components/shell/LlmApiStatus";
+import { CalendarPanel } from "@/components/shell/CalendarPanel";
 import {
   getActiveSection,
   MAIL_VIEWS,
@@ -109,11 +110,17 @@ export function NewSideNav({ name }: { name: string }) {
             <div className="px-1 pt-1 font-display text-2xl font-semibold leading-tight">
               {section.label}
             </div>
-            <ComposeButton />
-            {section.id === "mail" ? (
-              <MailPanel />
+            {section.id === "calendar" ? (
+              <CalendarPanel />
             ) : (
-              <SectionPanel items={section.items} />
+              <>
+                <ComposeButton />
+                {section.id === "mail" ? (
+                  <MailPanel />
+                ) : (
+                  <SectionPanel items={section.items} />
+                )}
+              </>
             )}
             <div className="flex-1" />
             <LlmApiStatus />

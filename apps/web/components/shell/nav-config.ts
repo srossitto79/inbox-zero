@@ -1,6 +1,7 @@
 import {
   BarChartBigIcon,
   BroomIcon,
+  CalendarDaysIcon,
   InboxIcon,
   SparklesIcon,
   WrenchIcon,
@@ -15,7 +16,7 @@ export type ShellItem = {
 };
 
 export type ShellSection = {
-  id: "mail" | "assistant" | "cleanup" | "insights" | "tools";
+  id: "mail" | "calendar" | "assistant" | "cleanup" | "insights" | "tools";
   label: string;
   icon: LucideIcon;
   path: `/${string}`;
@@ -31,6 +32,14 @@ export const SHELL_SECTIONS: ShellSection[] = [
     icon: InboxIcon,
     path: "/mail",
     segments: ["mail", "compose"],
+    items: [],
+  },
+  {
+    id: "calendar",
+    label: "Calendar",
+    icon: CalendarDaysIcon,
+    path: "/calendar",
+    segments: ["calendar"],
     items: [],
   },
   {
