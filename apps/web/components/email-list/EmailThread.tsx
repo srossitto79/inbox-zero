@@ -82,26 +82,29 @@ export function EmailThread({
       message: ThreadMessage;
       draftMessages: ThreadMessage[];
       outgoing?: OutgoingThreadMessage;
-    }> => [
-      ...organizeThreadMessages(
-        withoutReplacedDrafts(messages, emailAccountId),
-      ),
-      ...outgoing.map((item) => ({
-        message: {
-          ...item.message,
-          headers: { ...item.message.headers, from: userEmail },
-        },
-        draftMessages: [],
-        outgoing: item,
-      })),
-    ],
+    }> =>
+      orderNewestFirst([
+        ...organizeThreadMessages(
+          withoutReplacedDrafts(messages, emailAccountId),
+        ),
+        ...outgoing.map((item) => ({
+          message: {
+            ...item.message,
+            headers: { ...item.message.headers, from: userEmail },
+          },
+          draftMessages: [],
+          outgoing: item,
+        })),
+      ]),
     [messages, emailAccountId, outgoing, userEmail],
   );
 
-  const lastMessageId = organizedMessages.at(-1)?.message.id;
+  // The reader stacks newest-first, so this is the message at the top: the
+  // newest, or the newest reply queued on this device if there is one.
+  const newestMessageId = organizedMessages[0]?.message.id;
   // A reply that hasn't reached the provider has no id to thread on yet, so
   // replying to it threads on the newest message the provider has.
-  const replyAnchor = organizedMessages.findLast(
+  const replyAnchor = organizedMessages.find(
     ({ message, outgoing }) =>
       !outgoing && !message.labelIds?.includes(GmailLabel.DRAFT),
   )?.message;
@@ -131,7 +134,7 @@ export function EmailThread({
       );
   }, [autoOpenForwardForMessageId, autoOpenReplyForMessageId]);
   const expanded = (id: string, hasDraft: boolean) =>
-    expansionOverrides.get(id) ?? (id === lastMessageId || hasDraft);
+    expansionOverrides.get(id) ?? (id === newestMessageId || hasDraft);
   // Outlook sends a draft as the same message, so its local copy would reopen
   // as a reply on the sent message until the send settles and clears it.
   const localDraftModeFor = (message: ThreadMessage) =>
@@ -157,7 +160,7 @@ export function EmailThread({
       new Map(
         organizedMessages.map(({ message }) => [
           message.id,
-          allExpanded ? message.id === lastMessageId : true,
+          allExpanded ? message.id === newestMessageId : true,
         ]),
       ),
     );
@@ -166,7 +169,7 @@ export function EmailThread({
     ({ message }) => message.id === selectedMessageId,
   )
     ? selectedMessageId
-    : lastMessageId;
+    : newestMessageId;
   const threadRef = useRef<HTMLDivElement>(null);
   const selectRelativeMessage = (direction: -1 | 1, fromId = selectedId) => {
     const currentIndex = organizedMessages.findIndex(
@@ -314,8 +317,8 @@ export function EmailThread({
                   sendOperationId ? `outgoing:${sendOperationId}` : undefined
                 }
                 onReplySent={() => {
-                  // The sent reply lands below as the newest message; keep this
-                  // one open and let selection fall through to the reply.
+                  // The sent reply lands at the top as the newest message; keep
+                  // this one open and let selection fall through to the reply.
                   setExpansionOverrides((prev) =>
                     new Map(prev).set(message.id, true),
                   );
@@ -480,12 +483,26 @@ function withoutReplacedDrafts(
 
 function sortDraftsOldestFirst(drafts: ThreadMessage[]) {
   return [...drafts].sort(
-    (left, right) => draftRecency(left) - draftRecency(right),
+    (left, right) => messageRecency(left) - messageRecency(right),
   );
 }
 
-function draftRecency(draft: ThreadMessage) {
-  const value = draft.internalDate ?? draft.headers.date;
+function messageRecency(message: ThreadMessage) {
+  const value = message.internalDate ?? message.headers.date;
   const time = internalDateToDate(value, { fallbackToNow: false }).getTime();
   return Number.isNaN(time) ? 0 : time;
+}
+
+// The reader stacks newest-first: the message that was opened, not an early
+// one that needs scrolling to reach, sits at the top. Each row keeps the drafts
+// attached under the message they reply to, so reversing the rows is safe;
+// ordering is by time rather than a plain reverse so a reply or outgoing copy
+// lands above what it answers even when the provider sends rows out of order.
+export function orderNewestFirst<
+  T extends { message: ThreadMessage; draftMessages: unknown[] },
+>(rows: T[]): T[] {
+  return [...rows].sort(
+    (left, right) =>
+      messageRecency(right.message) - messageRecency(left.message),
+  );
 }

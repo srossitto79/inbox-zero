@@ -11,6 +11,7 @@ import {
 import {
   EmailThread,
   organizeThreadMessages,
+  orderNewestFirst,
 } from "@/components/email-list/EmailThread";
 
 vi.mock("next-safe-action/hooks", () => ({
@@ -279,6 +280,175 @@ describe("EmailThread outgoing replies", () => {
   });
 });
 
+describe("EmailThread reader order", () => {
+  afterEach(cleanup);
+
+  // The reader stacks newest-first so the message that was opened sits at the
+  // top without scrolling, with a draft still shown just after its parent.
+  it("renders messages newest-first with a draft adjacent to its parent", () => {
+    const view = render(
+      <EmailThread
+        messages={[
+          createReaderMessage("oldest", "1000"),
+          createReaderMessage("middle", "2000"),
+          createReaderDraftFor("draft-replying-to-oldest", "2500", "oldest"),
+          createReaderMessage("newest", "3000"),
+        ]}
+        refetch={vi.fn()}
+        showReplyButton
+      />,
+    );
+
+    const ids = Array.from(
+      view.container.querySelectorAll("[data-thread-message-id]"),
+    ).map((row) => row.getAttribute("data-thread-message-id"));
+    expect(ids).toEqual(["newest", "middle", "oldest"]);
+
+    // The newest message is the one shown expanded by default.
+    expect(
+      view.container.querySelector(
+        '[data-thread-message-id="newest"] [data-testid="message-body"]',
+      ),
+    ).toBeTruthy();
+    expect(
+      view.container.querySelector(
+        '[data-thread-message-id="middle"] [data-testid="message-body"]',
+      ),
+    ).toBeNull();
+
+    // A draft renders inside the row of the message it replies to, not the
+    // newest row, so its parent expands to show it even though it's last.
+    expect(
+      view.container.querySelector(
+        '[data-thread-message-id="oldest"] textarea',
+      ),
+    ).toBeTruthy();
+    expect(
+      view.container.querySelector(
+        '[data-thread-message-id="newest"] textarea',
+      ),
+    ).toBeNull();
+  });
+
+  // A queued send is the newest thing in the conversation, so it must sit at
+  // the top and be the expanded row, like any other newest message.
+  it("places a queued outgoing reply at the top and expands it", () => {
+    const view = render(
+      <EmailThread
+        messages={[
+          createReaderMessage("oldest", "1000"),
+          createReaderMessage("newest", "3000"),
+        ]}
+        outgoing={[
+          {
+            operationId: "send-1",
+            status: "verifying",
+            message: createSentMessage("outgoing:send-1", "4000"),
+          },
+        ]}
+        refetch={vi.fn()}
+        showReplyButton
+      />,
+    );
+
+    const ids = Array.from(
+      view.container.querySelectorAll("[data-thread-message-id]"),
+    ).map((row) => row.getAttribute("data-thread-message-id"));
+    expect(ids).toEqual(["outgoing:send-1", "newest", "oldest"]);
+  });
+
+  // A reply to an unsent queued message threads on the newest provider
+  // message, which is now the first non-draft row from the top.
+  it("threads a reply to an unsent reply on the newest provider message", () => {
+    render(
+      <EmailThread
+        messages={[
+          createReaderMessage("older", "1000"),
+          createReaderMessage("latest", "2000"),
+        ]}
+        outgoing={[
+          {
+            operationId: "send-1",
+            status: "verifying",
+            message: createSentMessage("outgoing:send-1", "3000"),
+          },
+        ]}
+        refetch={vi.fn()}
+        showReplyButton
+      />,
+    );
+
+    const outgoingRow = document.querySelector(
+      '[data-thread-message-id="outgoing:send-1"]',
+    );
+    const reply = Array.from(
+      outgoingRow?.querySelectorAll("button") ?? [],
+    ).find((button) => button.textContent === "Reply");
+    if (!reply) throw new Error("expected a reply button on the sent reply");
+    fireEvent.click(reply);
+
+    const composer = screen.getByRole("textbox", { name: "Email message" });
+    expect(composer.dataset.draftKeyMessageId).toBe("latest");
+  });
+});
+
+describe("orderNewestFirst", () => {
+  it("sorts rows newest-first and keeps each row's drafts attached to it", () => {
+    const rows = organizeThreadMessages([
+      {
+        ...createMessage({ id: "older", messageId: "<older@example.com>" }),
+        internalDate: "1000",
+      },
+      {
+        ...createMessage({ id: "newer", messageId: "<newer@example.com>" }),
+        internalDate: "2000",
+      },
+      createDraft({
+        id: "draft",
+        inReplyTo: "<older@example.com>",
+        internalDate: "2500",
+      }),
+    ]);
+
+    const ordered = orderNewestFirst(rows);
+
+    expect(ordered.map(({ message }) => message.id)).toEqual([
+      "newer",
+      "older",
+    ]);
+    expect(ordered[1]?.draftMessages.map((draft) => draft.id)).toEqual([
+      "draft",
+    ]);
+  });
+
+  it("orders by message time rather than input position", () => {
+    const ordered = orderNewestFirst([
+      { message: createReaderMessage("second", "2000"), draftMessages: [] },
+      { message: createReaderMessage("first", "1000"), draftMessages: [] },
+      { message: createReaderMessage("third", "3000"), draftMessages: [] },
+    ]);
+
+    expect(ordered.map(({ message }) => message.id)).toEqual([
+      "third",
+      "second",
+      "first",
+    ]);
+  });
+
+  it("keeps a stable order for messages with the same timestamp", () => {
+    const ordered = orderNewestFirst([
+      { message: createReaderMessage("a", "1000"), draftMessages: [] },
+      { message: createReaderMessage("b", "1000"), draftMessages: [] },
+    ]);
+
+    expect(ordered.map(({ message }) => message.id)).toEqual(["a", "b"]);
+  });
+
+  it("handles an empty list", () => {
+    expect(orderNewestFirst([])).toEqual([]);
+  });
+});
+
 describe("organizeThreadMessages", () => {
   it("attaches a draft to the message its headers reply to", () => {
     const first = createMessage({
@@ -508,6 +678,24 @@ function createSentMessage(id: string, internalDate: string) {
   return {
     ...createReaderMessage(id, internalDate),
     labelIds: ["SENT"],
+  } as ThreadMessage;
+}
+
+function createReaderDraftFor(
+  id: string,
+  internalDate: string,
+  parentMessageId: string,
+) {
+  const base = createReaderMessage(id, internalDate);
+  return {
+    ...base,
+    labelIds: ["DRAFT"],
+    headers: {
+      ...base.headers,
+      "in-reply-to": `<${parentMessageId}@example.com>`,
+      references: `<${parentMessageId}@example.com>`,
+    },
+    textPlain: "Saved reply",
   } as ThreadMessage;
 }
 
