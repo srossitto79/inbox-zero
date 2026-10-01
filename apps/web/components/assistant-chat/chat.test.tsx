@@ -40,7 +40,11 @@ const {
   mockUseChats,
 } = vi.hoisted(() => ({
   mockCaptureAction: vi.fn(),
-  mockChatState: { isReplyPending: false, input: "" },
+  mockChatState: {
+    chatId: null as string | null,
+    isReplyPending: false,
+    input: "",
+  },
   mockHandleSubmit: vi.fn(),
   mockMutate: vi.fn(),
   mockRegenerate: vi.fn(),
@@ -181,7 +185,7 @@ vi.mock("@/providers/ChatProvider", () => ({
       setMessages: mockSetMessages,
       sendMessage: vi.fn(),
     } satisfies Partial<ChatHelpers>,
-    chatId: null,
+    chatId: mockChatState.chatId,
     input: mockChatState.input,
     isReplyPending: mockChatState.isReplyPending,
     stopReply: mockStopReply,
@@ -215,6 +219,7 @@ afterEach(() => {
 describe("Chat history", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockChatState.chatId = "current-chat";
     mockChatState.isReplyPending = false;
     mockChatState.input = "";
     mockUseChats.mockImplementation((shouldFetch: boolean) => ({
@@ -247,6 +252,7 @@ describe("Chat history", () => {
 describe("Chat while the server generates a reply", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockChatState.chatId = "current-chat";
     mockChatState.isReplyPending = true;
     mockChatState.input = "Another question";
     mockUseChats.mockReturnValue({ data: undefined, mutate: mockMutate });
@@ -293,11 +299,107 @@ describe("Chat while the server generates a reply", () => {
   });
 });
 
+describe("Chat opened without a selected conversation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockChatState.chatId = null;
+    mockChatState.isReplyPending = false;
+    mockChatState.input = "";
+  });
+
+  it("opens the conversation of the last message sent", async () => {
+    mockUseChats.mockReturnValue({
+      data: {
+        chats: [{ ...chatHistoryEntry, id: "latest" }, chatHistoryEntry],
+      },
+      error: undefined,
+      mutate: mockMutate,
+    });
+    const { Chat } = await import("@/components/assistant-chat/chat");
+
+    render(<Chat open />);
+
+    await waitFor(() => expect(mockSetChatId).toHaveBeenCalledWith("latest"));
+    expect(mockSetNewChat).not.toHaveBeenCalled();
+  });
+
+  it("waits for the chat list instead of starting a new conversation", async () => {
+    mockUseChats.mockReturnValue({
+      data: undefined,
+      error: undefined,
+      mutate: mockMutate,
+    });
+    const { Chat } = await import("@/components/assistant-chat/chat");
+
+    render(<Chat open />);
+
+    expect(mockSetChatId).not.toHaveBeenCalled();
+    expect(mockSetNewChat).not.toHaveBeenCalled();
+  });
+
+  it("starts a new conversation when there are none", async () => {
+    mockUseChats.mockReturnValue({
+      data: { chats: [] },
+      error: undefined,
+      mutate: mockMutate,
+    });
+    const { Chat } = await import("@/components/assistant-chat/chat");
+
+    render(<Chat open />);
+
+    await waitFor(() => expect(mockSetNewChat).toHaveBeenCalledTimes(1));
+    expect(mockSetChatId).not.toHaveBeenCalled();
+  });
+
+  it("starts a new conversation when the chat list cannot be loaded", async () => {
+    mockUseChats.mockReturnValue({
+      data: undefined,
+      error: new Error("failed"),
+      mutate: mockMutate,
+    });
+    const { Chat } = await import("@/components/assistant-chat/chat");
+
+    render(<Chat open />);
+
+    await waitFor(() => expect(mockSetNewChat).toHaveBeenCalledTimes(1));
+  });
+
+  it("keeps the conversation that is already selected", async () => {
+    mockChatState.chatId = "current-chat";
+    mockUseChats.mockReturnValue({
+      data: { chats: [{ ...chatHistoryEntry, id: "latest" }] },
+      error: undefined,
+      mutate: mockMutate,
+    });
+    const { Chat } = await import("@/components/assistant-chat/chat");
+
+    render(<Chat open />);
+
+    expect(mockSetChatId).not.toHaveBeenCalled();
+    expect(mockSetNewChat).not.toHaveBeenCalled();
+  });
+
+  it("does not open any conversation while closed", async () => {
+    mockUseChats.mockReturnValue({
+      data: { chats: [chatHistoryEntry] },
+      error: undefined,
+      mutate: mockMutate,
+    });
+    const { Chat } = await import("@/components/assistant-chat/chat");
+
+    render(<Chat open={false} />);
+
+    expect(mockSetChatId).not.toHaveBeenCalled();
+    expect(mockSetNewChat).not.toHaveBeenCalled();
+  });
+});
+
 const chatHistoryEntry = {
   id: "chat-1",
   name: "Project update",
   createdAt: new Date("2026-05-23T00:00:00.000Z"),
   updatedAt: new Date("2026-05-23T00:00:00.000Z"),
+  lastMessageAt: new Date("2026-05-23T00:00:00.000Z"),
   deletedAt: null,
   compactionCount: 0,
   lastSeenRulesRevision: null,

@@ -71,6 +71,7 @@ export function Chat({
     stopReply,
     setInput,
     handleSubmit,
+    setChatId,
     setNewChat,
     context,
     setContext,
@@ -88,11 +89,26 @@ export function Chat({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<string[]>([]);
 
+  const { data: chatList, error: chatListError } = useChats(open && !chatId);
+  const latestChatId = chatList?.chats[0]?.id ?? null;
+  const chatListSettled = chatList !== undefined || chatListError !== undefined;
+
   useEffect(() => {
-    if (open && !chatId && status === "ready" && messages.length === 0) {
-      setNewChat();
-    }
-  }, [open, chatId, messages.length, setNewChat, status]);
+    if (!open || chatId || status !== "ready" || messages.length > 0) return;
+    if (!chatListSettled) return;
+    // The list is ordered by the last message sent, so this reopens that chat.
+    if (latestChatId) setChatId(latestChatId);
+    else setNewChat();
+  }, [
+    open,
+    chatId,
+    chatListSettled,
+    latestChatId,
+    messages.length,
+    setChatId,
+    setNewChat,
+    status,
+  ]);
 
   // Sync input with localStorage
   useEffect(() => {
@@ -612,9 +628,10 @@ function ChatHistoryDropdown() {
         }}
         chatId={deleteTarget?.id ?? ""}
         label={deleteTarget ? getChatHistoryLabel(deleteTarget) : ""}
-        onDeleted={() => {
+        onDeleted={async () => {
+          // Refresh first, so the chat that opens next is not the deleted one.
+          await mutate();
           if (deleteTarget && chatId === deleteTarget.id) setChatId(null);
-          mutate();
         }}
       />
     </>

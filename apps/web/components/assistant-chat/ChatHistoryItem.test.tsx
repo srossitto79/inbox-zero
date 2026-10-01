@@ -32,6 +32,7 @@ describe("ChatHistoryItem", () => {
       name: "Project update",
       createdAt: new Date("2026-05-23T00:00:00.000Z"),
       updatedAt: new Date("2026-05-23T00:00:00.000Z"),
+      lastMessageAt: new Date("2026-05-23T00:00:00.000Z"),
       deletedAt: null,
       compactionCount: 0,
       lastSeenRulesRevision: null,
