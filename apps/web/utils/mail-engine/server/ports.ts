@@ -137,5 +137,6 @@ function providerFor(account: AccountContext) {
     emailAccountId: account.emailAccountId,
     provider: account.provider,
     logger: account.logger,
+    readStoredMail: false,
   });
 }

@@ -25,6 +25,21 @@ export type MessageAttachmentDescriptor = z.infer<
 
 export const MAX_RECIPIENTS = 500;
 
+/**
+ * Raw headers that server-side features (reply threading, unsubscribe) need
+ * and that the list and reader do not show.
+ */
+export const messageHeadersSchema = z.object({
+  messageId: z.string().max(4096).optional(),
+  references: z.string().max(65_536).optional(),
+  inReplyTo: z.string().max(4096).optional(),
+  replyTo: z.string().max(4096).optional(),
+  bcc: z.string().max(65_536).optional(),
+  listUnsubscribe: z.string().max(16_384).optional(),
+  listUnsubscribePost: z.string().max(4096).optional(),
+});
+export type MessageHeaders = z.infer<typeof messageHeadersSchema>;
+
 export const messageMetadataSchema = z.object({
   subject: z.string().max(16_384),
   preview: z.string().max(16_384),
@@ -42,6 +57,7 @@ export const messageMetadataSchema = z.object({
   roles: z.array(mailboxRoleSchema).max(8),
   hasAttachments: z.boolean(),
   snoozedUntilMs: z.number().int().nullable().optional(),
+  headers: messageHeadersSchema.nullable().optional(),
 });
 export type MessageMetadata = z.infer<typeof messageMetadataSchema>;
 

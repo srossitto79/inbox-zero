@@ -141,6 +141,7 @@ export function applyMetadataPatch(
       patch.snoozedUntilMs === undefined
         ? current.snoozedUntilMs
         : patch.snoozedUntilMs,
+    headers: patch.headers === undefined ? current.headers : patch.headers,
   };
 }
 

@@ -10,15 +10,23 @@ import { toRateLimitProvider } from "@/utils/email/rate-limit-mode-error";
 import { recordEmailAccountProviderIssue } from "@/utils/email/provider-health";
 import type { Logger } from "@/utils/logger";
 import { flushLoggerSafely } from "@/utils/logger-flush";
+import { isServerMailStore } from "@/utils/mail-engine/mail-store-mode";
+import { withStoredMailReads } from "@/utils/mail-engine/server/stored-reads";
 
 export async function createEmailProvider({
   emailAccountId,
   provider,
   logger,
+  readStoredMail = true,
 }: {
   emailAccountId: string;
   provider: string;
   logger: Logger;
+  /**
+   * With the server mailbox on, message reads it can answer skip the provider.
+   * The mailbox's own sync turns this off: it is what fills the store.
+   */
+  readStoredMail?: boolean;
 }): Promise<EmailProvider> {
   const rateLimitProvider = toRateLimitProvider(provider);
   if (!rateLimitProvider) throw new Error(`Unsupported provider: ${provider}`);
@@ -31,20 +39,26 @@ export async function createEmailProvider({
       source: "create-email-provider",
     });
 
-    if (rateLimitProvider === "google") {
-      const client = await getGmailClientForEmail({ emailAccountId, logger });
-      return withProviderFailureLogging(
-        new GmailProvider(client, logger, emailAccountId),
-        { emailAccountId, provider: rateLimitProvider, logger },
-      );
-    }
-
-    const client = await getOutlookClientForEmail({ emailAccountId, logger });
-    return withProviderFailureLogging(new OutlookProvider(client, logger), {
-      emailAccountId,
-      provider: rateLimitProvider,
-      logger,
-    });
+    const created =
+      rateLimitProvider === "google"
+        ? withProviderFailureLogging(
+            new GmailProvider(
+              await getGmailClientForEmail({ emailAccountId, logger }),
+              logger,
+              emailAccountId,
+            ),
+            { emailAccountId, provider: rateLimitProvider, logger },
+          )
+        : withProviderFailureLogging(
+            new OutlookProvider(
+              await getOutlookClientForEmail({ emailAccountId, logger }),
+              logger,
+            ),
+            { emailAccountId, provider: rateLimitProvider, logger },
+          );
+    return readStoredMail && isServerMailStore()
+      ? withStoredMailReads(created, emailAccountId, logger)
+      : created;
   } catch (error) {
     logger.warn("Failed to create email provider", {
       error,

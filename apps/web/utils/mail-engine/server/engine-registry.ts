@@ -11,6 +11,7 @@ import {
   nodeMailCrypto,
   openOrQuarantineNodeMailbox,
 } from "@inboxzero/mail-sqlite/node";
+import type { SqliteDriver } from "@inboxzero/mail-sqlite/driver";
 import { createSqliteMailStore } from "@inboxzero/mail-sqlite/store";
 import { env } from "@/env";
 import { isMicrosoftProvider } from "@/utils/email/provider-types";
@@ -27,8 +28,12 @@ const logger = createScopedLogger("mail-engine/server");
 const RUN_SLICE_MS = 2000;
 const IDLE_DELAY_MS = 250;
 const ERROR_DELAY_MS = 1000;
+// Keeps the mailbox current with no browser open; catch-up is one cheap
+// history call when nothing changed.
+const CATCH_UP_INTERVAL_MS = 60_000;
 
-type ServerMailEngines = Map<string, Promise<MailEngine>>;
+type ServerMailbox = { engine: MailEngine; driver: SqliteDriver };
+type ServerMailEngines = Map<string, Promise<ServerMailbox>>;
 
 // Next can load a route module more than once; one engine per account must
 // own its SQLite file, so the registry lives on globalThis.
@@ -38,20 +43,29 @@ const globalRegistry = globalThis as typeof globalThis & {
 };
 
 /** The account's mail engine, started on first use and kept for the process lifetime. */
-export function getServerMailEngine(emailAccountId: string) {
+export async function getServerMailEngine(emailAccountId: string) {
+  return (await getServerMailbox(emailAccountId)).engine;
+}
+
+/** The SQLite driver behind the account's engine, for server-side reads. */
+export async function getServerMailboxDriver(emailAccountId: string) {
+  return (await getServerMailbox(emailAccountId)).driver;
+}
+
+function getServerMailbox(emailAccountId: string) {
   globalRegistry[registryKey] ??= new Map();
-  const engines = globalRegistry[registryKey];
-  const existing = engines.get(emailAccountId);
+  const mailboxes = globalRegistry[registryKey];
+  const existing = mailboxes.get(emailAccountId);
   if (existing) return existing;
   const started = startEngine(emailAccountId).catch((error) => {
-    engines.delete(emailAccountId);
+    mailboxes.delete(emailAccountId);
     throw error;
   });
-  engines.set(emailAccountId, started);
+  mailboxes.set(emailAccountId, started);
   return started;
 }
 
-async function startEngine(emailAccountId: string): Promise<MailEngine> {
+async function startEngine(emailAccountId: string): Promise<ServerMailbox> {
   const account = await prisma.emailAccount.findUniqueOrThrow({
     where: { id: emailAccountId },
     select: { account: { select: { provider: true } } },
@@ -94,15 +108,24 @@ async function startEngine(emailAccountId: string): Promise<MailEngine> {
     ownerId: "server-owner",
   });
   await engine.requestSync([emailAccountId]);
-  runForever(engine, accountLogger);
+  runForever(engine, emailAccountId, accountLogger);
   accountLogger.info("Started server mail engine");
-  return engine;
+  return { engine, driver };
 }
 
-function runForever(engine: MailEngine, accountLogger: typeof logger) {
+function runForever(
+  engine: MailEngine,
+  emailAccountId: string,
+  accountLogger: typeof logger,
+) {
+  let lastCatchUpAt = Date.now();
   (async () => {
     while (true) {
       try {
+        if (Date.now() - lastCatchUpAt >= CATCH_UP_INTERVAL_MS) {
+          lastCatchUpAt = Date.now();
+          await engine.requestSync([emailAccountId]);
+        }
         await engine.runUntil(Date.now() + RUN_SLICE_MS);
         await delay(IDLE_DELAY_MS);
       } catch (error) {
