@@ -37,7 +37,7 @@ const {
       role: "assistant";
       parts: Array<{ type: "text"; text: string }>;
     }>,
-    outcome: undefined as { status: "failed" } | undefined,
+    outcome: undefined as { status: string } | undefined,
   },
 }));
 
@@ -248,6 +248,61 @@ describe("chat route rule freshness persistence", () => {
       where: { id: "job-1", status: "RUNNING" },
       data: expect.objectContaining({ status: "FAILED" }),
     });
+  });
+
+  it("stops the model call when a stop is requested and ends the job cancelled", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      prisma.backgroundJob.findUnique.mockResolvedValue({
+        status: "RUNNING",
+        cancelRequested: true,
+      } as any);
+      let receivedSignal: AbortSignal | undefined;
+      mockAiProcessAssistantChat.mockImplementationOnce(async (args) => {
+        receivedSignal = args.abortSignal;
+        await vi.advanceTimersByTimeAsync(2100);
+        return createAssistantStreamResult();
+      });
+      streamState.outcome = { status: "aborted" } as any;
+      streamState.finishMessages = [
+        {
+          id: "assistant-1",
+          role: "assistant",
+          parts: [{ type: "text", text: "Partial answer" }],
+        },
+      ];
+
+      await POST(createRequest());
+
+      expect(receivedSignal?.aborted).toBe(true);
+      expect(prisma.chatMessage.createMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.arrayContaining([
+            expect.objectContaining({
+              parts: [{ type: "text", text: "Partial answer" }],
+            }),
+          ]),
+        }),
+      );
+      expect(prisma.backgroundJob.updateMany).toHaveBeenCalledWith({
+        where: { id: "job-1", status: "RUNNING" },
+        data: expect.objectContaining({ status: "CANCELLED" }),
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not abort a reply nobody asked to stop", async () => {
+    let receivedSignal: AbortSignal | undefined;
+    mockAiProcessAssistantChat.mockImplementationOnce(async (args) => {
+      receivedSignal = args.abortSignal;
+      return createAssistantStreamResult();
+    });
+
+    await POST(createRequest());
+
+    expect(receivedSignal?.aborted).toBe(false);
   });
 
   it("refuses a second run while a reply for the chat is being generated", async () => {

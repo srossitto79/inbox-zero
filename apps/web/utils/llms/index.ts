@@ -254,6 +254,7 @@ type ToolCallAgentStreamOptions = BaseStreamOptions & {
   onStepEnd?: GenerateTextOnStepEndCallback<Record<string, Tool>>;
   onModelResolved?: (resolvedModel: ToolCallAgentResolvedModel) => void;
   temperature?: number;
+  abortSignal?: AbortSignal;
 };
 
 export function createGenerateText({
@@ -885,6 +886,7 @@ export async function toolCallAgentStream(options: ToolCallAgentStreamOptions) {
     onModelResolved,
     sensitiveDataPolicy,
     temperature,
+    abortSignal,
   } = options;
   const { modelOptions, modelCandidates } = await resolveModelCandidates({
     modelOptions: getModelOptionsForRoute(options),
@@ -999,6 +1001,7 @@ export async function toolCallAgentStream(options: ToolCallAgentStreamOptions) {
         messages: protectedMessages as ModelMessage[],
         experimental_transform: smoothStream({ chunking: "word" }),
         onStepEnd,
+        abortSignal,
       });
     } catch (error) {
       if (nextCandidate && shouldFallbackToNextModel(error)) {

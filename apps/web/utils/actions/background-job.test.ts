@@ -113,9 +113,7 @@ describe("background job actions", () => {
     });
 
     it("asks a running job to stop at its next checkpoint", async () => {
-      prisma.backgroundJob.updateMany
-        .mockResolvedValueOnce({ count: 0 })
-        .mockResolvedValueOnce({ count: 1 });
+      prisma.backgroundJob.updateMany.mockResolvedValue({ count: 0 });
 
       await cancelBackgroundJobAction("account-1", { jobId: "job-1" });
 
@@ -123,6 +121,82 @@ describe("background job actions", () => {
         where: { id: "job-1", emailAccountId: "account-1", status: "RUNNING" },
         data: { cancelRequested: true },
       });
+    });
+
+    it("closes a chat reply whose process is gone at once", async () => {
+      prisma.backgroundJob.updateMany
+        .mockResolvedValueOnce({ count: 0 })
+        .mockResolvedValueOnce({ count: 1 });
+
+      await cancelBackgroundJobAction("account-1", { jobId: "chat-job" });
+
+      expect(prisma.backgroundJob.updateMany).toHaveBeenCalledTimes(2);
+      expect(prisma.backgroundJob.updateMany).toHaveBeenLastCalledWith({
+        where: {
+          id: "chat-job",
+          emailAccountId: "account-1",
+          kind: "CHAT_REPLY",
+          status: "RUNNING",
+          heartbeatAt: { lt: expect.any(Date) },
+        },
+        data: expect.objectContaining({ status: "CANCELLED" }),
+      });
+    });
+
+    it("only treats heartbeats older than 45 seconds as orphaned", async () => {
+      prisma.backgroundJob.updateMany.mockResolvedValue({ count: 0 });
+      const before = Date.now();
+
+      await cancelBackgroundJobAction("account-1", { jobId: "chat-job" });
+
+      const orphanWhere = prisma.backgroundJob.updateMany.mock.calls[1][0]
+        .where as { heartbeatAt: { lt: Date } };
+      const age = before - orphanWhere.heartbeatAt.lt.getTime();
+      expect(age).toBeGreaterThanOrEqual(44_000);
+      expect(age).toBeLessThan(46_000);
+    });
+
+    it("stops the active reply of a chat without knowing the job id", async () => {
+      prisma.backgroundJob.updateMany.mockResolvedValue({ count: 0 });
+
+      await cancelBackgroundJobAction("account-1", { chatId: "chat-1" });
+
+      expect(prisma.backgroundJob.updateMany).toHaveBeenLastCalledWith({
+        where: {
+          kind: "CHAT_REPLY",
+          payload: { path: ["chatId"], equals: "chat-1" },
+          emailAccountId: "account-1",
+          status: "RUNNING",
+        },
+        data: { cancelRequested: true },
+      });
+    });
+
+    it("does nothing when the job already finished", async () => {
+      prisma.backgroundJob.updateMany.mockResolvedValue({ count: 0 });
+
+      const result = await cancelBackgroundJobAction("account-1", {
+        jobId: "done-job",
+      });
+
+      expect(result?.serverError).toBeUndefined();
+      for (const [call] of prisma.backgroundJob.updateMany.mock.calls) {
+        expect(call.where).toMatchObject({
+          status: expect.stringMatching(/QUEUED|RUNNING/),
+        });
+      }
+    });
+
+    it("needs a job id or a chat id, not both", async () => {
+      const none = await cancelBackgroundJobAction("account-1", {});
+      const both = await cancelBackgroundJobAction("account-1", {
+        jobId: "a",
+        chatId: "b",
+      });
+
+      expect(none?.validationErrors).toBeDefined();
+      expect(both?.validationErrors).toBeDefined();
+      expect(prisma.backgroundJob.updateMany).not.toHaveBeenCalled();
     });
   });
 

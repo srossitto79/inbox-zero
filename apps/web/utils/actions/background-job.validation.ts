@@ -16,9 +16,15 @@ export const startBulkRulesJobBody = z
   });
 export type StartBulkRulesJobBody = z.infer<typeof startBulkRulesJobBody>;
 
-export const cancelBackgroundJobBody = z.object({
-  jobId: z.string().min(1),
-});
+// A chat reply can be stopped by chat, since the page may not know the job id.
+export const cancelBackgroundJobBody = z
+  .object({
+    jobId: z.string().min(1).optional(),
+    chatId: z.string().min(1).optional(),
+  })
+  .refine((body) => Boolean(body.jobId) !== Boolean(body.chatId), {
+    message: "Provide a job id or a chat id",
+  });
 
 export const markBackgroundJobsSeenBody = z.object({
   jobIds: z.array(z.string().min(1)).min(1).max(50),
