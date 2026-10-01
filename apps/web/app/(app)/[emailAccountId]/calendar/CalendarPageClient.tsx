@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAction } from "next-safe-action/hooks";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -12,6 +12,7 @@ import {
   RotateCcwIcon,
 } from "lucide-react";
 import { ConnectCalendar } from "@/app/(app)/[emailAccountId]/calendars/ConnectCalendar";
+import { PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -22,18 +23,37 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import type { GetCalendarEventsResponse } from "@/app/api/user/calendar/events/route";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useCalendars } from "@/hooks/useCalendars";
 import { useAccount } from "@/providers/EmailAccountProvider";
 import { syncCalendarsAction } from "@/utils/actions/calendar";
+import { toastError } from "@/components/Toast";
 import {
   type CalendarViewType,
   getRangeInstants,
   getVisibleDateKeys,
   shiftAnchor,
 } from "@/utils/calendar/event-range";
+import {
+  getWriteBlock,
+  getWriteBlockMessage,
+} from "@/utils/calendar/write/policy";
+import {
+  createEditorState,
+  editorStateToCreatePayload,
+  editorStateToUpdatePayload,
+  eventToEditorState,
+  type EditorState,
+} from "@/utils/calendar/event-editor-state";
 import { toDateKey } from "@/utils/calendar/zoned-time";
+import {
+  CalendarEditingContext,
+  type CreateRange,
+} from "./CalendarEditingContext";
+import { CalendarEventEditor, type EditorSession } from "./CalendarEventEditor";
 import { CalendarViews } from "./CalendarViews";
+import { useCalendarEventMutations } from "./useCalendarEventMutations";
 
 const VIEW_OPTIONS = [
   { label: "Day", value: "day" },
@@ -122,22 +142,159 @@ export function CalendarPageClient() {
     preventDefault: true,
   });
 
-  if (isLoading) return <CalendarLoading />;
-  if (calendarsError || !calendarData) {
-    return <CalendarFailure onRetry={() => window.location.reload()} />;
-  }
+  const connections = calendarData?.connections ?? [];
+  const writableCalendars = connections.flatMap((connection) =>
+    connection.calendars.flatMap((calendar) =>
+      calendar.canEdit &&
+      getWriteBlock({
+        provider: connection.provider,
+        state: connection.state,
+        canEdit: true,
+      }) === null
+        ? [{ id: calendar.id, name: calendar.name, color: calendar.color }]
+        : [],
+    ),
+  );
+  const calendarRefsById = new Map(
+    connections.flatMap((connection) =>
+      connection.calendars.map((calendar) => [
+        calendar.id,
+        { connection, calendar },
+      ]),
+    ),
+  );
 
-  const connections = calendarData.connections;
-  if (connections.length === 0) {
-    return (
-      <CalendarEmptyState
-        title="Connect a calendar"
-        description="Google Calendar or Outlook"
-      >
-        <ConnectCalendar onboardingReturnPath={`/${emailAccountId}/calendar`} />
-      </CalendarEmptyState>
+  const mutations = useCalendarEventMutations({
+    emailAccountId,
+    timezone,
+    mutateEvents,
+  });
+  const [session, setSession] = useState<EditorSession | null>(null);
+  const sessionKeyRef = useRef(0);
+  const focusedEventIdRef = useRef<string | null>(null);
+  const setOpenEventId = useCallback((id: string | null) => {
+    focusedEventIdRef.current = id;
+    if (!id) focusedEventIdRef.current = null;
+  }, []);
+
+  const createBlock = useMemo(() => {
+    // First enabled connection decides whether anything can be created; the
+    // editor's own picker narrows to writable calendars.
+    const enabled = connections.find((connection) =>
+      connection.calendars.some((calendar) => calendar.isEnabled),
     );
-  }
+    if (!enabled) return "no_calendar" as const;
+    return getWriteBlock({
+      provider: enabled.provider,
+      state: enabled.state,
+      canEdit: true,
+    });
+  }, [connections]);
+
+  const defaultCalendarId = writableCalendars[0]?.id ?? null;
+
+  const startCreate = useCallback(
+    (range: CreateRange) => {
+      if (createBlock) {
+        toastError({
+          description:
+            createBlock === "no_calendar"
+              ? "Select a calendar from the sidebar."
+              : getWriteBlockMessage(createBlock),
+        });
+        return;
+      }
+      setSession({
+        kind: "create",
+        key: ++sessionKeyRef.current,
+        initial: createEditorState({
+          calendarId: defaultCalendarId ?? "",
+          timeZone: timezone,
+          range,
+        }),
+      });
+    },
+    [createBlock, defaultCalendarId, timezone],
+  );
+
+  const getEventBlock = useCallback(
+    (event: GetCalendarEventsResponse["events"][number]) => {
+      const ref = calendarRefsById.get(event.calendarId);
+      return ref
+        ? getWriteBlock({
+            provider: ref.connection.provider,
+            state: ref.connection.state,
+            canEdit: ref.calendar.canEdit,
+          })
+        : ("disconnected" as const);
+    },
+    [calendarRefsById],
+  );
+
+  const edit = useCallback(
+    (event: GetCalendarEventsResponse["events"][number]) => {
+      const block = getEventBlock(event);
+      setSession({
+        kind: "edit",
+        key: ++sessionKeyRef.current,
+        event,
+        initial: eventToEditorState(event, timezone),
+        readOnlyReason: getReadOnlyReason(event, block),
+      });
+    },
+    [getEventBlock, timezone],
+  );
+
+  const editFocused = useCallback(() => {
+    if (session || !focusedEventIdRef.current || !eventsData) return;
+    const event = eventsData.events.find(
+      (item) => item.id === focusedEventIdRef.current,
+    );
+    if (event) edit(event);
+  }, [edit, eventsData, session]);
+
+  const deleteFocused = useCallback(() => {
+    if (session || !focusedEventIdRef.current || !eventsData) return;
+    const event = eventsData.events.find(
+      (item) => item.id === focusedEventIdRef.current,
+    );
+    if (event) mutations.remove(event);
+  }, [eventsData, mutations, session]);
+
+  useHotkeys(
+    "c",
+    () => startCreate({ startDate: todayKey, endDate: todayKey }),
+    {
+      preventDefault: true,
+    },
+  );
+  useHotkeys("e", editFocused, {
+    preventDefault: true,
+    enabled: !session,
+  });
+  useHotkeys("delete,backspace", deleteFocused, {
+    preventDefault: true,
+    enabled: !session,
+  });
+
+  const saveSession = useCallback(
+    async (currentSession: EditorSession, state: EditorState) => {
+      if (currentSession.kind === "create") {
+        return (
+          (await mutations.create(editorStateToCreatePayload(state))) ===
+          "saved"
+        );
+      }
+      const payload = editorStateToUpdatePayload({
+        initial: currentSession.initial,
+        current: state,
+        providerEventId: currentSession.event.providerEventId,
+      });
+      if (!payload) return true;
+      return (await mutations.update(payload)) === "saved";
+    },
+    [mutations],
+  );
 
   const missingConnections = connections.filter(
     (connection) => connection.state !== "connected",
@@ -152,6 +309,22 @@ export function CalendarPageClient() {
     await startSync({});
     await Promise.all([mutateCalendars(), mutateEvents()]);
   };
+
+  if (isLoading) return <CalendarLoading />;
+  if (calendarsError) {
+    return <CalendarFailure onRetry={() => window.location.reload()} />;
+  }
+  // The derived state above already reads calendarData as possibly missing.
+  if (connections.length === 0) {
+    return (
+      <CalendarEmptyState
+        title="Connect a calendar"
+        description="Google Calendar or Outlook"
+      >
+        <ConnectCalendar onboardingReturnPath={`/${emailAccountId}/calendar`} />
+      </CalendarEmptyState>
+    );
+  }
 
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
@@ -193,6 +366,28 @@ export function CalendarPageClient() {
           value={view}
           onChange={(nextView) => updateQuery({ view: nextView })}
         />
+        <Button
+          size="sm"
+          Icon={PlusIcon}
+          disabled={!defaultCalendarId || Boolean(createBlock)}
+          title={
+            createBlock === "no_calendar"
+              ? undefined
+              : createBlock
+                ? getWriteBlockMessage(createBlock)
+                : undefined
+          }
+          onClick={() => {
+            if (createBlock) return;
+            startCreate(
+              view === "day"
+                ? dayAnchorRange(anchorKey)
+                : { startDate: todayKey, endDate: todayKey },
+            );
+          }}
+        >
+          New event
+        </Button>
         <Button
           variant="ghostMuted"
           size="iconSm"
@@ -238,14 +433,38 @@ export function CalendarPageClient() {
       ) : eventsLoading && !eventsData ? (
         <CalendarLoading />
       ) : (
-        <CalendarViews
-          view={view}
-          dateKeys={dateKeys}
-          events={eventsData?.events ?? []}
-          timezone={timezone}
-          todayKey={todayKey}
-        />
+        <CalendarEditingContext.Provider
+          value={{
+            createBlock:
+              createBlock === "no_calendar" ? "unsupported" : createBlock,
+            getEventBlock,
+            setFocusedEventId: setOpenEventId,
+            setOpenEventId,
+            create: startCreate,
+            edit,
+            remove: (event) => mutations.remove(event),
+            respond: mutations.respond,
+            moveTimed: mutations.moveTimed,
+            resizeTimed: mutations.resizeTimed,
+            moveAllDay: mutations.moveAllDay,
+          }}
+        >
+          <CalendarViews
+            view={view}
+            dateKeys={dateKeys}
+            events={eventsData?.events ?? []}
+            timezone={timezone}
+            todayKey={todayKey}
+          />
+        </CalendarEditingContext.Provider>
       )}
+      <CalendarEventEditor
+        session={session}
+        calendars={writableCalendars}
+        onClose={() => setSession(null)}
+        onSave={saveSession}
+        onDelete={(event) => mutations.remove(event)}
+      />
     </main>
   );
 }
@@ -345,4 +564,22 @@ function formatRangeTitle(view: CalendarViewType, dateKeys: string[]) {
 
 function providerName(provider: string) {
   return provider === "microsoft" ? "Outlook Calendar" : "Google Calendar";
+}
+
+function dayAnchorRange(anchorKey: string) {
+  // A one-hour event at 09:00 local on the day in view.
+  return {
+    start: new Date(`${anchorKey}T07:00:00Z`),
+    end: new Date(`${anchorKey}T08:00:00Z`),
+  };
+}
+
+function getReadOnlyReason(
+  event: GetCalendarEventsResponse["events"][number],
+  block: ReturnType<typeof getWriteBlock> | null,
+): string | null {
+  if (event.isRecurring) return "Recurring events are read-only";
+  if (!block) return null;
+  const message = getWriteBlockMessage(block);
+  return message;
 }

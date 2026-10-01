@@ -85,7 +85,15 @@ export const getCalendarClientWithRefresh = async ({
       client_secret: env.MICROSOFT_CLIENT_SECRET,
       refresh_token: refreshToken,
       grant_type: "refresh_token",
-      scope: CALENDAR_BASE_SCOPES.join(" "),
+      // The stored scope, not only the base set: a refresh token granted
+      // shared-calendar scopes stops working everywhere if a refresh asks for
+      // less than it holds. Falls back to the base set for connections that
+      // never recorded a scope (connected before scope tracking).
+      scope: await getStoredScope({
+        emailAccountId,
+        connectionId,
+        refreshToken,
+      }),
     });
 
     const tokens = await response.json();
@@ -175,6 +183,32 @@ export const getCalendarClientWithRefresh = async ({
     throw error;
   }
 };
+
+/**
+ * Scopes to ask the refresh for. A connection that recorded its granted scope
+ * refreshes with exactly that; older connections with no stored scope keep
+ * the base set they were consented to.
+ */
+async function getStoredScope({
+  emailAccountId,
+  connectionId,
+  refreshToken,
+}: {
+  emailAccountId: string;
+  connectionId?: string;
+  refreshToken: string;
+}) {
+  const connection = await prisma.calendarConnection.findFirst({
+    where: connectionId
+      ? { id: connectionId, emailAccountId, provider: "microsoft" }
+      : { emailAccountId, provider: "microsoft" },
+    select: { scope: true },
+  });
+  // Tokens are encrypted at rest, so a stored scope belongs to the current
+  // refresh token only when it was written for it; saveCalendarTokens pairs
+  // the two, and a scope written for an older token cannot be trusted.
+  return connection?.scope ? connection.scope : CALENDAR_BASE_SCOPES.join(" ");
+}
 
 export async function fetchMicrosoftCalendars(
   calendarClient: Client,

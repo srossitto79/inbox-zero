@@ -1,13 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import {
   CalendarClockIcon,
   ExternalLinkIcon,
   MapPinIcon,
+  PencilIcon,
+  TrashIcon,
   UsersIcon,
   VideoIcon,
 } from "lucide-react";
 import type { GetCalendarEventsResponse } from "@/app/api/user/calendar/events/route";
+import { Button } from "@/components/ui/button";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import {
   Popover,
@@ -15,8 +19,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/utils";
+import { useCalendarEditing } from "./CalendarEditingContext";
 
 type CalendarEvent = GetCalendarEventsResponse["events"][number];
+
+const RSVP_OPTIONS = [
+  { label: "Yes", value: "accepted" },
+  { label: "No", value: "declined" },
+  { label: "Maybe", value: "tentative" },
+] as const;
 
 export function CalendarEventPopover({
   event,
@@ -27,8 +38,21 @@ export function CalendarEventPopover({
   timezone: string;
   children: React.ReactNode;
 }) {
+  const editing = useCalendarEditing();
+  const [open, setOpen] = useState(false);
+  const block = editing?.getEventBlock(event) ?? null;
+  const canEditNow = editing !== null && block === null && !event.isRecurring;
+  const canRespond =
+    canEditNow && event.attendees.some((attendee) => attendee.isSelf);
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    editing?.setOpenEventId(next ? event.id : null);
+  };
+  const close = () => handleOpenChange(false);
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent align="start" className="w-80 space-y-4 p-4">
         <div className="flex items-start gap-3">
@@ -50,6 +74,36 @@ export function CalendarEventPopover({
               {event.calendarName}
             </p>
           </div>
+          {editing ? (
+            <div className="-mr-1 -mt-1 flex shrink-0 gap-0.5">
+              <Button
+                variant="ghostMuted"
+                size="iconSm"
+                aria-label="Edit"
+                title="Edit (E)"
+                onClick={() => {
+                  close();
+                  editing.edit(event);
+                }}
+              >
+                <PencilIcon className="size-4" />
+              </Button>
+              {canEditNow ? (
+                <Button
+                  variant="destructiveGhost"
+                  size="iconSm"
+                  aria-label="Delete"
+                  title="Delete"
+                  onClick={() => {
+                    close();
+                    editing.remove(event);
+                  }}
+                >
+                  <TrashIcon className="size-4" />
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <Detail icon={CalendarClockIcon}>
@@ -100,6 +154,29 @@ export function CalendarEventPopover({
           </p>
         ) : null}
 
+        {canRespond ? (
+          <div className="flex items-center gap-2 border-t border-border pt-3">
+            <span className="mr-auto text-xs text-muted-foreground">
+              Going?
+            </span>
+            {RSVP_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                size="xs-2"
+                variant={
+                  event.selfResponseStatus === option.value
+                    ? "default"
+                    : "outline"
+                }
+                aria-pressed={event.selfResponseStatus === option.value}
+                onClick={() => editing?.respond(event, option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+
         {event.videoLink || event.htmlLink ? (
           <div className="flex flex-wrap gap-2 border-t border-border pt-3">
             {event.videoLink ? (
@@ -142,24 +219,37 @@ export function EventChip({
   timezone,
   compact = false,
   className,
+  dragHandlers,
+  resizeHandle,
+  dragging = false,
 }: {
   event: CalendarEvent;
   timezone: string;
   compact?: boolean;
   className?: string;
+  /** Pointer and drag props from the view that owns the gesture. */
+  dragHandlers?: React.ButtonHTMLAttributes<HTMLButtonElement>;
+  resizeHandle?: React.ReactNode;
+  dragging?: boolean;
 }) {
+  const editing = useCalendarEditing();
+
   return (
     <CalendarEventPopover event={event} timezone={timezone}>
       <button
         type="button"
         className={cn(
-          "min-w-0 rounded-md border-l-[3px] border-[var(--calendar-color)] bg-[color-mix(in_srgb,var(--calendar-color)_14%,transparent)] px-1.5 py-1 text-left text-foreground outline-none hover:bg-[color-mix(in_srgb,var(--calendar-color)_22%,transparent)] focus-visible:ring-2 focus-visible:ring-ring",
+          "relative min-w-0 rounded-md border-l-[3px] border-[var(--calendar-color)] bg-[color-mix(in_srgb,var(--calendar-color)_14%,transparent)] px-1.5 py-1 text-left text-foreground outline-none hover:bg-[color-mix(in_srgb,var(--calendar-color)_22%,transparent)] focus-visible:ring-2 focus-visible:ring-ring",
           event.status === "TENTATIVE" && "opacity-70",
           compact && "py-0.5 text-xs",
+          dragging && "z-30 cursor-grabbing shadow-lg ring-1 ring-ring",
           className,
         )}
         style={eventColor(event.calendarColor)}
         aria-label={`${event.title}, ${formatEventTime(event, timezone)}`}
+        onFocus={() => editing?.setFocusedEventId(event.id)}
+        onBlur={() => editing?.setFocusedEventId(null)}
+        {...dragHandlers}
       >
         <span className="block truncate font-medium leading-tight">
           {event.title}
@@ -169,6 +259,7 @@ export function EventChip({
             {formatTime(event.start, timezone)}
           </span>
         ) : null}
+        {resizeHandle}
       </button>
     </CalendarEventPopover>
   );

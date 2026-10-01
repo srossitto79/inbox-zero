@@ -33,6 +33,12 @@ export type StoredCalendarEvent = {
   originalStartTime: Date | null;
   videoLink: string | null;
   htmlLink: string | null;
+  reminders: unknown;
+};
+
+export type CalendarEventReminders = {
+  useDefault: boolean;
+  overrides: Array<{ method: string; minutes: number }>;
 };
 
 export type CalendarSummary = {
@@ -66,6 +72,8 @@ export type CalendarViewEvent = {
   selfResponseStatus: string | null;
   videoLink: string | null;
   htmlLink: string | null;
+  /** Null when the provider has not reported reminders for this event. */
+  reminders: CalendarEventReminders | null;
 };
 
 /**
@@ -178,7 +186,7 @@ function seriesKey(master: StoredCalendarEvent) {
   return `${master.calendarId}:${master.providerEventId}`;
 }
 
-function toViewEvent({
+export function toViewEvent({
   event,
   calendar,
   id,
@@ -219,6 +227,23 @@ function toViewEvent({
     selfResponseStatus: event.selfResponseStatus,
     videoLink: event.videoLink,
     htmlLink: event.htmlLink,
+    reminders: parseReminders(event.reminders),
+  };
+}
+
+export function parseReminders(value: unknown): CalendarEventReminders | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const overrides = Array.isArray(record.overrides) ? record.overrides : [];
+  return {
+    useDefault: record.useDefault !== false,
+    overrides: overrides.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const { method, minutes } = item as Record<string, unknown>;
+      return typeof method === "string" && typeof minutes === "number"
+        ? [{ method, minutes }]
+        : [];
+    }),
   };
 }
 

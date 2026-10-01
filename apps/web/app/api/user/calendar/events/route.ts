@@ -111,6 +111,7 @@ async function getData({
       originalStartTime: true,
       videoLink: true,
       htmlLink: true,
+      reminders: true,
     },
   });
 

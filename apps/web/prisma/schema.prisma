@@ -1521,6 +1521,7 @@ model CalendarEvent {
 
   videoLink String?
   htmlLink  String?
+  reminders Json? // { useDefault, overrides: [{ method, minutes }] }; null until synced
 
   @@unique([calendarId, providerEventId])
   @@index([calendarId, startTime, endTime])
