@@ -58,6 +58,7 @@ export function getBackgroundJobStatusText(
 ) {
   if (job.kind === "CHAT_REPLY") {
     if (job.status === "FAILED") return "Failed";
+    if (job.status === "CANCELLED") return "Reply stopped";
     return isActive(job.status) ? "Generating" : "Done";
   }
 

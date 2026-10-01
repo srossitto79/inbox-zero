@@ -36,7 +36,7 @@ const {
   mockSetLocalStorageInput,
   mockSetMessages,
   mockSetNewChat,
-  mockStop,
+  mockStopReply,
   mockUseChats,
 } = vi.hoisted(() => ({
   mockCaptureAction: vi.fn(),
@@ -51,7 +51,7 @@ const {
   mockSetLocalStorageInput: vi.fn(),
   mockSetMessages: vi.fn(),
   mockSetNewChat: vi.fn(),
-  mockStop: vi.fn(),
+  mockStopReply: vi.fn(),
   mockUseChats: vi.fn(),
 }));
 
@@ -176,7 +176,7 @@ vi.mock("@/providers/ChatProvider", () => ({
     chat: {
       messages: [],
       status: "ready",
-      stop: mockStop,
+      stop: vi.fn(),
       regenerate: mockRegenerate,
       setMessages: mockSetMessages,
       sendMessage: vi.fn(),
@@ -184,6 +184,7 @@ vi.mock("@/providers/ChatProvider", () => ({
     chatId: null,
     input: mockChatState.input,
     isReplyPending: mockChatState.isReplyPending,
+    stopReply: mockStopReply,
     persistedMessageIds: new Set(),
     setInput: mockSetInput,
     handleSubmit: mockHandleSubmit,
@@ -257,12 +258,25 @@ describe("Chat while the server generates a reply", () => {
     const { container } = render(<Chat open />);
 
     expect(screen.getByRole("status").textContent).toBe("Generating reply");
-    const send = container.querySelector<HTMLButtonElement>(
-      'button[type="submit"]',
-    );
-    expect(send?.disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: "Send" })).toBeNull();
 
     fireEvent.submit(container.querySelector("form")!);
+    expect(mockHandleSubmit).not.toHaveBeenCalled();
+  });
+
+  it("shows an enabled Stop button that stops the reply on the server", async () => {
+    const { Chat } = await import("@/components/assistant-chat/chat");
+
+    render(<Chat open />);
+
+    const stop = screen.getByRole("button", {
+      name: "Stop",
+    }) as HTMLButtonElement;
+    expect(stop.disabled).toBe(false);
+
+    fireEvent.click(stop);
+
+    expect(mockStopReply).toHaveBeenCalledTimes(1);
     expect(mockHandleSubmit).not.toHaveBeenCalled();
   });
 
@@ -273,6 +287,7 @@ describe("Chat while the server generates a reply", () => {
     const { container } = render(<Chat open />);
 
     expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
     fireEvent.submit(container.querySelector("form")!);
     expect(mockHandleSubmit).toHaveBeenCalledTimes(1);
   });

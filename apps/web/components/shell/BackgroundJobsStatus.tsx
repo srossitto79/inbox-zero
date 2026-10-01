@@ -121,7 +121,7 @@ function JobRow({
         >
           {getBackgroundJobLabel(job.kind)}
         </Link>
-        {active && job.kind === "CHAT_REPLY" ? null : active ? (
+        {active ? (
           <Button
             type="button"
             variant="ghost"

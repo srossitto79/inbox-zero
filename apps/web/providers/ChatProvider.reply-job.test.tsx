@@ -6,19 +6,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 (globalThis as { React?: typeof React }).React = React;
 
-const { mockMutateChat, mockMutateGlobal, mockSetChatId, state } = vi.hoisted(
-  () => ({
-    mockMutateChat: vi.fn(),
-    mockMutateGlobal: vi.fn(),
-    mockSetChatId: vi.fn(),
-    state: {
-      chatId: null as string | null,
-      status: "ready",
-      messages: [] as unknown[],
-      jobs: [] as unknown[],
-    },
-  }),
-);
+const {
+  mockCancel,
+  mockMutateChat,
+  mockMutateGlobal,
+  mockMutateJobs,
+  mockSetChatId,
+  mockStop,
+  mockToastSuccess,
+  state,
+} = vi.hoisted(() => ({
+  mockCancel: vi.fn(),
+  mockMutateJobs: vi.fn(),
+  mockStop: vi.fn(),
+  mockToastSuccess: vi.fn(),
+  mockMutateChat: vi.fn(),
+  mockMutateGlobal: vi.fn(),
+  mockSetChatId: vi.fn(),
+  state: {
+    chatId: null as string | null,
+    status: "ready",
+    messages: [] as unknown[],
+    jobs: [] as unknown[],
+  },
+}));
 
 vi.mock("@ai-sdk/react", () => ({
   useChat: () => ({
@@ -27,6 +38,7 @@ vi.mock("@ai-sdk/react", () => ({
     messages: state.messages,
     setMessages: vi.fn(),
     sendMessage: vi.fn(),
+    stop: mockStop,
   }),
 }));
 vi.mock("nuqs", () => ({
@@ -42,12 +54,21 @@ vi.mock("@/hooks/useChatMessages", () => ({
 vi.mock("@/hooks/useBackgroundJobs", () => ({
   isActiveBackgroundJob: (job: { status: string }) =>
     job.status === "QUEUED" || job.status === "RUNNING",
-  useBackgroundJobs: () => ({ data: { jobs: state.jobs } }),
+  useBackgroundJobs: () => ({
+    data: { jobs: state.jobs },
+    mutate: mockMutateJobs,
+  }),
 }));
 vi.mock("@/providers/EmailAccountProvider", () => ({
   useAccount: () => ({ emailAccountId: "account-1" }),
 }));
-vi.mock("@/components/Toast", () => ({ toastError: vi.fn() }));
+vi.mock("@/components/Toast", () => ({
+  toastError: vi.fn(),
+  toastSuccess: mockToastSuccess,
+}));
+vi.mock("@/utils/actions/background-job", () => ({
+  cancelBackgroundJobAction: mockCancel,
+}));
 vi.mock("@/utils/error", () => ({ captureException: vi.fn() }));
 vi.mock("@/utils/logger-client", () => ({
   createClientLogger: () => ({
@@ -59,8 +80,12 @@ vi.mock("@/utils/logger-client", () => ({
 
 import { ChatProvider, useChat } from "@/providers/ChatProvider";
 
+let latestStop: () => void = () => undefined;
+
 function Probe({ onValue }: { onValue: (pending: boolean) => void }) {
-  onValue(useChat().isReplyPending);
+  const { isReplyPending, stopReply } = useChat();
+  latestStop = stopReply;
+  onValue(isReplyPending);
   return null;
 }
 
@@ -137,6 +162,34 @@ describe("ChatProvider chat reply jobs", () => {
     state.messages = [{ id: "m1" }];
     const other = renderProvider();
     expect(other.isPending()).toBe(false);
+  });
+
+  it("stops the browser stream and the server run for the open chat", async () => {
+    state.chatId = "chat-9";
+    state.jobs = [chatJob("RUNNING")];
+    mockCancel.mockResolvedValue({});
+    renderProvider();
+
+    latestStop();
+
+    expect(mockStop).toHaveBeenCalledTimes(1);
+    expect(mockCancel).toHaveBeenCalledWith("account-1", { chatId: "chat-9" });
+    await vi.waitFor(() => expect(mockMutateJobs).toHaveBeenCalled());
+    expect(mockToastSuccess).toHaveBeenCalledWith({
+      description: "Reply stopped",
+    });
+  });
+
+  it("still stops the browser stream when the server cancel fails", async () => {
+    state.chatId = "chat-9";
+    mockCancel.mockRejectedValue(new Error("offline"));
+    renderProvider();
+
+    latestStop();
+
+    expect(mockStop).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(mockMutateJobs).toHaveBeenCalled());
+    expect(mockToastSuccess).not.toHaveBeenCalled();
   });
 
   it("reloads the saved reply when the job finishes", () => {
