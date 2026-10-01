@@ -10,9 +10,10 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.prod
-    # Server mailbox files when NEXT_PUBLIC_MAIL_STORE=server.
+    # Server mailbox files when NEXT_PUBLIC_MAIL_STORE=server, and calendar sync.
     environment:
       MAIL_STORE_DIR: /data/mail
+      CALENDAR_SYNC_ENABLED: ${CALENDAR_SYNC_ENABLED:-true}
     volumes:
       - mail-store-data:/data/mail
 
@@ -24,6 +25,25 @@ services:
         while true; do
           curl -s -m 290 -X GET 'http://web:3000/api/cron/poll-gmail' -H \"Authorization: Bearer $${CRON_SECRET}\" || echo \"[gmail-poller] request failed\"
           sleep 60
+        done
+      "
+    env_file:
+      - path: ${INBOX_ZERO_ENV_FILE:-./apps/web/.env}
+        required: false
+    depends_on:
+      - web
+    networks:
+      - inbox-zero-network
+    restart: always
+
+  calendar-poller:
+    image: alpine:latest
+    command: >
+      sh -c "
+        apk add --no-cache curl &&
+        while true; do
+          curl -s -m 290 -X GET 'http://web:3000/api/cron/sync-calendars' -H \"Authorization: Bearer $${CRON_SECRET}\" || echo \"[calendar-poller] request failed\"
+          sleep 300
         done
       "
     env_file:
