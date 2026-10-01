@@ -61,6 +61,7 @@ import {
   type CreateRange,
 } from "./CalendarEditingContext";
 import { CalendarEventEditor, type EditorSession } from "./CalendarEventEditor";
+import { CalendarImportExport } from "./CalendarImportExport";
 import { CalendarViews } from "./CalendarViews";
 import { useCalendarEventMutations } from "./useCalendarEventMutations";
 
@@ -159,6 +160,11 @@ export function CalendarPageClient() {
   });
 
   const connections = calendarData?.connections ?? [];
+  const enabledCalendars = connections.flatMap((connection) =>
+    connection.calendars
+      .filter((calendar) => calendar.isEnabled)
+      .map((calendar) => ({ id: calendar.id, name: calendar.name })),
+  );
   const writableCalendars = connections.flatMap((connection) =>
     connection.calendars.flatMap((calendar) =>
       calendar.canEdit &&
@@ -424,6 +430,13 @@ export function CalendarPageClient() {
         >
           <RefreshCwIcon className="size-4" />
         </Button>
+        <CalendarImportExport
+          range={range}
+          timezone={timezone}
+          calendars={enabledCalendars}
+          importCalendar={writableCalendars[0] ?? null}
+          onImported={() => mutateEvents()}
+        />
       </header>
 
       {missingConnections.map((connection) => (
