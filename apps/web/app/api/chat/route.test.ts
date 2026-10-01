@@ -37,6 +37,7 @@ const {
       role: "assistant";
       parts: Array<{ type: "text"; text: string }>;
     }>,
+    outcome: undefined as { status: "failed" } | undefined,
   },
 }));
 
@@ -116,6 +117,7 @@ describe("chat route rule freshness persistence", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    streamState.outcome = undefined;
     streamState.finishMessages = [
       {
         id: "assistant-1",
@@ -143,7 +145,10 @@ describe("chat route rule freshness persistence", () => {
     mockCreateUIMessageStreamResponse.mockImplementation(async ({ stream }) => {
       const writer = { write: vi.fn() };
       await stream.execute({ writer });
-      await stream.onEnd({ messages: streamState.finishMessages });
+      await stream.onEnd({
+        messages: streamState.finishMessages,
+        outcome: streamState.outcome,
+      });
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     });
 
@@ -154,6 +159,9 @@ describe("chat route rule freshness persistence", () => {
       messages: [],
       compactions: [],
     });
+    prisma.backgroundJob.findFirst.mockResolvedValue(null);
+    prisma.backgroundJob.create.mockResolvedValue({ id: "job-1" } as any);
+    prisma.backgroundJob.updateMany.mockResolvedValue({ count: 1 });
     prisma.chat.create.mockResolvedValue(null);
     prisma.chatCompaction.create.mockResolvedValue({
       id: "compaction-1",
@@ -200,6 +208,57 @@ describe("chat route rule freshness persistence", () => {
         lastSeenRulesRevision: 6,
       },
     });
+  });
+
+  it("records the run as a chat reply job and marks it succeeded", async () => {
+    await POST(createRequest());
+
+    expect(prisma.backgroundJob.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        kind: "CHAT_REPLY",
+        status: "RUNNING",
+        payload: { chatId: "chat-1", runId: expect.any(String) },
+      }),
+      select: { id: true },
+    });
+    expect(prisma.backgroundJob.updateMany).toHaveBeenCalledWith({
+      where: { id: "job-1", status: "RUNNING" },
+      data: expect.objectContaining({ status: "SUCCEEDED" }),
+    });
+  });
+
+  it("marks the job failed when the stream ends in failure", async () => {
+    streamState.outcome = { status: "failed" };
+
+    await POST(createRequest());
+
+    expect(prisma.backgroundJob.updateMany).toHaveBeenCalledWith({
+      where: { id: "job-1", status: "RUNNING" },
+      data: expect.objectContaining({ status: "FAILED" }),
+    });
+  });
+
+  it("marks the job failed when the run cannot start", async () => {
+    mockAiProcessAssistantChat.mockRejectedValueOnce(new Error("no model"));
+
+    const response = await POST(createRequest());
+
+    expect(response.status).toBe(500);
+    expect(prisma.backgroundJob.updateMany).toHaveBeenCalledWith({
+      where: { id: "job-1", status: "RUNNING" },
+      data: expect.objectContaining({ status: "FAILED" }),
+    });
+  });
+
+  it("refuses a second run while a reply for the chat is being generated", async () => {
+    prisma.backgroundJob.findFirst.mockResolvedValue({ id: "job-0" } as any);
+
+    const response = await POST(createRequest());
+
+    expect(response.status).toBe(409);
+    expect(prisma.chatMessage.create).not.toHaveBeenCalled();
+    expect(prisma.backgroundJob.create).not.toHaveBeenCalled();
+    expect(mockAiProcessAssistantChat).not.toHaveBeenCalled();
   });
 
   it("returns 404 when the email account cannot be loaded", async () => {

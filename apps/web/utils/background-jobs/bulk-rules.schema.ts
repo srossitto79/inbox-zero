@@ -28,6 +28,7 @@ export const bulkRulesResultSchema = z.object({
   processed: z.number().int().default(0),
   matched: z.number().int().default(0),
   failed: z.number().int().default(0),
+  firstError: z.string().optional(),
   recent: z.array(bulkRulesEntrySchema).default([]),
 });
 export type BulkRulesResult = z.infer<typeof bulkRulesResultSchema>;

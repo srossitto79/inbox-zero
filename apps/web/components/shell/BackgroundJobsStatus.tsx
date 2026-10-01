@@ -116,12 +116,12 @@ function JobRow({
     <li className="flex flex-col gap-1.5 px-3 py-2.5 text-xs">
       <div className="flex items-center justify-between gap-2">
         <Link
-          href={getBackgroundJobPath(emailAccountId, job.kind)}
+          href={getBackgroundJobPath(emailAccountId, job)}
           className="truncate font-medium text-foreground hover:underline"
         >
           {getBackgroundJobLabel(job.kind)}
         </Link>
-        {active ? (
+        {active && job.kind === "CHAT_REPLY" ? null : active ? (
           <Button
             type="button"
             variant="ghost"
@@ -143,7 +143,7 @@ function JobRow({
           </button>
         )}
       </div>
-      {active ? (
+      {active && job.kind !== "CHAT_REPLY" ? (
         <Progress value={percent} className="h-1.5" innerClassName="bg-brand" />
       ) : null}
       <div className="text-muted-foreground">

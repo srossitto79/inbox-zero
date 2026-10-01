@@ -170,6 +170,66 @@ describe("runBackgroundJobTick", () => {
     expect(rows.get("job-2")?.status).toBe("QUEUED");
   });
 
+  it("ends the job as failed but keeps its progress when a chunk reports a failure", async () => {
+    addJob(rows, { id: "job-1" });
+    vi.mocked(runBulkRulesChunk).mockResolvedValue({
+      payload: { page: 2 },
+      progressDone: 3,
+      result: { processed: 3, failed: 3 },
+      finished: true,
+      failure: "LLM failed",
+    });
+
+    await runBackgroundJobTick();
+    await waitForRunningBackgroundJobs();
+
+    expect(rows.get("job-1")).toMatchObject({
+      status: "FAILED",
+      error: "LLM failed",
+      progressDone: 3,
+      result: { processed: 3, failed: 3 },
+    });
+  });
+
+  it("does not count a running chat reply against the account's worker slot", async () => {
+    addJob(rows, {
+      id: "chat-1",
+      kind: "CHAT_REPLY",
+      status: "RUNNING",
+      heartbeatAt: new Date(),
+    });
+    addJob(rows, { id: "job-1", createdAt: new Date(Date.now() + 1) });
+    vi.mocked(runBulkRulesChunk).mockResolvedValue({
+      payload: {},
+      progressDone: 0,
+      result: {},
+      finished: true,
+    });
+
+    await runBackgroundJobTick();
+    await waitForRunningBackgroundJobs();
+
+    expect(rows.get("job-1")?.status).toBe("SUCCEEDED");
+    expect(rows.get("chat-1")?.status).toBe("RUNNING");
+  });
+
+  it("marks a chat reply whose process died as interrupted", async () => {
+    addJob(rows, {
+      id: "chat-1",
+      kind: "CHAT_REPLY",
+      status: "RUNNING",
+      heartbeatAt: new Date(Date.now() - STALE_HEARTBEAT_MS - 1000),
+    });
+
+    await runBackgroundJobTick();
+    await waitForRunningBackgroundJobs();
+
+    expect(rows.get("chat-1")).toMatchObject({
+      status: "FAILED",
+      error: "Interrupted",
+    });
+  });
+
   it("fails the job with the error message when a chunk throws", async () => {
     addJob(rows, { id: "job-1" });
     vi.mocked(runBulkRulesChunk).mockRejectedValue(new Error("Boom"));

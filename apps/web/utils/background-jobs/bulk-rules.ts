@@ -87,6 +87,7 @@ export async function runBulkRulesChunk({
   let consecutiveFailures = 0;
   let pauseMs: number | undefined;
   let cancelRequested = false;
+  let abortedByFailures = false;
 
   for (
     let index = 0;
@@ -114,6 +115,7 @@ export async function runBulkRulesChunk({
       }
 
       const { entry } = outcome;
+      if (entry.failed) totals.firstError ??= outcome.error;
       processedThreadIds.push(entry.threadId);
       progressDone += 1;
       totals.processed += 1;
@@ -129,7 +131,8 @@ export async function runBulkRulesChunk({
     totals.recent.length = Math.min(totals.recent.length, RECENT_ENTRIES);
 
     if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-      throw new Error("Rules failed on several emails in a row");
+      abortedByFailures = true;
+      break;
     }
     if (pauseMs !== undefined) break;
 
@@ -143,7 +146,15 @@ export async function runBulkRulesChunk({
   const pageFinished = !cancelRequested && pauseMs === undefined;
   const quotaReached =
     payload.maxEmails !== undefined && progressDone >= payload.maxEmails;
-  const finished = pageFinished && (quotaReached || !page.nextPageToken);
+  const finished =
+    abortedByFailures ||
+    (pageFinished && (quotaReached || !page.nextPageToken));
+  const nothingSucceeded =
+    totals.processed > 0 && totals.failed === totals.processed;
+  const failure =
+    finished && (abortedByFailures || nothingSucceeded)
+      ? (totals.firstError ?? "Rules failed")
+      : undefined;
 
   const nextPayload: BulkRulesPayload = pageFinished
     ? {
@@ -159,6 +170,7 @@ export async function runBulkRulesChunk({
     progressTotal: finished ? progressDone : undefined,
     result: totals,
     finished,
+    failure,
     pauseMs,
   };
 }
@@ -178,7 +190,8 @@ async function processThread({
   payload: BulkRulesPayload;
   logger: JobHandlerContext["logger"];
 }): Promise<
-  { type: "done"; entry: BulkRulesEntry } | { type: "paused"; pauseMs: number }
+  | { type: "done"; entry: BulkRulesEntry; error?: string }
+  | { type: "paused"; pauseMs: number }
 > {
   const latest = thread.messages.at(-1);
   const entry: BulkRulesEntry = {
@@ -223,7 +236,11 @@ async function processThread({
       threadId: thread.id,
       error,
     });
-    return { type: "done", entry: { ...entry, failed: true } };
+    return {
+      type: "done",
+      entry: { ...entry, failed: true },
+      error: error instanceof Error ? error.message : "Rules failed",
+    };
   }
 }
 

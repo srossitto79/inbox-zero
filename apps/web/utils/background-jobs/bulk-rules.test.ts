@@ -225,7 +225,38 @@ describe("runBulkRulesChunk", () => {
     ]);
     vi.mocked(runRules).mockRejectedValue(new Error("LLM failed"));
 
-    await expect(runChunk()).rejects.toThrow("several emails in a row");
+    const chunk = await runChunk();
+
+    expect(chunk).toMatchObject({
+      finished: true,
+      failure: "LLM failed",
+      progressDone: 6,
+    });
+  });
+
+  it("ends as failed with the first error when no email succeeded", async () => {
+    mockPage([thread("t1")]);
+    vi.mocked(runRules).mockRejectedValue(new Error("after was called"));
+
+    const chunk = await runChunk();
+
+    expect(chunk).toMatchObject({
+      finished: true,
+      failure: "after was called",
+    });
+    expect(chunk.result).toMatchObject({ processed: 1, failed: 1, matched: 0 });
+  });
+
+  it("ends as succeeded when only some emails failed", async () => {
+    mockPage([thread("t1"), thread("t2")]);
+    vi.mocked(runRules)
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error("LLM failed"));
+
+    const chunk = await runChunk();
+
+    expect(chunk.finished).toBe(true);
+    expect(chunk.failure).toBeUndefined();
   });
 });
 

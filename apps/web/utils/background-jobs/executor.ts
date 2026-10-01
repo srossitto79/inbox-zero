@@ -21,6 +21,8 @@ export type JobChunkResult = {
   progressTotal?: number;
   result: Prisma.InputJsonValue;
   finished: boolean;
+  /** With `finished`: ends the job as failed, keeping the saved progress. */
+  failure?: string;
   /** Set when the chunk stopped early because the provider asked to slow down. */
   pauseMs?: number;
 };
@@ -73,6 +75,8 @@ export async function runBackgroundJobTick(now = new Date()) {
     const activeOnAccount = await prisma.backgroundJob.count({
       where: {
         emailAccountId: candidate.emailAccountId,
+        // Jobs another part of the app runs itself do not take a worker slot.
+        kind: { in: Object.keys(handlers) as BackgroundJobKind[] },
         status: "RUNNING",
         heartbeatAt: { gte: staleBefore },
         id: { not: candidate.id },
@@ -147,7 +151,7 @@ async function runJob(jobId: string) {
     if (!handler) {
       await finishJob(jobId, {
         status: "FAILED",
-        error: `Unsupported job kind: ${job.kind}`,
+        error: "Interrupted",
       });
       return;
     }
@@ -187,7 +191,12 @@ async function runJob(jobId: string) {
     });
 
     if (chunk.finished) {
-      await finishJob(jobId, { status: "SUCCEEDED" });
+      await finishJob(
+        jobId,
+        chunk.failure
+          ? { status: "FAILED", error: chunk.failure }
+          : { status: "SUCCEEDED" },
+      );
       return;
     }
 

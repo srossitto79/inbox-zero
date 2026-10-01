@@ -44,6 +44,10 @@ import {
 } from "@/utils/ai/assistant/chat-seen-rules-revision";
 import { getToolFailureWarning } from "@/utils/ai/assistant/chat-response-guard";
 import { flushLoggerSafely } from "@/utils/logger-flush";
+import {
+  getActiveChatReplyJob,
+  startChatReplyJob,
+} from "@/utils/background-jobs/chat-reply";
 
 export const maxDuration = 800;
 
@@ -137,6 +141,18 @@ export const POST = withEmailAccount("chat", async (request) => {
   const { message, context, inlineActions } = data;
   const chatRunId = crypto.randomUUID();
   const runLogger = request.logger.with({ chatId: chat.id, chatRunId });
+
+  // A second run would answer the same message twice.
+  const activeReply = await getActiveChatReplyJob({
+    emailAccountId,
+    chatId: chat.id,
+  });
+  if (activeReply) {
+    return NextResponse.json(
+      { error: "A reply is already being generated." },
+      { status: 409 },
+    );
+  }
 
   const hiddenInlineActionMessage =
     buildHiddenInlineActionMessage(inlineActions);
@@ -278,6 +294,13 @@ export const POST = withEmailAccount("chat", async (request) => {
     request.logger.warn("Failed to load memories for chat", { error });
   }
 
+  const replyJob = await startChatReplyJob({
+    emailAccountId,
+    chatId: chat.id,
+    runId: chatRunId,
+    logger: runLogger,
+  });
+
   try {
     const inboxStats = await inboxStatsPromise;
     let seenRulesRevision: number | null = null;
@@ -350,56 +373,64 @@ export const POST = withEmailAccount("chat", async (request) => {
         });
         writer.write({ type: "text-end", id: warningPartId });
       },
-      onEnd: async ({ messages }) => {
-        assistantRun.visibleTextProduced = hasVisibleAssistantText(messages);
-        const persistableMessages = messages.filter(
-          isPersistableAssistantMessage,
-        );
-
-        if (persistableMessages.length < messages.length) {
-          runLogger.error("Skipping empty assistant chat messages", {
-            skippedCount: messages.length - persistableMessages.length,
-          });
-        }
-
-        let insertedMessageCount = 0;
-        if (persistableMessages.length > 0) {
-          const result = await saveChatMessages(
-            persistableMessages,
-            chat.id,
-            runLogger,
-            assistantRun,
+      onEnd: async ({ messages, outcome }) => {
+        try {
+          assistantRun.visibleTextProduced = hasVisibleAssistantText(messages);
+          const persistableMessages = messages.filter(
+            isPersistableAssistantMessage,
           );
-          insertedMessageCount = result.count;
-        }
 
-        if (seenRulesRevision != null) {
-          await saveLastSeenRulesRevision({
-            chatId: chat.id,
-            rulesRevision: seenRulesRevision,
-            logger: runLogger,
+          if (persistableMessages.length < messages.length) {
+            runLogger.error("Skipping empty assistant chat messages", {
+              skippedCount: messages.length - persistableMessages.length,
+            });
+          }
+
+          let insertedMessageCount = 0;
+          if (persistableMessages.length > 0) {
+            const result = await saveChatMessages(
+              persistableMessages,
+              chat.id,
+              runLogger,
+              assistantRun,
+            );
+            insertedMessageCount = result.count;
+          }
+
+          if (seenRulesRevision != null) {
+            await saveLastSeenRulesRevision({
+              chatId: chat.id,
+              rulesRevision: seenRulesRevision,
+              logger: runLogger,
+            });
+          }
+
+          runLogger.info("Assistant chat run completed", {
+            provider: assistantRun.provider,
+            modelName: assistantRun.modelName,
+            pipelineVersion: assistantRun.pipelineVersion,
+            deploymentCommit: assistantRun.deploymentCommit,
+            finishReason: assistantRun.finishReason,
+            stepCount: assistantRun.stepCount,
+            toolCallCount: assistantRun.toolCallCount,
+            visibleTextProduced: assistantRun.visibleTextProduced,
+            assistantMessageCount: messages.filter(
+              (message) => message.role === "assistant",
+            ).length,
+            insertedMessageCount,
           });
+
+          await flushLoggerSafely(runLogger, {
+            action: "assistant-chat",
+            flushReason: "chat-stream-finish",
+          });
+        } finally {
+          await replyJob.finish(
+            outcome?.status === "failed"
+              ? { status: "FAILED", error: "Reply generation failed" }
+              : { status: "SUCCEEDED" },
+          );
         }
-
-        runLogger.info("Assistant chat run completed", {
-          provider: assistantRun.provider,
-          modelName: assistantRun.modelName,
-          pipelineVersion: assistantRun.pipelineVersion,
-          deploymentCommit: assistantRun.deploymentCommit,
-          finishReason: assistantRun.finishReason,
-          stepCount: assistantRun.stepCount,
-          toolCallCount: assistantRun.toolCallCount,
-          visibleTextProduced: assistantRun.visibleTextProduced,
-          assistantMessageCount: messages.filter(
-            (message) => message.role === "assistant",
-          ).length,
-          insertedMessageCount,
-        });
-
-        await flushLoggerSafely(runLogger, {
-          action: "assistant-chat",
-          flushReason: "chat-stream-finish",
-        });
       },
     });
 
@@ -412,6 +443,10 @@ export const POST = withEmailAccount("chat", async (request) => {
     });
   } catch (error) {
     runLogger.error("Error in assistant chat", { error });
+    await replyJob.finish({
+      status: "FAILED",
+      error: "Reply generation failed",
+    });
     await flushLoggerSafely(runLogger, {
       action: "assistant-chat",
       flushReason: "chat-error",

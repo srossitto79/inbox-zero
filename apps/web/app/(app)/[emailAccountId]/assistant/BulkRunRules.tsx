@@ -277,7 +277,6 @@ function BulkRunJobPanel({ job }: { job: BulkRunJob }) {
         failed: entry.failed,
       }))
     : [];
-  const failedCount = result.success ? result.data.failed : 0;
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -291,7 +290,6 @@ function BulkRunJobPanel({ job }: { job: BulkRunJob }) {
         )}
         <div className="text-sm text-muted-foreground">
           {getBackgroundJobStatusText(job)}
-          {failedCount > 0 ? `, ${failedCount} failed` : ""}
         </div>
       </div>
 
