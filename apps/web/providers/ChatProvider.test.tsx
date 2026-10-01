@@ -86,6 +86,11 @@ vi.mock("swr", () => ({
   useSWRConfig: () => mockUseSWRConfig(),
 }));
 
+vi.mock("@/hooks/useBackgroundJobs", () => ({
+  isActiveBackgroundJob: () => false,
+  useBackgroundJobs: () => ({ data: { jobs: [] } }),
+}));
+
 vi.mock("@/hooks/useChatMessages", () => ({
   useChatMessages: (chatId: string | null) => mockUseChatMessages(chatId),
 }));

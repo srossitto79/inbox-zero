@@ -17,9 +17,18 @@ export function getBackgroundJobLabel(kind: BackgroundJobKind) {
 
 export function getBackgroundJobPath(
   emailAccountId: string,
-  kind: BackgroundJobKind,
+  job: Pick<Job, "kind" | "payload">,
 ) {
-  switch (kind) {
+  switch (job.kind) {
+    case "CHAT_REPLY": {
+      const chatId = getChatReplyChatId(job);
+      return chatId
+        ? prefixPath(
+            emailAccountId,
+            `/assistant?chatId=${encodeURIComponent(chatId)}`,
+          )
+        : prefixPath(emailAccountId, "/assistant");
+    }
     case "CLEANUP":
       return prefixPath(emailAccountId, "/clean");
     case "CATEGORIZE_SENDERS":
@@ -29,13 +38,35 @@ export function getBackgroundJobPath(
   }
 }
 
+export function getChatReplyChatId(job: Pick<Job, "kind" | "payload">) {
+  if (job.kind !== "CHAT_REPLY") return null;
+  const chatId = (job.payload as { chatId?: unknown } | null)?.chatId;
+  return typeof chatId === "string" ? chatId : null;
+}
+
 export function getBackgroundJobStatusText(
   job: Pick<
     Job,
-    "status" | "progressDone" | "error" | "cancelRequested" | "nextRunAt"
+    | "kind"
+    | "status"
+    | "progressDone"
+    | "result"
+    | "error"
+    | "cancelRequested"
+    | "nextRunAt"
   >,
 ) {
-  const processed = `${job.progressDone} processed`;
+  if (job.kind === "CHAT_REPLY") {
+    if (job.status === "FAILED") return "Failed";
+    return isActive(job.status) ? "Generating" : "Done";
+  }
+
+  const failedCount = (job.result as { failed?: unknown } | null)?.failed;
+  const failed =
+    typeof failedCount === "number" && failedCount > 0
+      ? `, ${failedCount} failed`
+      : "";
+  const processed = `${job.progressDone} processed${failed}`;
 
   switch (job.status) {
     case "QUEUED":
@@ -49,6 +80,12 @@ export function getBackgroundJobStatusText(
     case "CANCELLED":
       return `Cancelled, ${processed}`;
     case "FAILED":
-      return job.error ? `Failed: ${job.error}` : "Failed";
+      return job.error
+        ? `Failed, ${processed}. ${job.error}`
+        : `Failed, ${processed}`;
   }
+}
+
+function isActive(status: Job["status"]) {
+  return status === "QUEUED" || status === "RUNNING";
 }

@@ -25,6 +25,7 @@ class MockResizeObserver {
 
 const {
   mockCaptureAction,
+  mockChatState,
   mockHandleSubmit,
   mockMutate,
   mockRegenerate,
@@ -39,6 +40,7 @@ const {
   mockUseChats,
 } = vi.hoisted(() => ({
   mockCaptureAction: vi.fn(),
+  mockChatState: { isReplyPending: false, input: "" },
   mockHandleSubmit: vi.fn(),
   mockMutate: vi.fn(),
   mockRegenerate: vi.fn(),
@@ -180,7 +182,8 @@ vi.mock("@/providers/ChatProvider", () => ({
       sendMessage: vi.fn(),
     } satisfies Partial<ChatHelpers>,
     chatId: null,
-    input: "",
+    input: mockChatState.input,
+    isReplyPending: mockChatState.isReplyPending,
     persistedMessageIds: new Set(),
     setInput: mockSetInput,
     handleSubmit: mockHandleSubmit,
@@ -211,6 +214,8 @@ afterEach(() => {
 describe("Chat history", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockChatState.isReplyPending = false;
+    mockChatState.input = "";
     mockUseChats.mockImplementation((shouldFetch: boolean) => ({
       data: shouldFetch ? { chats: [chatHistoryEntry] } : undefined,
       error: undefined,
@@ -235,6 +240,41 @@ describe("Chat history", () => {
     await waitFor(() => {
       expect(mockSetChatId).toHaveBeenCalledWith("chat-1");
     });
+  });
+});
+
+describe("Chat while the server generates a reply", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockChatState.isReplyPending = true;
+    mockChatState.input = "Another question";
+    mockUseChats.mockReturnValue({ data: undefined, mutate: mockMutate });
+  });
+
+  it("shows the waiting state and does not send", async () => {
+    const { Chat } = await import("@/components/assistant-chat/chat");
+
+    const { container } = render(<Chat open />);
+
+    expect(screen.getByRole("status").textContent).toBe("Generating reply");
+    const send = container.querySelector<HTMLButtonElement>(
+      'button[type="submit"]',
+    );
+    expect(send?.disabled).toBe(true);
+
+    fireEvent.submit(container.querySelector("form")!);
+    expect(mockHandleSubmit).not.toHaveBeenCalled();
+  });
+
+  it("sends normally when no reply is pending", async () => {
+    mockChatState.isReplyPending = false;
+    const { Chat } = await import("@/components/assistant-chat/chat");
+
+    const { container } = render(<Chat open />);
+
+    expect(screen.queryByRole("status")).toBeNull();
+    fireEvent.submit(container.querySelector("form")!);
+    expect(mockHandleSubmit).toHaveBeenCalledTimes(1);
   });
 });
 
