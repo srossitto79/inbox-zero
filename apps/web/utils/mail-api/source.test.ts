@@ -373,15 +373,10 @@ describe("createEmailProviderMailboxSource", () => {
       page: bootstrap.value.enumerationToken,
       pageSize: 25,
     });
+    // The engine keeps the folder cursor from beginBootstrap on its scan.
     expect(result).toMatchObject({
       status: "ok",
-      value: {
-        scopeId: "archive",
-        catchUpFrom: {
-          streamId: "archive",
-          checkpoint: "folder-cursor",
-        },
-      },
+      value: { scopeId: "archive", catchUpFrom: null },
     });
     expect(getMessagesWithPagination).toHaveBeenCalledWith({
       maxResults: 20,
@@ -454,16 +449,11 @@ describe("createEmailProviderMailboxSource", () => {
       pageSize: 25,
     });
 
+    // Null keeps the engine's copy, which may have moved past changes it
+    // applied while the download ran.
     expect(finalPage).toMatchObject({
       status: "ok",
-      value: {
-        nextPage: null,
-        catchUpFrom: {
-          streamId: "archive",
-          generation: "g1",
-          checkpoint: "before-enumeration-cursor",
-        },
-      },
+      value: { nextPage: null, catchUpFrom: null },
     });
     expect(getMailboxSyncPage).toHaveBeenCalledTimes(1);
   });

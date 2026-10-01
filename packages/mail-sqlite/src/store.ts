@@ -1838,6 +1838,40 @@ export async function createSqliteMailStore(
         return { status: "committed" as const, revision };
       });
     },
+    async advanceBootstrapCatchUp(input) {
+      return driver.write(async (tx) => {
+        if (!(await accountGenerationMatches(tx, input.session))) {
+          return { status: "stale" as const };
+        }
+        const result = await tx.execute(
+          `UPDATE bootstrap_scans
+           SET catch_stream_id = ?,
+               catch_generation = ?,
+               catch_checkpoint = ?,
+               updated_at_ms = ?
+           WHERE account_id = ?
+             AND scope_id = ?
+             AND bootstrap_id = ?
+             AND catch_stream_id IS ?
+             AND catch_generation IS ?
+             AND catch_checkpoint IS ?`,
+          [
+            input.to.streamId,
+            input.to.generation,
+            input.to.checkpoint,
+            Date.now(),
+            input.session.accountId,
+            input.scopeId,
+            input.bootstrapId,
+            input.from.streamId,
+            input.from.generation,
+            input.from.checkpoint,
+          ],
+        );
+        if (result.changedRows === 0) return { status: "stale" as const };
+        return { status: "committed" as const };
+      });
+    },
     async enqueueHydration(input) {
       return driver.write(async (tx) => {
         await enqueueHydrationJobs(tx, {

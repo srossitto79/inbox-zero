@@ -212,6 +212,18 @@ export interface MailStore {
   admitConversations(input: SubmitConversationCommand): Promise<Admission>;
   admitMetadata(input: SubmitMetadataCommand): Promise<Admission>;
   admitSend(input: SubmitSend): Promise<Admission>;
+  /**
+   * Moves a running bootstrap's catch-up start past changes already applied
+   * while it ran, so the stream it hands over to does not replay them.
+   * Stale unless the scan still starts its catch-up at `from`.
+   */
+  advanceBootstrapCatchUp(input: {
+    session: AccountSession;
+    scopeId: string;
+    bootstrapId: string;
+    from: SyncStreamPosition;
+    to: SyncStreamPosition;
+  }): Promise<{ status: "committed" } | { status: "stale" }>;
   applyAssistantEntries(input: {
     accountId: string;
     cursor?: string | null;

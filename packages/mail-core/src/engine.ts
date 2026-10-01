@@ -816,6 +816,16 @@ export function createMailEngine(input: {
             catchUpDue,
           ))
         ) {
+          // New mail comes before the rest of a long first download.
+          if (catchUpDue) {
+            await catchUpDuringBootstrap(
+              idleGate,
+              session,
+              stream.streamId,
+              signal,
+            );
+            if (signal?.aborted || runtime.nowMs() >= deadlineMs) return;
+          }
           await ingestBootstrap({
             session,
             from: stream,
@@ -891,6 +901,71 @@ export function createMailEngine(input: {
       }
       await catchUpAssistantIfDue(idleGate, account, signal);
     }
+  }
+
+  /**
+   * Applies provider changes from the point the running bootstrap will hand
+   * its stream over at, then moves that point forward. New mail shows up
+   * within one catch-up interval instead of after the whole download, and the
+   * stream does not replay these changes once the bootstrap finishes.
+   */
+  async function catchUpDuringBootstrap(
+    idleGate: IdleCatchUpGate,
+    session: { accountId: string; generation: string },
+    scopeId: string,
+    signal?: AbortSignal,
+  ) {
+    const scan = await store.readBootstrapScan({ session, scopeId });
+    const from = scan?.catchUpFrom;
+    if (!scan || !from?.checkpoint) return;
+    const changes = await source.readChanges({
+      session,
+      requestId: runtime.randomId(),
+      position: from,
+      pageSize: 50,
+      signal: signal ?? new AbortController().signal,
+    });
+    if (changes.status !== "page") {
+      idleGate.nextStreamCatchUpAtMs.set(
+        scopeId,
+        runtime.nowMs() + idleCatchUpIntervalMs,
+      );
+      // A reset is the bootstrap's job; it is already rebuilding this scope.
+      if (changes.status !== "reset_required") {
+        await noteConnection(session.accountId, changes.status);
+      }
+      return;
+    }
+    const applied = await store.applyHydration({
+      session,
+      requestId: changes.page.requestId,
+      changes: changes.page.changes,
+      bodies: changes.page.bodies ?? [],
+    });
+    if (applied.status !== "committed") return;
+    if (changes.page.requiredHydration.length > 0) {
+      await store.enqueueHydration({
+        keys: changes.page.requiredHydration,
+        purpose: "body",
+      });
+    }
+    await store.advanceBootstrapCatchUp({
+      session,
+      scopeId,
+      bootstrapId: scan.bootstrapId,
+      from,
+      to: changes.page.to,
+    });
+    if (changes.page.roundComplete) {
+      idleGate.nextStreamCatchUpAtMs.set(
+        scopeId,
+        runtime.nowMs() + idleCatchUpIntervalMs,
+      );
+    } else {
+      idleGate.nextStreamCatchUpAtMs.delete(scopeId);
+    }
+    await refreshViews();
+    await noteConnection(session.accountId, "ok");
   }
 
   function idleCatchUpGateFor(accountId: string, generation: string) {

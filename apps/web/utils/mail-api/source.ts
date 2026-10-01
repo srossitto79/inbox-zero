@@ -439,7 +439,10 @@ async function finalCatchUpFrom({
   token: BootstrapToken;
   session: { generation: string };
   messages: ParsedMessage[];
-}): Promise<SyncPosition> {
+}): Promise<SyncPosition | null> {
+  // The engine already holds this position on its scan and may have moved it
+  // forward with changes applied during the download; null keeps its copy.
+  if (token.catchUpFrom?.checkpoint) return null;
   if (token.catchUpFrom) {
     const checkpoint =
       token.catchUpFrom.checkpoint ??
