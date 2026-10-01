@@ -1,5 +1,6 @@
 import { NextResponse, after } from "next/server";
 import {
+  consumeStream,
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
@@ -402,7 +403,13 @@ export const POST = withEmailAccount("chat", async (request) => {
       },
     });
 
-    return createUIMessageStreamResponse({ stream });
+    return createUIMessageStreamResponse({
+      stream,
+      // A second reader keeps draining the stream after the client leaves.
+      // Without it the stream is cancelled on disconnect and onEnd saves only
+      // the part of the reply that had been sent.
+      consumeSseStream: consumeStream,
+    });
   } catch (error) {
     runLogger.error("Error in assistant chat", { error });
     await flushLoggerSafely(runLogger, {

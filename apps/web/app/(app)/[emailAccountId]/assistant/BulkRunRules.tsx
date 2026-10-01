@@ -1,17 +1,17 @@
 "use client";
 
-import { useReducer, useRef, useState } from "react";
-import { PauseIcon, PlayIcon, SquareIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { addDays } from "date-fns/addDays";
+import { startOfDay } from "date-fns/startOfDay";
+import { SquareIcon } from "lucide-react";
+import { useAction } from "next-safe-action/hooks";
 import { Button } from "@/components/ui/button";
-import { SectionDescription } from "@/components/Typography";
 import { LoadingContent } from "@/components/LoadingContent";
-import { pauseAiQueue, resumeAiQueue } from "@/utils/queue/ai-queue";
 import { toastError } from "@/components/Toast";
 import { PremiumAlertWithData } from "@/components/PremiumAlert";
 import { usePremium } from "@/hooks/usePremium";
 import { SetDateDropdown } from "@/app/(app)/[emailAccountId]/assistant/SetDateDropdown";
-import { useBeforeUnload } from "@/hooks/useBeforeUnload";
-import { useAiQueueState } from "@/store/ai-queue";
+import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
@@ -34,15 +34,24 @@ import {
 import { hasTierAccess } from "@/utils/premium";
 import { RERUN_MINIMUM_TIER } from "@/utils/premium/rerun";
 import { usePremiumModal } from "@/app/(app)/premium/PremiumModal";
-import { BulkProcessActivityLog } from "@/app/(app)/[emailAccountId]/assistant/BulkProcessActivityLog";
-import {
-  bulkRunReducer,
-  getProgressMessage,
-  initialBulkRunState,
-} from "@/app/(app)/[emailAccountId]/assistant/bulk-run-rules-reducer";
+import { ActivityLog } from "@/app/(app)/[emailAccountId]/assistant/BulkProcessActivityLog";
 import { EndTrialButton } from "@/components/EndTrialButton";
-import { onRun } from "@/app/(app)/[emailAccountId]/assistant/bulk-run";
 import { useAiAutomationStatus } from "@/hooks/useAiAutomationStatus";
+import {
+  isActiveBackgroundJob,
+  useBackgroundJobs,
+} from "@/hooks/useBackgroundJobs";
+import {
+  cancelBackgroundJobAction,
+  markBackgroundJobsSeenAction,
+  startBulkRulesJobAction,
+} from "@/utils/actions/background-job";
+import {
+  bulkRulesPayloadSchema,
+  bulkRulesResultSchema,
+} from "@/utils/background-jobs/bulk-rules.schema";
+import { getBackgroundJobStatusText } from "@/components/shell/background-job-display";
+import { getActionErrorMessage } from "@/utils/error";
 
 const TRIAL_BULK_PROCESS_EMAIL_LIMIT = 200;
 
@@ -51,9 +60,37 @@ export function BulkRunRules() {
 
   const [isOpen, setIsOpen] = useState(false);
   const { PremiumModal, openModal: openPremiumModal } = usePremiumModal();
-  const [state, dispatch] = useReducer(bulkRunReducer, initialBulkRunState);
 
-  const queue = useAiQueueState();
+  const { data: jobsData, mutate: mutateJobs } = useBackgroundJobs();
+  const job = jobsData?.jobs.find((item) => item.kind === "BULK_RULES");
+  const isBusy = job ? isActiveBackgroundJob(job) : false;
+
+  const { executeAsync: startJob, isExecuting: isStarting } = useAction(
+    startBulkRulesJobAction.bind(null, emailAccountId),
+    {
+      onSuccess: () => mutateJobs(),
+      onError: ({ error }) =>
+        toastError({
+          title: "Failed to start",
+          description: getActionErrorMessage(error),
+        }),
+    },
+  );
+  const { execute: cancelJob, isExecuting: isCancelling } = useAction(
+    cancelBackgroundJobAction.bind(null, emailAccountId),
+    { onSettled: () => mutateJobs() },
+  );
+  const { execute: markSeen } = useAction(
+    markBackgroundJobsSeenAction.bind(null, emailAccountId),
+    { onSettled: () => mutateJobs() },
+  );
+
+  // A job finished while the dialog is open counts as seen.
+  const unseenFinishedJobId =
+    isOpen && job && !isBusy && !job.seenAt ? job.id : null;
+  useEffect(() => {
+    if (unseenFinishedJobId) markSeen({ jobIds: [unseenFinishedJobId] });
+  }, [unseenFinishedJobId, markSeen]);
 
   const {
     hasAiAccess,
@@ -83,93 +120,28 @@ export function BulkRunRules() {
   const [rerun, setRerun] = useState(false);
   const [generateDraftReplies, setGenerateDraftReplies] = useState(false);
 
-  const abortRef = useRef<() => void>(undefined);
-
-  // Derived state
-  const remaining = new Set(
-    [...state.processedThreadIds].filter((id) => queue.has(id)),
-  ).size;
-  const completed = state.processedThreadIds.size - remaining;
-  const isProcessing = queue.size > 0;
-  const isPaused = state.status === "paused";
-  const isBusy = isProcessing || state.status === "processing";
   // Access can drop while a toggle is still on (the tier is revalidated in
   // the background), so everything reads the gated values rather than the raw
   // toggle state.
   const isIncludeReadEnabled = includeRead && isBusinessPlusTier;
   const isRerunEnabled = rerun && hasRerunAccess;
 
-  // Warn user before leaving page during processing (includes initial fetch)
-  useBeforeUnload(isBusy);
-
   const handleStart = async () => {
-    dispatch({ type: "START" });
-
     if (!startDate) {
       toastError({ description: "Please select a start date" });
-      dispatch({ type: "RESET" });
-      return;
-    }
-    if (!emailAccountId) {
-      toastError({
-        description: "Email account ID is missing. Please refresh the page.",
-      });
-      dispatch({ type: "RESET" });
       return;
     }
 
-    // Ensure queue is not paused from a previous run
-    resumeAiQueue();
-
-    try {
-      abortRef.current = await onRun(
-        emailAccountId,
-        {
-          startDate,
-          endDate,
-          includeRead: isIncludeReadEnabled,
-          generateDraftReplies,
-          rerun: isRerunEnabled,
-          maxEmails: isTrial ? TRIAL_BULK_PROCESS_EMAIL_LIMIT : undefined,
-        },
-        (threads) => {
-          dispatch({ type: "THREADS_QUEUED", threads });
-        },
-        (completionStatus, count) => {
-          if (completionStatus !== "success") {
-            dispatch({ type: "STOP", completedCount: count });
-            return;
-          }
-
-          dispatch({ type: "COMPLETE", count });
-        },
-      );
-    } catch (error) {
-      console.error("Failed to start bulk processing:", error);
-      toastError({
-        title: "Failed to start",
-        description: "An error occurred. Please try again.",
-      });
-      dispatch({ type: "RESET" });
-    }
+    await startJob({
+      startDate,
+      // Provider "before" filters are exclusive; the selected calendar day is inclusive.
+      before: endDate ? startOfDay(addDays(endDate, 1)) : undefined,
+      includeRead: isIncludeReadEnabled,
+      generateDraftReplies,
+      rerun: isRerunEnabled,
+      maxEmails: isTrial ? TRIAL_BULK_PROCESS_EMAIL_LIMIT : undefined,
+    });
   };
-
-  const handlePauseResume = () => {
-    if (isPaused) {
-      resumeAiQueue();
-      dispatch({ type: "RESUME" });
-    } else {
-      pauseAiQueue();
-      dispatch({ type: "PAUSE" });
-    }
-  };
-
-  const handleStop = () => {
-    dispatch({ type: "STOP", completedCount: completed });
-    abortRef.current?.();
-  };
-
-  const progressMessage = getProgressMessage(state, remaining);
 
   return (
     <div>
@@ -186,35 +158,22 @@ export function BulkRunRules() {
               Run your rules on emails already in your inbox.
             </DialogDescription>
           </DialogHeader>
-          {progressMessage && (
-            <div className="rounded-md border border-queue-receipt/30 bg-queue-receipt/10 px-2 py-1.5">
-              <SectionDescription className="mt-0">
-                {progressMessage}
-              </SectionDescription>
-            </div>
-          )}
           <LoadingContent loading={isLoadingPremium}>
             <div className="flex min-w-0 flex-col space-y-4 overflow-hidden">
               <PremiumAlertWithData className="mr-auto" />
 
               <div className="grid grid-cols-2 gap-2">
                 <SetDateDropdown
-                  onChange={(date) => {
-                    setStartDate(date);
-                    dispatch({ type: "RESET" });
-                  }}
+                  onChange={setStartDate}
                   value={startDate}
                   placeholder="Set start date"
-                  disabled={isProcessing}
+                  disabled={isBusy}
                 />
                 <SetDateDropdown
-                  onChange={(date) => {
-                    setEndDate(date);
-                    dispatch({ type: "RESET" });
-                  }}
+                  onChange={setEndDate}
                   value={endDate}
                   placeholder="Set end date (optional)"
-                  disabled={isProcessing}
+                  disabled={isBusy}
                 />
               </div>
 
@@ -223,7 +182,7 @@ export function BulkRunRules() {
                   title="Include read emails"
                   checked={isIncludeReadEnabled}
                   onCheckedChange={setIncludeRead}
-                  disabled={isProcessing}
+                  disabled={isBusy}
                   onUpgrade={isBusinessPlusTier ? undefined : openPremiumModal}
                 />
                 <ItemSeparator />
@@ -231,7 +190,7 @@ export function BulkRunRules() {
                   title="Rerun rules on already processed emails"
                   checked={isRerunEnabled}
                   onCheckedChange={setRerun}
-                  disabled={isProcessing}
+                  disabled={isBusy}
                   onUpgrade={hasRerunAccess ? undefined : openPremiumModal}
                 />
                 <ItemSeparator />
@@ -257,65 +216,34 @@ export function BulkRunRules() {
                 </div>
               )}
 
-              {(state.status !== "idle" ||
-                state.processedThreadIds.size > 0) && (
-                <BulkProcessActivityLog
-                  threads={Array.from(state.fetchedThreads.values())}
-                  processedThreadIds={state.processedThreadIds}
-                  aiQueue={queue}
-                  paused={isPaused}
-                  loading={
-                    state.status === "processing" &&
-                    state.processedThreadIds.size === 0
-                  }
-                />
-              )}
+              {job && <BulkRunJobPanel job={job} />}
 
-              {(state.status === "idle" || state.status === "stopped") &&
-                !isProcessing && (
-                  <Button
-                    type="button"
-                    disabled={
-                      !startDate ||
-                      !emailAccountId ||
-                      !hasAiAccess ||
-                      trialAiLimitMessage !== null
-                    }
-                    onClick={handleStart}
-                  >
-                    Process Emails
-                  </Button>
-                )}
-              {isBusy && (
+              {!isBusy && (
+                <Button
+                  type="button"
+                  disabled={
+                    !startDate ||
+                    !emailAccountId ||
+                    !hasAiAccess ||
+                    trialAiLimitMessage !== null ||
+                    isStarting
+                  }
+                  onClick={handleStart}
+                >
+                  Process Emails
+                </Button>
+              )}
+              {isBusy && job && (
                 <div className="flex justify-end gap-2">
-                  <Button size="sm" onClick={handlePauseResume}>
-                    {isPaused ? (
-                      <>
-                        <PlayIcon className="mr-1.5 h-3.5 w-3.5" />
-                        Resume
-                      </>
-                    ) : (
-                      <>
-                        <PauseIcon className="mr-1.5 h-3.5 w-3.5" />
-                        Pause
-                      </>
-                    )}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleStop}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={job.cancelRequested || isCancelling}
+                    onClick={() => cancelJob({ jobId: job.id })}
+                  >
                     <SquareIcon className="mr-1.5 h-3.5 w-3.5" />
                     Stop
                   </Button>
-                </div>
-              )}
-
-              {state.runResult && state.runResult.count === 0 && (
-                <div className="mt-4 rounded-md border border-queue-waiting/30 bg-queue-waiting/10 px-3 py-2 text-sm text-queue-waiting">
-                  No{" "}
-                  {describeTargetedEmails({
-                    includeRead: isIncludeReadEnabled,
-                    rerun: isRerunEnabled,
-                  })}{" "}
-                  found in your inbox in the selected date range.
                 </div>
               )}
             </div>
@@ -323,6 +251,64 @@ export function BulkRunRules() {
           <PremiumModal />
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+type BulkRunJob = NonNullable<
+  ReturnType<typeof useBackgroundJobs>["data"]
+>["jobs"][number];
+
+function BulkRunJobPanel({ job }: { job: BulkRunJob }) {
+  const result = bulkRulesResultSchema.safeParse(job.result ?? {});
+  const payload = bulkRulesPayloadSchema.safeParse(job.payload);
+  const isActive = isActiveBackgroundJob(job);
+  const percent =
+    job.progressTotal && job.progressTotal > 0
+      ? Math.min(100, (job.progressDone / job.progressTotal) * 100)
+      : 0;
+  const entries = result.success
+    ? result.data.recent.map((entry) => ({
+        id: entry.messageId || entry.threadId,
+        from: entry.from || "Unknown",
+        subject: entry.subject || "(No subject)",
+        status: "completed" as const,
+        ruleName: entry.ruleName ?? undefined,
+        failed: entry.failed,
+      }))
+    : [];
+  const failedCount = result.success ? result.data.failed : 0;
+
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        {isActive && (
+          <Progress
+            value={percent}
+            className="h-1.5"
+            innerClassName="bg-brand"
+          />
+        )}
+        <div className="text-sm text-muted-foreground">
+          {getBackgroundJobStatusText(job)}
+          {failedCount > 0 ? `, ${failedCount} failed` : ""}
+        </div>
+      </div>
+
+      <ActivityLog entries={entries} />
+
+      {job.status === "SUCCEEDED" &&
+        job.progressDone === 0 &&
+        payload.success && (
+          <div className="rounded-md border border-queue-waiting/30 bg-queue-waiting/10 px-3 py-2 text-sm text-queue-waiting">
+            No{" "}
+            {describeTargetedEmails({
+              includeRead: payload.data.includeRead,
+              rerun: payload.data.rerun,
+            })}{" "}
+            found in your inbox in the selected date range.
+          </div>
+        )}
     </div>
   );
 }

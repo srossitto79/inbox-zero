@@ -7,6 +7,7 @@ import { PenIcon, SettingsIcon } from "lucide-react";
 import { ProfileImage } from "@/components/ProfileImage";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { NavUser } from "@/components/NavUser";
+import { BackgroundJobsStatus } from "@/components/shell/BackgroundJobsStatus";
 import { LlmApiStatus } from "@/components/shell/LlmApiStatus";
 import {
   getActiveSection,
@@ -116,6 +117,7 @@ export function NewSideNav({ name }: { name: string }) {
               <SectionPanel items={section.items} />
             )}
             <div className="flex-1" />
+            <BackgroundJobsStatus />
             <LlmApiStatus />
           </div>
         ) : null}

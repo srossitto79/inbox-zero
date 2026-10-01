@@ -2,8 +2,14 @@
 import * as Sentry from "@sentry/nextjs";
 import { beforeSend, beforeSendTransaction } from "@/utils/sentry-scrub";
 
-export function register() {
+export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Imported here so the database client never enters the edge bundle.
+    const { startBackgroundJobWorker } = await import(
+      "@/utils/background-jobs/worker"
+    );
+    startBackgroundJobWorker();
+
     // this is your Sentry.init call from `sentry.server.config.js|ts`
     Sentry.init({
       dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
