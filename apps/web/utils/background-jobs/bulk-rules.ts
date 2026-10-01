@@ -227,6 +227,8 @@ type ThreadRead =
   | { type: "paused"; pauseMs: number }
   | { type: "cancelled" };
 
+type ThreadOutcome = Exclude<ThreadRead, { type: "message" }>;
+
 async function readThread({
   thread,
   provider,
@@ -279,7 +281,7 @@ async function runThreadRules({
   emailAccount: EmailAccountForRuleExecution;
   payload: BulkRulesPayload;
   logger: JobHandlerContext["logger"];
-}): Promise<ThreadRead> {
+}): Promise<ThreadOutcome> {
   const { entry, thread, message } = read;
   try {
     const results = await runRules({
@@ -316,7 +318,7 @@ function toFailedRead({
   thread: LoadedThreads["threads"][number];
   emailAccount: EmailAccountForRuleExecution;
   logger: JobHandlerContext["logger"];
-}): ThreadRead {
+}): ThreadOutcome {
   if (error instanceof CancelledWhileWaitingError) return { type: "cancelled" };
 
   const pauseMs = getPauseMs(error, emailAccount.account.provider);
