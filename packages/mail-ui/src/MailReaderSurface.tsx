@@ -31,6 +31,8 @@ export type MailReaderToolbarProps = {
   menu?: ReactNode;
   /** Extra controls shown between the read-state button and `menu`. */
   extraActions?: ReactNode;
+  /** Position within the list the thread was opened from, before Archive. */
+  navigation?: ReactNode;
   messageExpansion?: {
     allExpanded: boolean;
     canExpand: boolean;
@@ -56,6 +58,7 @@ export function MailReaderToolbar({
   onMarkUnread,
   menu,
   extraActions,
+  navigation,
   messageExpansion,
   icons,
   renderButton = defaultToolbarButton,
@@ -120,6 +123,7 @@ export function MailReaderToolbar({
               onClick: messageExpansion.onToggleAll,
             })
           : null}
+        {navigation}
         {actionButton(
           onMoveToInbox
             ? {
@@ -170,7 +174,6 @@ export type MailReaderSurfaceProps = {
 };
 
 export function MailReaderSurface({
-  layout,
   detailSelectionSettled,
   children,
   containerRef,
@@ -189,7 +192,7 @@ export function MailReaderSurface({
         data-detail-selection-settled={detailSelectionSettled}
         data-testid="thread-reader"
       >
-        <div className={readerMeasure({ layout })}>
+        <div className="px-2 pt-4 pb-5 sm:px-6 sm:pt-5">
           {localAvailability?.hasMore
             ? renderLoadMoreButton({
                 disabled: localAvailability.loadingMore,
@@ -260,9 +263,4 @@ function defaultToolbarButton(button: MailReaderToolbarButton) {
       {button.icon ?? button.label ?? button.ariaLabel}
     </button>
   );
-}
-
-function readerMeasure({ layout }: { layout: "list" | "split" }) {
-  if (layout === "split") return "px-2 pt-4 pb-5 sm:px-6 sm:pt-5";
-  return "mx-auto w-full max-w-[48rem] px-2 pt-4 pb-5 sm:px-6 sm:pt-5";
 }

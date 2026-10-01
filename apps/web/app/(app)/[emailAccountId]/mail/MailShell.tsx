@@ -800,6 +800,19 @@ export function MailShell() {
     ],
   );
 
+  const readerPosition = useMemo(
+    () =>
+      threads.length > 1
+        ? {
+            current: clampedIndex + 1,
+            total: threads.length,
+            onPrevious: () => move(-1),
+            onNext: () => move(1),
+          }
+        : undefined,
+    [clampedIndex, threads.length, move],
+  );
+
   const swipeNavigation = useStableCallback(
     (event: React.TouchEvent<HTMLDivElement>) => {
       const start = readerTouchStartRef.current;
@@ -1588,6 +1601,7 @@ export function MailShell() {
                 onMenuOpenChange={setIsMenuOpen}
                 enableMessageNavigation={!sidePanelThreadId}
                 thread={openThread ?? null}
+                position={readerPosition}
                 threadId={openThreadId}
                 detailSelectionSettled={readerSelectionSettled}
                 loading={

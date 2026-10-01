@@ -9,7 +9,10 @@ import {
 import dynamic from "next/dynamic";
 import { AlertCircleIcon, Loader2Icon, MailIcon } from "lucide-react";
 import { printMessages } from "@/utils/email/print-messages";
-import { ReaderToolbar } from "@/app/(app)/[emailAccountId]/mail/ReaderToolbar";
+import {
+  ReaderToolbar,
+  type ReaderPosition,
+} from "@/app/(app)/[emailAccountId]/mail/ReaderToolbar";
 import { MailReaderSurface } from "@inboxzero/mail-ui/MailReaderSurface";
 import { isThreadStarred } from "@/app/(app)/[emailAccountId]/mail/star-state";
 import type {
@@ -91,6 +94,7 @@ export type ThreadReaderProps = {
   autoOpenForwardForMessageId?: string;
   /** The ⋯ dropdown, i.e. `ThreadActionsMenu`, composed by the shell. */
   menu?: ReactNode;
+  position?: ReaderPosition;
   renderMessageMenu?: (message: ThreadMessage) => ReactNode;
 };
 
@@ -119,6 +123,7 @@ export function ThreadReader({
   autoOpenReplyForMessageId,
   autoOpenForwardForMessageId,
   menu,
+  position,
   renderMessageMenu,
 }: ThreadReaderProps) {
   const [senderContext, setSenderContext] = useState<{
@@ -181,6 +186,7 @@ export function ThreadReader({
       labelHref={labelHref}
       labels={labels}
       menu={menu}
+      position={position}
       onArchive={onArchive}
       onMoveToInbox={onMoveToInbox}
       onMarkRead={onMarkRead}

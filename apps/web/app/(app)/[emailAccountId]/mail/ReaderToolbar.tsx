@@ -5,6 +5,8 @@ import {
   ArchiveIcon,
   ArchiveRestoreIcon,
   ArrowLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ChevronsDownUpIcon,
   ChevronsUpDownIcon,
   MailIcon,
@@ -52,6 +54,16 @@ type ReaderToolbarProps = {
     canExpand: boolean;
     onToggleAll: () => void;
   };
+  /** Place of the open thread in the list it came from. */
+  position?: ReaderPosition;
+};
+
+export type ReaderPosition = {
+  /** One-based. */
+  current: number;
+  total: number;
+  onPrevious: () => void;
+  onNext: () => void;
 };
 
 /**
@@ -75,6 +87,7 @@ export function ReaderToolbar({
   onPrintThread,
   menu,
   messageExpansion,
+  position,
 }: ReaderToolbarProps) {
   const isNext = useUiVariant() === "next";
   return (
@@ -111,6 +124,7 @@ export function ReaderToolbar({
         </>
       }
       menu={menu}
+      navigation={position ? <ReaderPositionNav position={position} /> : null}
       messageExpansion={messageExpansion}
       onArchive={onArchive}
       onMoveToInbox={onMoveToInbox}
@@ -121,6 +135,38 @@ export function ReaderToolbar({
       renderButton={renderButton}
       subject={subject}
     />
+  );
+}
+
+function ReaderPositionNav({ position }: { position: ReaderPosition }) {
+  return (
+    <div className="flex items-center gap-1">
+      <span className="whitespace-nowrap text-muted-foreground text-sm tabular-nums">
+        {position.current} of {position.total}
+      </span>
+      <Tooltip shortcuts={["previousThread"]}>
+        <Button
+          aria-label="Previous conversation"
+          disabled={position.current <= 1}
+          onClick={position.onPrevious}
+          size="iconXs"
+          variant="ghost"
+        >
+          <ChevronLeftIcon className="size-3.5" />
+        </Button>
+      </Tooltip>
+      <Tooltip shortcuts={["nextThread"]}>
+        <Button
+          aria-label="Next conversation"
+          disabled={position.current >= position.total}
+          onClick={position.onNext}
+          size="iconXs"
+          variant="ghost"
+        >
+          <ChevronRightIcon className="size-3.5" />
+        </Button>
+      </Tooltip>
+    </div>
   );
 }
 
