@@ -11,30 +11,37 @@ import {
 const ROME = "Europe/Rome";
 
 describe("getVisibleDateKeys", () => {
-  it("starts a Monday week on Monday and a Sunday week on Sunday", () => {
+  it("starts a week on the configured day", () => {
     // 2026-10-01 is a Thursday.
     expect(
       getVisibleDateKeys({
         view: "week",
         anchorKey: "2026-10-01",
-        weekStartsOn: 1,
+        weekStart: "monday",
       })[0],
     ).toBe("2026-09-28");
     expect(
       getVisibleDateKeys({
         view: "week",
         anchorKey: "2026-10-01",
-        weekStartsOn: 0,
+        weekStart: "sunday",
       })[0],
     ).toBe("2026-09-27");
+    expect(
+      getVisibleDateKeys({
+        view: "week",
+        anchorKey: "2026-10-01",
+        weekStart: "saturday",
+      })[0],
+    ).toBe("2026-09-26");
   });
 
-  it("sizes the month grid to the weeks the month needs", () => {
+  it("sizes the month grid to whole weeks the month needs", () => {
     // February 2026 starts on a Sunday: four Monday-based weeks plus the first day.
     const february = getVisibleDateKeys({
       view: "month",
       anchorKey: "2026-02-10",
-      weekStartsOn: 1,
+      weekStart: "monday",
     });
     expect(february).toHaveLength(35);
     expect(february[0]).toBe("2026-01-26");
@@ -43,10 +50,20 @@ describe("getVisibleDateKeys", () => {
     const august = getVisibleDateKeys({
       view: "month",
       anchorKey: "2026-08-15",
-      weekStartsOn: 1,
+      weekStart: "monday",
     });
     expect(august).toHaveLength(42);
     expect(august[0]).toBe("2026-07-27");
+
+    // A Saturday month opens one day earlier under a Sunday start, and still
+    // needs six whole weeks.
+    const augustSunday = getVisibleDateKeys({
+      view: "month",
+      anchorKey: "2026-08-15",
+      weekStart: "sunday",
+    });
+    expect(augustSunday[0]).toBe("2026-07-26");
+    expect(augustSunday).toHaveLength(42);
   });
 
   it("returns a single day for the day view", () => {
@@ -54,7 +71,7 @@ describe("getVisibleDateKeys", () => {
       getVisibleDateKeys({
         view: "day",
         anchorKey: "2026-10-01",
-        weekStartsOn: 1,
+        weekStart: "monday",
       }),
     ).toEqual(["2026-10-01"]);
   });
@@ -86,7 +103,7 @@ describe("getRangeInstants", () => {
     const keys = getVisibleDateKeys({
       view: "week",
       anchorKey: "2026-03-26",
-      weekStartsOn: 1,
+      weekStart: "monday",
     });
     const { from, to } = getRangeInstants(keys, ROME);
 
