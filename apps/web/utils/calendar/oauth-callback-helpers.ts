@@ -198,6 +198,7 @@ export async function createCalendarConnection(params: {
   accessToken: string;
   refreshToken: string;
   expiresAt: Date | null;
+  scope?: string;
 }) {
   return await prisma.calendarConnection.create({
     data: {
@@ -207,6 +208,30 @@ export async function createCalendarConnection(params: {
       accessToken: params.accessToken,
       refreshToken: params.refreshToken,
       expiresAt: params.expiresAt,
+      scope: params.scope,
+      isConnected: true,
+    },
+  });
+}
+
+/**
+ * Re-consenting an existing connection replaces its tokens and granted scopes
+ * in place, which keeps its calendars and their synced events.
+ */
+export async function updateCalendarConnectionTokens(params: {
+  connectionId: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date | null;
+  scope?: string;
+}) {
+  return await prisma.calendarConnection.update({
+    where: { id: params.connectionId },
+    data: {
+      accessToken: params.accessToken,
+      refreshToken: params.refreshToken,
+      expiresAt: params.expiresAt,
+      scope: params.scope,
       isConnected: true,
     },
   });

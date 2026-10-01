@@ -57,6 +57,7 @@ export function createMicrosoftCalendarProvider(
           ? new Date(Date.now() + tokens.expires_in * 1000)
           : null,
         email: microsoftEmail,
+        scope: typeof tokens.scope === "string" ? tokens.scope : undefined,
       };
     },
 
@@ -96,6 +97,8 @@ export function createMicrosoftCalendarProvider(
               description: microsoftCalendar.description,
               timezone: null,
               primary: microsoftCalendar.isDefaultCalendar ?? false,
+              color: microsoftCalendar.hexColor || null,
+              canEdit: microsoftCalendar.canEdit ?? false,
             },
             create: {
               connectionId,
@@ -104,6 +107,8 @@ export function createMicrosoftCalendarProvider(
               description: microsoftCalendar.description,
               timezone: null,
               primary: microsoftCalendar.isDefaultCalendar ?? false,
+              color: microsoftCalendar.hexColor || null,
+              canEdit: microsoftCalendar.canEdit ?? false,
               isEnabled: true,
             },
           });

@@ -180,6 +180,7 @@
 
         "CRON_SECRET",
         "GMAIL_POLLING_ENABLED",
+        "CALENDAR_SYNC_ENABLED",
         "MAIL_UPLOAD_DIR",
         "MAIL_STORE_DIR",
         "BLOG_SYNC_WEBHOOK_SECRET",

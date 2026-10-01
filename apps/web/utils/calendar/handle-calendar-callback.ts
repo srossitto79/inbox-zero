@@ -6,6 +6,7 @@ import {
   validateOAuthCallback,
   checkExistingConnection,
   createCalendarConnection,
+  updateCalendarConnectionTokens,
 } from "./oauth-callback-helpers";
 import {
   RedirectError,
@@ -20,6 +21,7 @@ import {
   clearOAuthCode,
 } from "@/utils/redis/oauth-code";
 import { CALENDAR_STATE_COOKIE_NAME } from "./constants";
+import prisma from "@/utils/prisma";
 
 /**
  * Unified handler for calendar OAuth callbacks
@@ -80,7 +82,7 @@ export async function handleCalendarCallback(
     );
 
     // Step 5: Exchange code for tokens and get email
-    const { accessToken, refreshToken, expiresAt, email } =
+    const { accessToken, refreshToken, expiresAt, email, scope } =
       await provider.exchangeCodeForTokens(code);
 
     // Step 6: Check if connection already exists
@@ -91,16 +93,36 @@ export async function handleCalendarCallback(
     );
 
     if (existingConnection) {
-      logger.info("Calendar connection already exists", {
+      logger.info("Reconnecting existing calendar connection", {
         emailAccountId,
         email,
         provider: provider.name,
       });
-      // Cache the result for duplicate requests
-      await setOAuthCodeResult(code, { message: "calendar_already_connected" });
+      await updateCalendarConnectionTokens({
+        connectionId: existingConnection.id,
+        accessToken,
+        refreshToken,
+        expiresAt,
+        scope,
+      });
+      await provider.syncCalendars(
+        existingConnection.id,
+        accessToken,
+        refreshToken,
+        emailAccountId,
+        expiresAt,
+      );
+      await prisma.calendar.updateMany({
+        where: {
+          connectionId: existingConnection.id,
+          syncStatus: "NEEDS_RECONNECT",
+        },
+        data: { syncStatus: "IDLE", syncError: null },
+      });
+      await setOAuthCodeResult(code, { message: "calendar_connected" });
       return redirectWithMessage(
         finalRedirectUrl,
-        "calendar_already_connected",
+        "calendar_connected",
         redirectHeaders,
       );
     }
@@ -113,6 +135,7 @@ export async function handleCalendarCallback(
       accessToken,
       refreshToken,
       expiresAt,
+      scope,
     });
 
     // Step 8: Sync calendars
