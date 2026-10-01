@@ -1,4 +1,3 @@
-import { getMissingCalendarScopes } from "@/utils/calendar/connection-scopes";
 import { env } from "@/env";
 import type { Logger } from "@/utils/logger";
 import {
@@ -81,27 +80,12 @@ export const getCalendarClientWithRefresh = async ({
       throw new Error("Microsoft login not enabled - missing credentials");
     }
 
-    const calendarConnection = await prisma.calendarConnection.findFirst({
-      where: connectionId
-        ? { id: connectionId, emailAccountId, provider: "microsoft" }
-        : { emailAccountId, provider: "microsoft" },
-      select: { id: true, scope: true },
-    });
-    const hasCurrentConsent =
-      calendarConnection !== null &&
-      getMissingCalendarScopes({
-        provider: "microsoft",
-        grantedScope: calendarConnection.scope,
-      }).length === 0;
-
     const response = await requestMicrosoftToken({
       client_id: env.MICROSOFT_CLIENT_ID,
       client_secret: env.MICROSOFT_CLIENT_SECRET,
       refresh_token: refreshToken,
       grant_type: "refresh_token",
-      scope: (hasCurrentConsent ? CALENDAR_SCOPES : CALENDAR_BASE_SCOPES).join(
-        " ",
-      ),
+      scope: CALENDAR_BASE_SCOPES.join(" "),
     });
 
     const tokens = await response.json();
@@ -117,7 +101,14 @@ export const getCalendarClientWithRefresh = async ({
       throw new Error("Token response missing expires_in field");
     }
 
-    // Save against the exact connection when the integration supplied it.
+    // Find the calendar connection to update
+    const calendarConnection = await prisma.calendarConnection.findFirst({
+      where: connectionId
+        ? { id: connectionId, emailAccountId, provider: "microsoft" }
+        : { emailAccountId, provider: "microsoft" },
+      select: { id: true },
+    });
+
     if (calendarConnection) {
       await saveCalendarTokens({
         tokens: {
