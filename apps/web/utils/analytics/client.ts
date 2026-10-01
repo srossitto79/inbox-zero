@@ -1,11 +1,13 @@
 import { getInboxZeroDesktopApp } from "@/utils/desktop-app";
 import { hasDesktopMailEngineIpc } from "@/utils/mail-engine/desktop-ipc";
 import { selectMailEngineRuntimeMode } from "@/utils/mail-engine/runtime-mode";
+import { isServerMailStore } from "@/utils/mail-engine/mail-store-mode";
 import { browserMailEngineCapabilities } from "@/utils/mail-engine/worker-protocol";
 
 export function getClientAnalyticsProperties() {
   const mailEngineTransport = selectMailEngineRuntimeMode({
     desktopIpc: hasDesktopMailEngineIpc(),
+    server: isServerMailStore(),
     opfs: browserMailEngineCapabilities().opfs,
   });
 

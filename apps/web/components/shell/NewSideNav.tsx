@@ -22,7 +22,9 @@ import {
   useMeetingBriefsEnabled,
   useMeetingRecorderEnabled,
 } from "@/hooks/useFeatureFlags";
+import { useLabelCounts } from "@/hooks/useLabelCounts";
 import { useLabels } from "@/hooks/useLabels";
+import type { MailboxLabelCount } from "@/utils/mail-engine/label-count-targets";
 import { useAccount } from "@/providers/EmailAccountProvider";
 import { useComposeModal } from "@/providers/ComposeModalProvider";
 import { cn } from "@/utils";
@@ -176,6 +178,11 @@ function MailPanel() {
   const searchParams = useSearchParams();
   const pathname = usePathname() ?? "";
   const { userLabels } = useLabels();
+  const { countsById } = useLabelCounts({
+    emailAccountId,
+    labels: userLabels,
+    folders: NO_FOLDERS,
+  });
   const activeType = searchParams.get("type") ?? "inbox";
   const activeLabelId = searchParams.get("labelId");
   const onMail = pathname.includes("/mail");
@@ -201,6 +208,7 @@ function MailPanel() {
             key={view.type}
             href={prefixPath(emailAccountId, `/mail?type=${view.type}`)}
             active={onMail && !activeLabelId && activeType === view.type}
+            count={displayCount(countsById.get(VIEW_COUNT_IDS[view.type]))}
           >
             {view.name}
           </PanelLink>
@@ -217,6 +225,7 @@ function MailPanel() {
                 `/mail?type=label&labelId=${encodeURIComponent(queue.label?.id ?? "")}`,
               )}
               active={onMail && activeLabelId === queue.label?.id}
+              count={displayCount(countsById.get(queue.label?.id ?? ""))}
               dot={`hsl(var(--queue-${queue.id}))`}
             >
               {queue.name}
@@ -240,11 +249,13 @@ function PanelLink({
   href,
   active,
   dot,
+  count,
   children,
 }: {
   href: string;
   active: boolean;
   dot?: string;
+  count?: number | null;
   children: React.ReactNode;
 }) {
   return (
@@ -264,7 +275,27 @@ function PanelLink({
           style={{ backgroundColor: dot }}
         />
       ) : null}
-      <span className="truncate">{children}</span>
+      <span className="flex-1 truncate">{children}</span>
+      {count ? (
+        <span className="shrink-0 text-muted-foreground text-xs tabular-nums">
+          {count}
+        </span>
+      ) : null}
     </Link>
   );
+}
+
+// Outlook folder counts are not shown in this panel.
+const NO_FOLDERS: never[] = [];
+
+/** Only the views whose count means something: unread mail, or drafts held. */
+const VIEW_COUNT_IDS: Record<string, string> = {
+  inbox: "INBOX",
+  draft: "DRAFT",
+};
+
+function displayCount(count: MailboxLabelCount | undefined): number | null {
+  if (!count) return null;
+  const value = count.id === "DRAFT" ? count.total : count.unread;
+  return value > 0 ? value : null;
 }

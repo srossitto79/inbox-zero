@@ -218,6 +218,10 @@ export class OutlookProvider implements EmailProvider {
     }));
   }
 
+  async getMailboxThreadTotal(): Promise<number | null> {
+    return null;
+  }
+
   async getLabelById(labelId: string): Promise<EmailLabel | null> {
     const labels = await this.getLabels();
     return labels.find((label) => label.id === labelId) || null;

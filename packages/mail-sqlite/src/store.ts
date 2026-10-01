@@ -24,6 +24,7 @@ import type {
 import { blobIdSchema } from "@inboxzero/mail-core/identities";
 import {
   messageAttachmentDescriptorSchema,
+  messageHeadersSchema,
   type MessageAttachmentDescriptor,
   type MessageMetadata,
 } from "@inboxzero/mail-core/messages";
@@ -1410,10 +1411,24 @@ export async function createSqliteMailStore(
           "SELECT connection FROM accounts WHERE account_id = ?",
           [accountId],
         );
+        const [scan] = await tx.query(
+          "SELECT next_attempt_at_ms, error_code FROM bootstrap_scans WHERE account_id = ? ORDER BY next_attempt_at_ms DESC LIMIT 1",
+          [accountId],
+        );
         return {
           accountId,
           revision,
           connection: connectionStatus(account[0]?.connection),
+          backfill: scan
+            ? {
+                nextAttemptAtMs:
+                  scan.next_attempt_at_ms == null
+                    ? null
+                    : Number(scan.next_attempt_at_ms),
+                pauseReason:
+                  scan.error_code == null ? null : String(scan.error_code),
+              }
+            : null,
           coverage: await readCoverage(tx, [accountId]),
           pendingOperations: Number(pending[0]?.n ?? 0),
           uncertainOperations: Number(uncertain[0]?.n ?? 0),
@@ -1821,6 +1836,40 @@ export async function createSqliteMailStore(
         if (result.changedRows === 0) return { status: "stale" as const };
         const revision = await bumpRevision(tx);
         return { status: "committed" as const, revision };
+      });
+    },
+    async advanceBootstrapCatchUp(input) {
+      return driver.write(async (tx) => {
+        if (!(await accountGenerationMatches(tx, input.session))) {
+          return { status: "stale" as const };
+        }
+        const result = await tx.execute(
+          `UPDATE bootstrap_scans
+           SET catch_stream_id = ?,
+               catch_generation = ?,
+               catch_checkpoint = ?,
+               updated_at_ms = ?
+           WHERE account_id = ?
+             AND scope_id = ?
+             AND bootstrap_id = ?
+             AND catch_stream_id IS ?
+             AND catch_generation IS ?
+             AND catch_checkpoint IS ?`,
+          [
+            input.to.streamId,
+            input.to.generation,
+            input.to.checkpoint,
+            Date.now(),
+            input.session.accountId,
+            input.scopeId,
+            input.bootstrapId,
+            input.from.streamId,
+            input.from.generation,
+            input.from.checkpoint,
+          ],
+        );
+        if (result.changedRows === 0) return { status: "stale" as const };
+        return { status: "committed" as const };
       });
     },
     async enqueueHydration(input) {
@@ -2674,8 +2723,8 @@ async function upsertConfirmed(tx: SqlTransaction, message: ConfirmedMessage) {
     `INSERT INTO messages(
        account_id, message_id, conversation_id, provider, version, subject, preview, external_url,
        from_address, to_json, cc_json, received_at_ms, read, starred, folder_id, inbox_section, label_ids_json, category_ids_json,
-       roles_json, in_inbox, in_sent, in_draft, in_trash, in_spam, has_attachments, snoozed_until_ms, deleted
-     ) VALUES (?, ?, ?, COALESCE((SELECT provider FROM accounts WHERE account_id = ?), 'google'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       roles_json, in_inbox, in_sent, in_draft, in_trash, in_spam, has_attachments, snoozed_until_ms, headers_json, deleted
+     ) VALUES (?, ?, ?, COALESCE((SELECT provider FROM accounts WHERE account_id = ?), 'google'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(account_id, message_id) DO UPDATE SET
        conversation_id = excluded.conversation_id,
        version = excluded.version,
@@ -2700,6 +2749,7 @@ async function upsertConfirmed(tx: SqlTransaction, message: ConfirmedMessage) {
        in_spam = excluded.in_spam,
        has_attachments = excluded.has_attachments,
        snoozed_until_ms = excluded.snoozed_until_ms,
+       headers_json = excluded.headers_json,
        deleted = excluded.deleted`,
     [
       message.accountId,
@@ -2728,6 +2778,7 @@ async function upsertConfirmed(tx: SqlTransaction, message: ConfirmedMessage) {
       flags.spam,
       message.hasAttachments ? 1 : 0,
       message.snoozedUntilMs ?? null,
+      message.headers ? JSON.stringify(message.headers) : null,
       message.deleted ? 1 : 0,
     ],
   );
@@ -2987,7 +3038,7 @@ function parseJsonValue(value: import("./driver").SqlValue): unknown {
   }
 }
 
-function confirmedFromRow(
+export function confirmedFromRow(
   row: Record<string, import("./driver").SqlValue>,
 ): ConfirmedMessage {
   return {
@@ -3017,7 +3068,16 @@ function confirmedFromRow(
     hasAttachments: Number(row.has_attachments) === 1,
     snoozedUntilMs:
       row.snoozed_until_ms == null ? null : Number(row.snoozed_until_ms),
+    headers: parseStoredHeaders(row.headers_json),
   };
+}
+
+function parseStoredHeaders(
+  value: import("./driver").SqlValue | undefined,
+): MessageMetadata["headers"] {
+  if (value == null) return null;
+  const parsed = messageHeadersSchema.safeParse(parseJsonValue(value));
+  return parsed.success ? parsed.data : null;
 }
 
 function toOperationState(
@@ -3365,7 +3425,7 @@ function parseOperationPayload(value: import("./driver").SqlValue) {
   }
 }
 
-function parseStoredAttachments(
+export function parseStoredAttachments(
   value: import("./driver").SqlValue,
 ): MessageAttachmentDescriptor[] {
   if (value === null || value === undefined) return [];

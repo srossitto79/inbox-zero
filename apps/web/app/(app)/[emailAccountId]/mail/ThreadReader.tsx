@@ -8,6 +8,7 @@ import {
 } from "react";
 import dynamic from "next/dynamic";
 import { AlertCircleIcon, Loader2Icon, MailIcon } from "lucide-react";
+import { printMessages } from "@/utils/email/print-messages";
 import { ReaderToolbar } from "@/app/(app)/[emailAccountId]/mail/ReaderToolbar";
 import { MailReaderSurface } from "@inboxzero/mail-ui/MailReaderSurface";
 import { isThreadStarred } from "@/app/(app)/[emailAccountId]/mail/star-state";
@@ -163,6 +164,11 @@ export function ThreadReader({
       userLabels,
     }) ?? [];
 
+  const printable = messages;
+  const subject = headerMessage?.headers.subject ?? "Conversation";
+  const printLast = () => printMessages(printable.slice(-1), subject);
+  const printAll = () => printMessages(printable, subject);
+
   const renderToolbar = (
     messageExpansion?: ComponentProps<typeof ReaderToolbar>["messageExpansion"],
   ) => (
@@ -180,6 +186,8 @@ export function ThreadReader({
       onMarkRead={onMarkRead}
       onMarkUnread={onMarkUnread}
       onSnooze={onSnooze}
+      onPrintMessage={printable.length > 0 ? printLast : undefined}
+      onPrintThread={printable.length > 1 ? printAll : undefined}
       onBackToInbox={onBackToInbox}
       onRemoveLabel={onRemoveLabel}
       subject={headerMessage?.headers.subject ?? "Conversation"}

@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { isObservationRequest, parseMailIpcRequest } from "./ipc";
+import {
+  isObservationRequest,
+  parseMailIpcRequest,
+} from "@inboxzero/mail-core/protocol/mail-ipc-host";
 import type { DesktopMailOwner } from "./owner";
 import type {
   ChildHealth,

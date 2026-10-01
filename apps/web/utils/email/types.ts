@@ -221,6 +221,8 @@ export interface EmailProvider {
     folderId?: string;
     limit: number;
   }): Promise<MailboxSyncPage>;
+  /** Threads in the mailbox outside spam, trash and drafts; null when the provider cannot say. */
+  getMailboxThreadTotal(): Promise<number | null>;
   getMessage(
     messageId: string,
     options?: { includeCalendarContent?: boolean },

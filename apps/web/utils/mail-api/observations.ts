@@ -1,6 +1,7 @@
 import {
   MAX_RECIPIENTS,
   type MessageAttachmentDescriptor,
+  type MessageHeaders,
   type MessageMetadata,
 } from "@inboxzero/mail-core/messages";
 import type { Provider } from "@inboxzero/mail-core/identities";
@@ -58,7 +59,34 @@ export function parsedMessageMetadata(message: ParsedMessage): MessageMetadata {
     roles,
     hasAttachments:
       message.hasAttachment ?? Boolean(message.attachments?.length),
+    headers: parsedMessageHeaders(message),
   };
+}
+
+/**
+ * Each value is cut to the store's limit so one long header cannot fail a sync
+ * page. A message parsed without its Message-ID came from a partial fetch, so
+ * it leaves the stored headers as they are.
+ */
+function parsedMessageHeaders(
+  message: ParsedMessage,
+): MessageHeaders | undefined {
+  const { headers } = message;
+  if (!headers["message-id"]) return;
+  const entries: Array<[keyof MessageHeaders, string | undefined, number]> = [
+    ["messageId", headers["message-id"], 4096],
+    ["references", headers.references, 65_536],
+    ["inReplyTo", headers["in-reply-to"], 4096],
+    ["replyTo", headers["reply-to"], 4096],
+    ["bcc", headers.bcc, 65_536],
+    ["listUnsubscribe", headers["list-unsubscribe"], 16_384],
+    ["listUnsubscribePost", headers["list-unsubscribe-post"], 4096],
+  ];
+  const result: MessageHeaders = {};
+  for (const [key, value, limit] of entries) {
+    if (value) result[key] = value.slice(0, limit);
+  }
+  return result;
 }
 
 export function parsedMessagePatch(

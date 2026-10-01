@@ -8,8 +8,25 @@ import { ProviderRateLimitModeError } from "@/utils/email/rate-limit-mode-error"
 import { syncPageSchema } from "@inboxzero/mail-core/sync";
 import { createEmailProviderMailboxSource } from "./source";
 import type { EmailProvider } from "@/utils/email/types";
+import {
+  LocalMailSyncPausedError,
+  withLocalMailSyncBudget,
+} from "@/utils/email/local-mail-sync-budget";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/utils/email/local-mail-sync-budget", async (importOriginal) => {
+  const original =
+    await importOriginal<
+      typeof import("@/utils/email/local-mail-sync-budget")
+    >();
+  return {
+    ...original,
+    withLocalMailSyncBudget: vi.fn(
+      (_input: unknown, operation: (signal: AbortSignal) => unknown) =>
+        operation(new AbortController().signal),
+    ),
+  };
+});
 
 describe("createEmailProviderMailboxSource", () => {
   it("continues provider search after the first page", async () => {
@@ -356,15 +373,10 @@ describe("createEmailProviderMailboxSource", () => {
       page: bootstrap.value.enumerationToken,
       pageSize: 25,
     });
+    // The engine keeps the folder cursor from beginBootstrap on its scan.
     expect(result).toMatchObject({
       status: "ok",
-      value: {
-        scopeId: "archive",
-        catchUpFrom: {
-          streamId: "archive",
-          checkpoint: "folder-cursor",
-        },
-      },
+      value: { scopeId: "archive", catchUpFrom: null },
     });
     expect(getMessagesWithPagination).toHaveBeenCalledWith({
       maxResults: 20,
@@ -437,16 +449,11 @@ describe("createEmailProviderMailboxSource", () => {
       pageSize: 25,
     });
 
+    // Null keeps the engine's copy, which may have moved past changes it
+    // applied while the download ran.
     expect(finalPage).toMatchObject({
       status: "ok",
-      value: {
-        nextPage: null,
-        catchUpFrom: {
-          streamId: "archive",
-          generation: "g1",
-          checkpoint: "before-enumeration-cursor",
-        },
-      },
+      value: { nextPage: null, catchUpFrom: null },
     });
     expect(getMailboxSyncPage).toHaveBeenCalledTimes(1);
   });
@@ -559,6 +566,69 @@ describe("createEmailProviderMailboxSource", () => {
         },
       },
     });
+  });
+
+  it("pauses Gmail enumeration for as long as the sync budget asks", async () => {
+    vi.mocked(withLocalMailSyncBudget).mockRejectedValueOnce(
+      new LocalMailSyncPausedError(42_000),
+    );
+    const getMessagesWithPagination = vi.fn();
+    const source = createEmailProviderMailboxSource({
+      accountId: "acc-1",
+      provider: {
+        name: "google",
+        getMessagesWithPagination,
+      } as unknown as EmailProvider,
+    });
+    const result = await source.enumerate({
+      session: { accountId: "acc-1", generation: "g1" },
+      requestId: "r1",
+      signal: new AbortController().signal,
+      bootstrapId: "mailbox",
+      page: "{}",
+      pageSize: 50,
+    });
+    expect(result).toEqual({
+      status: "paused",
+      retryAfterMs: 42_000,
+      reason: "throttled",
+    });
+    expect(getMessagesWithPagination).not.toHaveBeenCalled();
+    expect(withLocalMailSyncBudget).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        emailAccountId: "acc-1",
+        provider: "google",
+        priority: "backfill",
+      }),
+      expect.any(Function),
+    );
+  });
+
+  it("waits out a Gmail quota error instead of retrying within seconds", async () => {
+    const quotaError = Object.assign(new Error("Quota exceeded"), {
+      status: 403,
+      errors: [{ reason: "rateLimitExceeded", message: "Quota exceeded" }],
+    });
+    const source = createEmailProviderMailboxSource({
+      accountId: "acc-1",
+      provider: {
+        name: "google",
+        async getMessage() {
+          throw quotaError;
+        },
+      } as unknown as EmailProvider,
+    });
+    const result = await source.hydrate({
+      session: { accountId: "acc-1", generation: "g1" },
+      requestId: "r1",
+      signal: new AbortController().signal,
+      keys: [{ accountId: "acc-1", messageId: "m1" }],
+      purpose: "body",
+    });
+    expect(result).toMatchObject({ status: "paused", reason: "throttled" });
+    expect(
+      result.status === "paused" ? result.retryAfterMs : 0,
+    ).toBeGreaterThanOrEqual(30_000);
   });
 
   it("enumerates mailbox pages including drafts", async () => {

@@ -40,6 +40,7 @@
     "./protocol/routed-backend-adapter": "./src/protocol/routed-backend-adapter.ts",
     "./protocol/mail-ipc": "./src/protocol/mail-ipc.ts",
     "./protocol/mail-ipc-client": "./src/protocol/mail-ipc-client.ts",
+    "./protocol/mail-ipc-host": "./src/protocol/mail-ipc-host.ts",
     "./test-support/reference-model": "./test-support/reference-model.ts",
     "./test-support/scenarios": "./test-support/scenarios.ts"
   },

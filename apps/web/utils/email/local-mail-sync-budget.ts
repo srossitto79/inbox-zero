@@ -6,12 +6,16 @@ import {
   isEmailProviderRateLimitRedisConfigured,
 } from "@/utils/redis/email-provider-rate-limit";
 
-// Conservative local-mail envelopes reserve most provider capacity for existing
-// automation and interactive operations. They are not total application quotas.
+// Local-mail envelopes reserve provider capacity for existing automation and
+// interactive operations. They are not total application quotas.
+// Google: a message costs 20 envelope units for 5 real Gmail units, so 24,000
+// per account per minute is at most 6,000 of the 15,000 Gmail units each user
+// gets per minute, and backfill alone half of that. One page of 50 messages
+// fits in a single reservation.
 // https://developers.google.com/workspace/gmail/api/reference/quota
 // https://learn.microsoft.com/en-us/graph/throttling-limits#outlook-service-limits
 const policies = {
-  google: { account: 1200, app: 120_000, maximumCost: 500 },
+  google: { account: 24_000, app: 240_000, maximumCost: 1100 },
   microsoft: { account: 60, app: 600, maximumCost: 1 },
 };
 export const gmailMailSyncCosts = {

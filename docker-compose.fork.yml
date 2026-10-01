@@ -10,6 +10,11 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.prod
+    # Server mailbox files when NEXT_PUBLIC_MAIL_STORE=server.
+    environment:
+      MAIL_STORE_DIR: /data/mail
+    volumes:
+      - mail-store-data:/data/mail
 
   gmail-poller:
     image: alpine:latest
@@ -29,3 +34,6 @@ services:
     networks:
       - inbox-zero-network
     restart: always
+
+volumes:
+  mail-store-data:

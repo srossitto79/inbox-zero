@@ -1,9 +1,11 @@
-import {
-  mailIpcRequestSchema,
-  type MailIpcRequest,
-} from "@inboxzero/mail-core/protocol/mail-ipc";
-import type { MailEngine } from "@inboxzero/mail-core/engine";
-import type { QueryHandle } from "@inboxzero/mail-core/queries";
+import type { MailEngine } from "../engine";
+import type { QueryHandle } from "../queries";
+import { mailIpcRequestSchema, type MailIpcRequest } from "./mail-ipc";
+
+/**
+ * Serves `createMailIpcClient` requests against an engine the host owns.
+ * Desktop answers them over Electron IPC, the web server over HTTP.
+ */
 
 export function parseMailIpcRequest(payload: unknown) {
   return mailIpcRequestSchema.safeParse(payload);
@@ -177,5 +179,10 @@ async function waitForLoadedSnapshot<T>(handle: QueryHandle<T>) {
 }
 
 function base64ToBytes(value: string) {
-  return new Uint8Array(Buffer.from(value, "base64"));
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
 }
