@@ -62,6 +62,14 @@ export type MailDiagnostics = {
   uncertainOperations: number;
   pendingJobs: number;
   oldestPendingAtMs: number | null;
+  /**
+   * The first download of the mailbox while it is still running, with when it
+   * tries again and why it waits. Absent from engines older than this field.
+   */
+  backfill?: {
+    nextAttemptAtMs: number | null;
+    pauseReason: string | null;
+  } | null;
   commands: Array<{
     operationId: string;
     status: OperationState["status"];

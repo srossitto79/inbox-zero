@@ -338,6 +338,10 @@ export interface MailStore {
     uncertainOperations: number;
     pendingJobs: number;
     oldestPendingAtMs: number | null;
+    backfill?: {
+      nextAttemptAtMs: number | null;
+      pauseReason: string | null;
+    } | null;
     commands: Array<{
       operationId: string;
       status: OperationState["status"];

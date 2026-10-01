@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import useSWR from "swr";
+import type { MailDiagnostics } from "@inboxzero/mail-core/engine";
 import { useOptionalMailClient } from "@inboxzero/mail-react/MailEngineProvider";
 import { mailboxPredicate } from "@inboxzero/mail-core/queries";
 import type { GetMailboxSizeResponse } from "@/app/api/user/mailbox-size/route";
@@ -22,7 +23,11 @@ export function useMailboxDownload(emailAccountId: string) {
     { refreshInterval: SIZE_REFRESH_MS },
   );
   const [samples, setSamples] = useState<DownloadSample[]>([]);
-  const [syncing, setSyncing] = useState(false);
+  const [activity, setActivity] = useState<{
+    pendingJobs: number;
+    backfill: MailDiagnostics["backfill"];
+    readAtMs: number;
+  }>({ pendingJobs: 0, backfill: null, readAtMs: 0 });
 
   useEffect(() => {
     setSamples([]);
@@ -56,9 +61,14 @@ export function useMailboxDownload(emailAccountId: string) {
     const read = async () => {
       try {
         const diagnostics = await client.getDiagnostics(emailAccountId);
-        if (!cancelled) setSyncing(diagnostics.pendingJobs > 0);
+        if (cancelled) return;
+        setActivity({
+          pendingJobs: diagnostics.pendingJobs,
+          backfill: diagnostics.backfill ?? null,
+          readAtMs: Date.now(),
+        });
       } catch {
-        if (!cancelled) setSyncing(false);
+        // The next read retries; the banner keeps the last known state.
       }
     };
     read();
@@ -69,15 +79,20 @@ export function useMailboxDownload(emailAccountId: string) {
     };
   }, [client, emailAccountId]);
 
+  const syncing = activity.pendingJobs > 0;
+  const backfill = activity.backfill ?? null;
+  const nowMs = activity.readAtMs;
   const total = size?.threads ?? null;
   const downloaded = samples.at(-1)?.count ?? null;
   if (total === null || downloaded === null || total <= 0) {
-    return { progress: null, syncing };
+    return { progress: null, syncing, backfill, nowMs };
   }
 
   const remaining = Math.max(0, total - downloaded);
   return {
     syncing,
+    backfill,
+    nowMs,
     progress: {
       total,
       downloaded: Math.min(downloaded, total),

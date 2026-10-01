@@ -14,7 +14,11 @@ import { RefreshCwIcon } from "lucide-react";
 import { Tooltip } from "@/components/Tooltip";
 import { useMailboxDownload } from "@/hooks/useMailboxDownload";
 import { cn } from "@/utils";
-import { formatDuration } from "@/utils/mail-engine/download-progress";
+import { format } from "date-fns";
+import {
+  formatDuration,
+  formatWait,
+} from "@/utils/mail-engine/download-progress";
 
 export const MailEngineConnectionBanner = memo(
   function MailEngineConnectionBanner() {
@@ -25,7 +29,8 @@ export const MailEngineConnectionBanner = memo(
     >();
     const [reconnecting, setReconnecting] = useState(false);
     const copy = mailEngineConnectionCopy(connection);
-    const { progress, syncing } = useMailboxDownload(emailAccountId);
+    const { progress, syncing, backfill, nowMs } =
+      useMailboxDownload(emailAccountId);
     const [requesting, setRequesting] = useState(false);
     const busy = syncing || requesting;
 
@@ -53,20 +58,25 @@ export const MailEngineConnectionBanner = memo(
     }, [client, emailAccountId]);
 
     const downloading =
-      connection === "ready" && progress && !progress.complete;
+      (connection === "ready" && progress && !progress.complete) ||
+      (connection === "ready" && Boolean(backfill));
 
     if (!copy && !downloading) return null;
 
     if (connection === "offline" || downloading) {
+      const providerLabel = isMicrosoftProvider(provider) ? "Outlook" : "Gmail";
       return (
         <div
           className="flex flex-wrap items-center gap-x-4 gap-y-2 border-border border-b px-4 py-2 text-muted-foreground text-sm"
           role="status"
         >
           <span>
-            {copy
-              ? `${copy.title} ${copy.description}`
-              : "Downloading mailbox."}
+            {syncStatusText({
+              paused: connection === "offline",
+              backfill,
+              nowMs,
+              providerLabel,
+            })}
           </span>
           {progress && !progress.complete ? (
             <DownloadProgress progress={progress} />
@@ -143,6 +153,36 @@ export const MailEngineConnectionBanner = memo(
     );
   },
 );
+
+function syncStatusText({
+  paused,
+  backfill,
+  nowMs,
+  providerLabel,
+}: {
+  paused: boolean;
+  backfill: {
+    nextAttemptAtMs: number | null;
+    pauseReason: string | null;
+  } | null;
+  nowMs: number;
+  providerLabel: string;
+}) {
+  if (!paused) return "Downloading mailbox";
+  const reason =
+    PAUSE_REASONS[backfill?.pauseReason ?? ""]?.(providerLabel) ??
+    "Sync paused";
+  const nextAttemptAtMs = backfill?.nextAttemptAtMs;
+  if (!nextAttemptAtMs || !nowMs) return reason;
+  return `${reason} · next try ${format(nextAttemptAtMs, "p")} (${formatWait(
+    nextAttemptAtMs - nowMs,
+  )})`;
+}
+
+const PAUSE_REASONS: Record<string, (provider: string) => string> = {
+  throttled: (provider) => `Paused by ${provider} rate limit`,
+  unavailable: (provider) => `${provider} unavailable`,
+};
 
 function DownloadProgress({
   progress,

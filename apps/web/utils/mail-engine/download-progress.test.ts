@@ -3,6 +3,7 @@ import {
   downloadRatePerMinute,
   downloadRemainingMinutes,
   formatDuration,
+  formatWait,
   pushDownloadSample,
 } from "@/utils/mail-engine/download-progress";
 
@@ -34,5 +35,11 @@ describe("download progress", () => {
     expect(formatDuration(42)).toBe("42 min");
     expect(formatDuration(135)).toBe("2 h 15 min");
     expect(formatDuration(60 * 72)).toBe("3 days");
+  });
+
+  it("formats the wait before a retry", () => {
+    expect(formatWait(-5)).toBe("now");
+    expect(formatWait(42_000)).toBe("in 42 s");
+    expect(formatWait(150_000)).toBe("in 3 min");
   });
 });

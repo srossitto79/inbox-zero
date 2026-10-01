@@ -124,6 +124,7 @@ import { requireSentMessageId } from "@/utils/email/sent-message-id";
 import { getGmailMailboxSyncPage } from "@/utils/gmail/mailbox-sync";
 import { isGoogleOauthEmulationEnabled } from "@/utils/google/oauth";
 
+const GMAIL_MESSAGE_READ_CONCURRENCY = 5;
 const GMAIL_MESSAGE_WRITE_CONCURRENCY = 5;
 
 export class GmailProvider implements EmailProvider {
@@ -1402,12 +1403,14 @@ export class GmailProvider implements EmailProvider {
     });
 
     const messages = response.messages || [];
-    const messagePromises = messages.map((message) =>
-      this.getMessage(message.id!),
-    );
 
     return {
-      messages: await Promise.all(messagePromises),
+      // A full page at once is a burst Gmail's per-user rate limit rejects.
+      messages: await mapWithConcurrency(
+        messages,
+        GMAIL_MESSAGE_READ_CONCURRENCY,
+        (message) => this.getMessage(message.id!),
+      ),
       nextPageToken: response.nextPageToken || undefined,
     };
   }

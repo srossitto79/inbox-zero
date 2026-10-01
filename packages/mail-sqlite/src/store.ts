@@ -1411,10 +1411,24 @@ export async function createSqliteMailStore(
           "SELECT connection FROM accounts WHERE account_id = ?",
           [accountId],
         );
+        const [scan] = await tx.query(
+          "SELECT next_attempt_at_ms, error_code FROM bootstrap_scans WHERE account_id = ? ORDER BY next_attempt_at_ms DESC LIMIT 1",
+          [accountId],
+        );
         return {
           accountId,
           revision,
           connection: connectionStatus(account[0]?.connection),
+          backfill: scan
+            ? {
+                nextAttemptAtMs:
+                  scan.next_attempt_at_ms == null
+                    ? null
+                    : Number(scan.next_attempt_at_ms),
+                pauseReason:
+                  scan.error_code == null ? null : String(scan.error_code),
+              }
+            : null,
           coverage: await readCoverage(tx, [accountId]),
           pendingOperations: Number(pending[0]?.n ?? 0),
           uncertainOperations: Number(uncertain[0]?.n ?? 0),

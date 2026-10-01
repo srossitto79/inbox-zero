@@ -36,6 +36,14 @@ export function downloadRemainingMinutes(
   return Math.ceil(remaining / ratePerMinute);
 }
 
+/** Time until a scheduled retry, rounded for a status line. */
+export function formatWait(ms: number): string {
+  if (ms <= 0) return "now";
+  const seconds = Math.ceil(ms / 1000);
+  if (seconds < 60) return `in ${seconds} s`;
+  return `in ${formatDuration(Math.ceil(seconds / 60))}`;
+}
+
 export function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
