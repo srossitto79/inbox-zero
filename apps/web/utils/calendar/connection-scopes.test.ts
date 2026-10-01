@@ -38,11 +38,12 @@ describe("getMissingCalendarScopes", () => {
     ).toEqual([
       "https://www.googleapis.com/auth/calendar.settings.readonly",
       "https://www.googleapis.com/auth/calendar.calendars",
+      "https://www.googleapis.com/auth/calendar.calendarlist",
     ]);
   });
 
   it("reports nothing once every scope is granted", () => {
-    const granted = `${GOOGLE_BASE} https://www.googleapis.com/auth/calendar.settings.readonly https://www.googleapis.com/auth/calendar.calendars`;
+    const granted = `${GOOGLE_BASE} https://www.googleapis.com/auth/calendar.settings.readonly https://www.googleapis.com/auth/calendar.calendars https://www.googleapis.com/auth/calendar.calendarlist`;
 
     expect(
       getMissingCalendarScopes({ provider: "google", grantedScope: granted }),
