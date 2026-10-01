@@ -18,7 +18,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useCalendarPreferences } from "@/hooks/useCalendarPreferences";
 import { cn } from "@/utils";
+import { formatClockTime } from "@/utils/calendar/preferences/format";
+import type { CalendarPreferences } from "@/utils/calendar/preferences/preferences";
 import { useCalendarEditing } from "./CalendarEditingContext";
 
 type CalendarEvent = GetCalendarEventsResponse["events"][number];
@@ -39,6 +42,7 @@ export function CalendarEventPopover({
   children: React.ReactNode;
 }) {
   const editing = useCalendarEditing();
+  const { preferences } = useCalendarPreferences();
   const [open, setOpen] = useState(false);
   const block = editing?.getEventBlock(event) ?? null;
   const canEditNow = editing !== null && block === null && !event.isRecurring;
@@ -107,7 +111,7 @@ export function CalendarEventPopover({
         </div>
 
         <Detail icon={CalendarClockIcon}>
-          {formatEventTime(event, timezone)}
+          {formatEventTime(event, timezone, preferences.timeFormat)}
         </Detail>
         {event.location ? (
           <Detail icon={MapPinIcon}>{event.location}</Detail>
@@ -233,6 +237,8 @@ export function EventChip({
   dragging?: boolean;
 }) {
   const editing = useCalendarEditing();
+  const { preferences } = useCalendarPreferences();
+  const timeLabel = formatEventTime(event, timezone, preferences.timeFormat);
 
   return (
     <CalendarEventPopover event={event} timezone={timezone}>
@@ -246,7 +252,7 @@ export function EventChip({
           className,
         )}
         style={eventColor(event.calendarColor)}
-        aria-label={`${event.title}, ${formatEventTime(event, timezone)}`}
+        aria-label={`${event.title}, ${timeLabel}`}
         onFocus={() => editing?.setFocusedEventId(event.id)}
         onBlur={() => editing?.setFocusedEventId(null)}
         {...dragHandlers}
@@ -256,7 +262,7 @@ export function EventChip({
         </span>
         {!compact && !event.isAllDay ? (
           <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-            {formatTime(event.start, timezone)}
+            {formatTime(event.start, timezone, preferences.timeFormat)}
           </span>
         ) : null}
         {resizeHandle}
@@ -280,7 +286,11 @@ function Detail({
   );
 }
 
-function formatEventTime(event: CalendarEvent, timezone: string) {
+function formatEventTime(
+  event: CalendarEvent,
+  timezone: string,
+  timeFormat: CalendarPreferences["timeFormat"],
+) {
   if (event.isAllDay) {
     const start = dateFromKey(event.start);
     const end = new Date(dateFromKey(event.end).getTime() - 86_400_000);
@@ -302,15 +312,19 @@ function formatEventTime(event: CalendarEvent, timezone: string) {
     day: "numeric",
     timeZone: timezone,
   });
-  return `${day.format(start)}, ${formatTime(event.start, timezone)} – ${formatTime(event.end, timezone)}`;
+  return `${day.format(start)}, ${formatTime(event.start, timezone, timeFormat)} – ${formatTime(event.end, timezone, timeFormat)}`;
 }
 
-function formatTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
+function formatTime(
+  value: string,
+  timezone: string,
+  timeFormat: CalendarPreferences["timeFormat"],
+) {
+  return formatClockTime({
+    instant: new Date(value),
     timeZone: timezone,
-  }).format(new Date(value));
+    timeFormat,
+  });
 }
 
 function dateFromKey(value: string) {

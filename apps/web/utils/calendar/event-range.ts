@@ -2,14 +2,21 @@ import {
   addDaysToDateKey,
   diffDateKeys,
   formatDateKey,
-  getDateKeyWeekday,
   parseDateKey,
   startOfLocalDay,
   toDateKey,
   toWallClock,
 } from "@/utils/calendar/zoned-time";
+import type { CalendarPreferences } from "@/utils/calendar/preferences/preferences";
+import {
+  getMonthGridRange,
+  getWeekDateKeys,
+} from "@/utils/calendar/preferences/week-range";
 
 export type CalendarViewType = "day" | "week" | "month" | "agenda";
+
+/** Which day opens a week. Read from the calendar preferences. */
+export type WeekStart = CalendarPreferences["weekStart"];
 
 export const AGENDA_DAYS = 30;
 
@@ -28,25 +35,18 @@ export type TimelineEvent = {
 export function getVisibleDateKeys({
   view,
   anchorKey,
-  weekStartsOn,
+  weekStart,
 }: {
   view: CalendarViewType;
   anchorKey: string;
-  weekStartsOn: number;
+  weekStart: WeekStart;
 }): string[] {
   if (view === "day") return [anchorKey];
   if (view === "agenda") return getDateKeyRange(anchorKey, AGENDA_DAYS);
-  if (view === "week") {
-    return getDateKeyRange(getWeekStartKey(anchorKey, weekStartsOn), 7);
-  }
+  if (view === "week") return getWeekDateKeys(anchorKey, weekStart);
 
-  const { year, month } = parseDateKey(anchorKey);
-  const firstOfMonth = formatDateKey(year, month, 1);
-  const gridStart = getWeekStartKey(firstOfMonth, weekStartsOn);
-  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const leading = diffDateKeys(gridStart, firstOfMonth);
-  const weeks = Math.ceil((leading + daysInMonth) / 7);
-  return getDateKeyRange(gridStart, weeks * 7);
+  const { startKey, endKey } = getMonthGridRange(anchorKey, weekStart);
+  return getDateKeyRange(startKey, diffDateKeys(startKey, endKey) + 1);
 }
 
 /** Instants spanning every visible day, for the events request. */
@@ -78,11 +78,6 @@ export function shiftAnchor({
   const { year, month } = parseDateKey(anchorKey);
   const target = new Date(Date.UTC(year, month - 1 + direction, 1));
   return formatDateKey(target.getUTCFullYear(), target.getUTCMonth() + 1, 1);
-}
-
-export function getWeekStartKey(dateKey: string, weekStartsOn: number) {
-  const offset = (getDateKeyWeekday(dateKey) - weekStartsOn + 7) % 7;
-  return addDaysToDateKey(dateKey, -offset);
 }
 
 /** Local days an event touches. Timed events ending at midnight stop the day before. */

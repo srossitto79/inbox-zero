@@ -6,6 +6,7 @@ import { useAction } from "next-safe-action/hooks";
 import { useHotkeys } from "react-hotkeys-hook";
 import {
   CalendarDaysIcon,
+  CalendarSearchIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   RefreshCwIcon,
@@ -14,6 +15,10 @@ import {
 import { ConnectCalendar } from "@/app/(app)/[emailAccountId]/calendars/ConnectCalendar";
 import { PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  FindATimeDialog,
+  type FindATimeSlot,
+} from "@/components/calendar/FindATimeDialog";
 import {
   Empty,
   EmptyContent,
@@ -25,6 +30,7 @@ import {
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { GetCalendarEventsResponse } from "@/app/api/user/calendar/events/route";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { useCalendarPreferences } from "@/hooks/useCalendarPreferences";
 import { useCalendars } from "@/hooks/useCalendars";
 import { useAccount } from "@/providers/EmailAccountProvider";
 import { syncCalendarsAction } from "@/utils/actions/calendar";
@@ -35,6 +41,9 @@ import {
   getVisibleDateKeys,
   shiftAnchor,
 } from "@/utils/calendar/event-range";
+import { minutesToInstant } from "@/utils/calendar/drag-math";
+import type { CalendarPreferences } from "@/utils/calendar/preferences/preferences";
+import { parseTimeOfDay } from "@/utils/calendar/preferences/working-hours";
 import {
   getWriteBlock,
   getWriteBlockMessage,
@@ -52,6 +61,7 @@ import {
   type CreateRange,
 } from "./CalendarEditingContext";
 import { CalendarEventEditor, type EditorSession } from "./CalendarEventEditor";
+import { CalendarImportExport } from "./CalendarImportExport";
 import { CalendarViews } from "./CalendarViews";
 import { useCalendarEventMutations } from "./useCalendarEventMutations";
 
@@ -75,6 +85,7 @@ export function CalendarPageClient() {
   } = useCalendars({
     refreshInterval: 5000,
   });
+  const { preferences } = useCalendarPreferences();
   const { executeAsync: startSync, isExecuting } = useAction(
     syncCalendarsAction.bind(null, emailAccountId),
   );
@@ -85,10 +96,16 @@ export function CalendarPageClient() {
     "UTC";
   const todayKey = toDateKey(new Date(), timezone);
   const anchorKey = getValidDateKey(searchParams.get("date"), todayKey);
-  const view = getValidView(searchParams.get("view"));
+  // The URL view wins; an absent one opens on the user's default. Preferences
+  // resolve to the built-in default until they load, so this never flashes.
+  const view = getViewFromParam(
+    searchParams.get("view"),
+    preferences.defaultView,
+  );
   const dateKeys = useMemo(
-    () => getVisibleDateKeys({ view, anchorKey, weekStartsOn: 1 }),
-    [view, anchorKey],
+    () =>
+      getVisibleDateKeys({ view, anchorKey, weekStart: preferences.weekStart }),
+    [view, anchorKey, preferences.weekStart],
   );
   const range = useMemo(
     () => getRangeInstants(dateKeys, timezone),
@@ -143,6 +160,11 @@ export function CalendarPageClient() {
   });
 
   const connections = calendarData?.connections ?? [];
+  const enabledCalendars = connections.flatMap((connection) =>
+    connection.calendars
+      .filter((calendar) => calendar.isEnabled)
+      .map((calendar) => ({ id: calendar.id, name: calendar.name })),
+  );
   const writableCalendars = connections.flatMap((connection) =>
     connection.calendars.flatMap((calendar) =>
       calendar.canEdit &&
@@ -170,6 +192,7 @@ export function CalendarPageClient() {
     mutateEvents,
   });
   const [session, setSession] = useState<EditorSession | null>(null);
+  const [findTimeOpen, setFindTimeOpen] = useState(false);
   const sessionKeyRef = useRef(0);
   const focusedEventIdRef = useRef<string | null>(null);
   const setOpenEventId = useCallback((id: string | null) => {
@@ -381,12 +404,21 @@ export function CalendarPageClient() {
             if (createBlock) return;
             startCreate(
               view === "day"
-                ? dayAnchorRange(anchorKey)
+                ? dayAnchorRange(anchorKey, timezone, preferences)
                 : { startDate: todayKey, endDate: todayKey },
             );
           }}
         >
           New event
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          Icon={CalendarSearchIcon}
+          disabled={!defaultCalendarId || Boolean(createBlock)}
+          onClick={() => setFindTimeOpen(true)}
+        >
+          Find a time
         </Button>
         <Button
           variant="ghostMuted"
@@ -398,6 +430,13 @@ export function CalendarPageClient() {
         >
           <RefreshCwIcon className="size-4" />
         </Button>
+        <CalendarImportExport
+          range={range}
+          timezone={timezone}
+          calendars={enabledCalendars}
+          importCalendar={writableCalendars[0] ?? null}
+          onImported={() => mutateEvents()}
+        />
       </header>
 
       {missingConnections.map((connection) => (
@@ -455,6 +494,7 @@ export function CalendarPageClient() {
             events={eventsData?.events ?? []}
             timezone={timezone}
             todayKey={todayKey}
+            preferences={preferences}
           />
         </CalendarEditingContext.Provider>
       )}
@@ -464,6 +504,17 @@ export function CalendarPageClient() {
         onClose={() => setSession(null)}
         onSave={saveSession}
         onDelete={(event) => mutations.remove(event)}
+      />
+      <FindATimeDialog
+        open={findTimeOpen}
+        onOpenChange={setFindTimeOpen}
+        attendees={[]}
+        durationMinutes={preferences.defaultDurationMinutes}
+        timeZone={timezone}
+        onPick={(slot: FindATimeSlot) => {
+          setFindTimeOpen(false);
+          startCreate(slot);
+        }}
       />
     </main>
   );
@@ -519,13 +570,16 @@ function CalendarEmptyState({
   );
 }
 
-function getValidView(value: string | null): CalendarViewType {
+function getViewFromParam(
+  value: string | null,
+  defaultView: CalendarViewType,
+): CalendarViewType {
   return value === "day" ||
     value === "month" ||
     value === "agenda" ||
     value === "week"
     ? value
-    : "week";
+    : defaultView;
 }
 
 function getValidDateKey(value: string | null, fallback: string) {
@@ -566,11 +620,19 @@ function providerName(provider: string) {
   return provider === "microsoft" ? "Outlook Calendar" : "Google Calendar";
 }
 
-function dayAnchorRange(anchorKey: string) {
-  // A one-hour event at 09:00 local on the day in view.
+function dayAnchorRange(
+  anchorKey: string,
+  timeZone: string,
+  preferences: CalendarPreferences,
+): { start: Date; end: Date } {
+  // Opens the day's first working hour, for the default event length.
+  const startMinutes = parseTimeOfDay(preferences.workingHours.start);
+  const start = minutesToInstant(anchorKey, startMinutes, timeZone);
   return {
-    start: new Date(`${anchorKey}T07:00:00Z`),
-    end: new Date(`${anchorKey}T08:00:00Z`),
+    start,
+    end: new Date(
+      start.getTime() + preferences.defaultDurationMinutes * 60_000,
+    ),
   };
 }
 

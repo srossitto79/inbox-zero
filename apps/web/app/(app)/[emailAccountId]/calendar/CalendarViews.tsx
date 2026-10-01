@@ -20,6 +20,18 @@ import {
   groupEventsByDay,
 } from "@/utils/calendar/event-range";
 import { layoutDayEvents } from "@/utils/calendar/event-layout";
+import type { CalendarPreferences } from "@/utils/calendar/preferences/preferences";
+import {
+  formatClockTime,
+  formatHourLabel,
+} from "@/utils/calendar/preferences/format";
+import {
+  getHourHeight,
+  getMonthCellHeight,
+  getSecondaryHourLabels,
+  getWorkingHourFlags,
+  HOURS_PER_DAY,
+} from "@/utils/calendar/time-grid";
 import { diffDateKeys, toWallClock } from "@/utils/calendar/zoned-time";
 import {
   type CalendarEditing,
@@ -29,10 +41,9 @@ import { EventChip } from "./CalendarEventPopover";
 
 type CalendarEvent = GetCalendarEventsResponse["events"][number];
 
-const HOUR_HEIGHT = 64;
-const DAY_HEIGHT = 24 * HOUR_HEIGHT;
 const DAY_MIN_WIDTH = 128;
 const TIME_GUTTER = 64;
+const SECONDARY_GUTTER = 56;
 
 type Gesture =
   | {
@@ -85,12 +96,14 @@ export function CalendarViews({
   events,
   timezone,
   todayKey,
+  preferences,
 }: {
   view: CalendarViewType;
   dateKeys: string[];
   events: CalendarEvent[];
   timezone: string;
   todayKey: string;
+  preferences: CalendarPreferences;
 }) {
   if (view === "month") {
     return (
@@ -99,6 +112,7 @@ export function CalendarViews({
         events={events}
         timezone={timezone}
         todayKey={todayKey}
+        preferences={preferences}
       />
     );
   }
@@ -109,6 +123,7 @@ export function CalendarViews({
         events={events}
         timezone={timezone}
         todayKey={todayKey}
+        timeFormat={preferences.timeFormat}
       />
     );
   }
@@ -118,6 +133,7 @@ export function CalendarViews({
       events={events}
       timezone={timezone}
       todayKey={todayKey}
+      preferences={preferences}
     />
   );
 }
@@ -127,17 +143,22 @@ function TimeGrid({
   events,
   timezone,
   todayKey,
+  preferences,
 }: {
   dateKeys: string[];
   events: CalendarEvent[];
   timezone: string;
   todayKey: string;
+  preferences: CalendarPreferences;
 }) {
   const editing = useCalendarEditing();
   const gridRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<Gesture | null>(null);
   const lastGestureEndRef = useRef(0);
   const [preview, setPreview] = useState<Preview | null>(null);
+
+  const hourHeight = getHourHeight(preferences.density);
+  const dayHeight = HOURS_PER_DAY * hourHeight;
 
   const displayEvents = useMemo(
     () =>
@@ -173,6 +194,7 @@ function TimeGrid({
         columns: getColumns(),
         dateKeys,
         timezone,
+        hourHeight,
       });
       if (result.kind === "pending") return;
       gesture.active = true;
@@ -206,6 +228,7 @@ function TimeGrid({
         columns: getColumns(),
         dateKeys,
         timezone,
+        hourHeight,
       });
       if (gesture.kind === "create") {
         lastGestureEndRef.current = performance.now();
@@ -224,6 +247,7 @@ function TimeGrid({
               dateKey: gesture.dateKey,
               minutes: gesture.anchor,
               timeZone: timezone,
+              durationMinutes: preferences.defaultDurationMinutes,
             }),
           );
         }
@@ -260,12 +284,20 @@ function TimeGrid({
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("click", swallowClick, true);
     };
-  }, [dateKeys, editing, timezone]);
+  }, [
+    dateKeys,
+    editing,
+    hourHeight,
+    timezone,
+    preferences.defaultDurationMinutes,
+  ]);
 
   const nowWall = toWallClock(now, timezone);
   const nowMinutes = nowWall.hour * 60 + nowWall.minute;
-  const minWidth = TIME_GUTTER + dateKeys.length * DAY_MIN_WIDTH;
-  const columns = `${TIME_GUTTER}px repeat(${dateKeys.length}, minmax(${DAY_MIN_WIDTH}px, 1fr))`;
+  const secondary = preferences.secondaryTimeZone;
+  const gutterWidth = TIME_GUTTER + (secondary ? SECONDARY_GUTTER : 0);
+  const minWidth = gutterWidth + dateKeys.length * DAY_MIN_WIDTH;
+  const columns = `${gutterWidth}px repeat(${dateKeys.length}, minmax(${DAY_MIN_WIDTH}px, 1fr))`;
 
   const startEventGesture = (
     event: CalendarEvent,
@@ -317,7 +349,7 @@ function TimeGrid({
       anchor: pixelsToMinutes({
         pointerY: pointer.clientY,
         columnTop: rect.top,
-        hourHeight: HOUR_HEIGHT,
+        hourHeight,
       }),
       active: false,
     };
@@ -330,7 +362,14 @@ function TimeGrid({
           className="sticky top-0 z-20 grid border-b border-border bg-card"
           style={{ gridTemplateColumns: columns }}
         >
-          <div />
+          <div className="flex items-end justify-end gap-1 border-l border-border px-2 py-1.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+            {secondary ? (
+              <span className="mr-auto pl-1 text-muted-foreground/70">
+                {formatZoneShort(secondary)}
+              </span>
+            ) : null}
+            <span>{formatZoneShort(timezone)}</span>
+          </div>
           {dateKeys.map((dateKey) => (
             <DayHeading
               key={dateKey}
@@ -365,7 +404,22 @@ function TimeGrid({
         </div>
 
         <div className="grid" style={{ gridTemplateColumns: columns }}>
-          <TimeLabels />
+          <TimeLabels
+            timeFormat={preferences.timeFormat}
+            secondaryLabels={
+              secondary
+                ? getSecondaryHourLabels({
+                    dateKey: dateKeys[0] as string,
+                    primaryTimeZone: timezone,
+                    secondaryTimeZone: secondary,
+                    timeFormat: preferences.timeFormat,
+                  })
+                : null
+            }
+            secondaryZone={secondary}
+            dayHeight={dayHeight}
+            hourHeight={hourHeight}
+          />
           {dateKeys.map((dateKey) => (
             <DayColumn
               key={dateKey}
@@ -374,6 +428,11 @@ function TimeGrid({
                 (event) => !event.isAllDay,
               )}
               timezone={timezone}
+              workingHours={getWorkingHourFlags({
+                dateKey,
+                timeZone: timezone,
+                schedule: preferences,
+              })}
               showCurrentTime={dateKey === todayKey}
               nowMinutes={nowMinutes}
               createPreview={
@@ -384,6 +443,8 @@ function TimeGrid({
               draggingEventId={
                 preview?.kind === "event" ? preview.eventId : null
               }
+              dayHeight={dayHeight}
+              hourHeight={hourHeight}
               onCreatePointerDown={startCreateGesture}
               onEventPointerDown={startEventGesture}
             />
@@ -469,18 +530,48 @@ function DayHeading({ dateKey, today }: { dateKey: string; today: boolean }) {
   );
 }
 
-function TimeLabels() {
+function TimeLabels({
+  timeFormat,
+  secondaryLabels,
+  secondaryZone,
+  dayHeight,
+  hourHeight,
+}: {
+  timeFormat: CalendarPreferences["timeFormat"];
+  secondaryLabels: string[] | null;
+  secondaryZone: string | null;
+  dayHeight: number;
+  hourHeight: number;
+}) {
   return (
-    <div className="relative" style={{ height: DAY_HEIGHT }}>
-      {Array.from({ length: 24 }, (_, hour) => (
+    <div className="flex" style={{ height: dayHeight }}>
+      {secondaryLabels && secondaryZone ? (
         <div
-          key={hour}
-          className="absolute right-2 -translate-y-1/2 text-[10px] text-muted-foreground"
-          style={{ top: hour * HOUR_HEIGHT }}
+          className="relative shrink-0 border-r border-border"
+          style={{ width: SECONDARY_GUTTER }}
         >
-          {formatHour(hour)}
+          {secondaryLabels.map((label, hour) => (
+            <div
+              key={hour}
+              className="absolute inset-x-0 -translate-y-1/2 text-center text-[9px] text-muted-foreground/70"
+              style={{ top: hour * hourHeight }}
+            >
+              {label}
+            </div>
+          ))}
         </div>
-      ))}
+      ) : null}
+      <div className="relative" style={{ width: TIME_GUTTER }}>
+        {Array.from({ length: HOURS_PER_DAY }, (_, hour) => (
+          <div
+            key={hour}
+            className="absolute right-2 -translate-y-1/2 text-[10px] text-muted-foreground"
+            style={{ top: hour * hourHeight }}
+          >
+            {formatHourLabel(hour, timeFormat)}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -489,20 +580,26 @@ function DayColumn({
   dateKey,
   events,
   timezone,
+  workingHours,
   showCurrentTime,
   nowMinutes,
   createPreview,
   draggingEventId,
+  dayHeight,
+  hourHeight,
   onCreatePointerDown,
   onEventPointerDown,
 }: {
   dateKey: string;
   events: CalendarEvent[];
   timezone: string;
+  workingHours: boolean[];
   showCurrentTime: boolean;
   nowMinutes: number;
   createPreview: { start: number; end: number } | null;
   draggingEventId: string | null;
+  dayHeight: number;
+  hourHeight: number;
   onCreatePointerDown: (dateKey: string, pointer: React.PointerEvent) => void;
   onEventPointerDown: (
     event: CalendarEvent,
@@ -523,14 +620,25 @@ function DayColumn({
     <div
       data-day-column={dateKey}
       className="relative border-l border-border"
-      style={{ height: DAY_HEIGHT }}
+      style={{ height: dayHeight }}
       onPointerDown={(pointer) => onCreatePointerDown(dateKey, pointer)}
     >
-      {Array.from({ length: 24 }, (_, hour) => (
+      {workingHours.map((working, hour) =>
+        working ? null : (
+          // Off-hours shading sits under the chips and the hour lines.
+          <div
+            key={hour}
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bg-muted/30"
+            style={{ top: hour * hourHeight, height: hourHeight }}
+          />
+        ),
+      )}
+      {Array.from({ length: HOURS_PER_DAY }, (_, hour) => (
         <div
           key={hour}
           className="pointer-events-none absolute inset-x-0 border-t border-border/70"
-          style={{ top: hour * HOUR_HEIGHT }}
+          style={{ top: hour * hourHeight }}
         />
       ))}
       {events.map((event) => {
@@ -539,10 +647,10 @@ function DayColumn({
         if (!placement) return null;
         const width = (placement.span / placement.columns) * 100;
         const left = (placement.column / placement.columns) * 100;
-        const top = (segment.start / 60) * HOUR_HEIGHT;
+        const top = (segment.start / 60) * hourHeight;
         const height = Math.max(
           18,
-          ((segment.end - segment.start) / 60) * HOUR_HEIGHT,
+          ((segment.end - segment.start) / 60) * hourHeight,
         );
         return (
           <div
@@ -578,16 +686,16 @@ function DayColumn({
         <div
           className="pointer-events-none absolute inset-x-0.5 z-10 rounded-md border border-primary/50 bg-primary/15"
           style={{
-            top: (createPreview.start / 60) * HOUR_HEIGHT,
+            top: (createPreview.start / 60) * hourHeight,
             height:
-              ((createPreview.end - createPreview.start) / 60) * HOUR_HEIGHT,
+              ((createPreview.end - createPreview.start) / 60) * hourHeight,
           }}
         />
       ) : null}
       {showCurrentTime ? (
         <div
           className="pointer-events-none absolute inset-x-0 z-20 border-t-2 border-primary"
-          style={{ top: (nowMinutes / 60) * HOUR_HEIGHT }}
+          style={{ top: (nowMinutes / 60) * hourHeight }}
         >
           <span className="absolute -left-1 -top-[5px] size-2 rounded-full bg-primary" />
         </div>
@@ -601,11 +709,13 @@ function MonthView({
   events,
   timezone,
   todayKey,
+  preferences,
 }: {
   dateKeys: string[];
   events: CalendarEvent[];
   timezone: string;
   todayKey: string;
+  preferences: CalendarPreferences;
 }) {
   const editing = useCalendarEditing();
   const dragRef = useRef<{ event: CalendarEvent; fromKey: string } | null>(
@@ -675,6 +785,7 @@ function MonthView({
               isDropTarget={dropKey === dateKey}
               dayEvents={dayEvents}
               timezone={timezone}
+              cellHeight={getMonthCellHeight(preferences.density)}
               onCreate={editing?.create}
               onChipDragStart={(event) => {
                 dragRef.current = { event, fromKey: dateKey };
@@ -708,6 +819,7 @@ function MonthCell({
   isDropTarget,
   dayEvents,
   timezone,
+  cellHeight,
   onCreate,
   onChipDragStart,
   onDragOver,
@@ -720,6 +832,7 @@ function MonthCell({
   isDropTarget: boolean;
   dayEvents: CalendarEvent[];
   timezone: string;
+  cellHeight: string;
   onCreate: CalendarEditing["create"] | undefined;
   onChipDragStart: (event: CalendarEvent) => void;
   onDragOver: (dragEvent: React.DragEvent, hasPayload: boolean) => void;
@@ -731,7 +844,7 @@ function MonthCell({
   return (
     <div
       className={cn(
-        "min-h-28 border-b border-l border-border p-1.5 first:border-l-0",
+        `${cellHeight} border-b border-l border-border p-1.5 first:border-l-0`,
         isDropTarget && "bg-accent",
       )}
       onClick={(clickEvent) => {
@@ -794,11 +907,13 @@ function AgendaView({
   events,
   timezone,
   todayKey,
+  timeFormat,
 }: {
   dateKeys: string[];
   events: CalendarEvent[];
   timezone: string;
   todayKey: string;
+  timeFormat: CalendarPreferences["timeFormat"];
 }) {
   const byDay = useMemo(
     () => groupEventsByDay(events, dateKeys, timezone),
@@ -853,7 +968,11 @@ function AgendaView({
                   <div className="pt-1 text-xs text-muted-foreground">
                     {event.isAllDay
                       ? "All day"
-                      : formatEventTime(event.start, timezone)}
+                      : formatClockTime({
+                          instant: new Date(event.start),
+                          timeZone: timezone,
+                          timeFormat,
+                        })}
                   </div>
                   <EventChip
                     event={event}
@@ -875,21 +994,9 @@ function dateFromKey(dateKey: string) {
   return new Date(`${dateKey}T12:00:00.000Z`);
 }
 
-function formatHour(hour: number) {
-  // The date is irrelevant; UTC plus UTC formatting yields locale-appropriate
-  // hour labels while preserving the requested wall-clock hour.
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(Date.UTC(2026, 0, 1, hour)));
-}
-
-function formatEventTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: timezone,
-  }).format(new Date(value));
+function formatZoneShort(timeZone: string) {
+  const region = /[^/]+$/.exec(timeZone)?.[0] ?? timeZone;
+  return region.replaceAll("_", " ");
 }
 
 function getColumnRects(grid: HTMLElement | null) {
@@ -933,6 +1040,7 @@ function evaluateGesture({
   columns,
   dateKeys,
   timezone,
+  hourHeight,
 }: {
   gesture: Gesture;
   x: number;
@@ -940,6 +1048,7 @@ function evaluateGesture({
   columns: DOMRect[];
   dateKeys: string[];
   timezone: string;
+  hourHeight: number;
 }): GestureResult {
   if (gesture.kind === "create") {
     const column = columns[dateKeys.indexOf(gesture.dateKey)];
@@ -950,7 +1059,7 @@ function evaluateGesture({
     const pointerMinutes = pixelsToMinutes({
       pointerY: y,
       columnTop: column.top,
-      hourHeight: HOUR_HEIGHT,
+      hourHeight,
     });
     return {
       kind: "create",
@@ -984,7 +1093,7 @@ function evaluateGesture({
 
   const start = new Date(event.start);
   const end = new Date(event.end);
-  const verticalMinutes = ((y - gesture.startY) / HOUR_HEIGHT) * 60;
+  const verticalMinutes = ((y - gesture.startY) / hourHeight) * 60;
   if (gesture.kind === "resize") {
     const resized = resizeTimedEvent({
       start,

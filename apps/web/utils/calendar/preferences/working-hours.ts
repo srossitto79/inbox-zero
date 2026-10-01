@@ -1,7 +1,7 @@
 import type { CalendarPreferences } from "@/utils/calendar/preferences/preferences";
 import { toWallClock } from "@/utils/calendar/zoned-time";
 
-type WorkingSchedule = Pick<
+export type WorkingSchedule = Pick<
   CalendarPreferences,
   "workingDays" | "workingHours"
 >;
