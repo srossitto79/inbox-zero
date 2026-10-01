@@ -140,6 +140,14 @@ export function mapGoogleEvent(
     originalStartTime: originalStart?.instant ?? null,
     videoLink: getGoogleVideoLink(event) ?? null,
     htmlLink: event.htmlLink ?? null,
+    reminders: {
+      useDefault: event.reminders?.useDefault ?? true,
+      overrides: (event.reminders?.overrides ?? []).flatMap((override) =>
+        override.method && typeof override.minutes === "number"
+          ? [{ method: override.method, minutes: override.minutes }]
+          : [],
+      ),
+    },
   };
   return { kind: "upsert", data };
 }
