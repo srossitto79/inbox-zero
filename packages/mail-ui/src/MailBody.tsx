@@ -455,6 +455,9 @@ function useMailHtmlFrame(
       if (!iframeDocument) return;
       const { body, documentElement } = iframeDocument;
       if (!body || !documentElement) return;
+      body.style.zoom = String(
+        getFitZoom(iframeDocument, documentElement.clientWidth),
+      );
 
       const newHeight = Math.max(
         documentElement.scrollHeight,
@@ -636,4 +639,20 @@ function applyDarkModeClass(mailDocument: Document, isDarkMode: boolean) {
 
   mailDocument.documentElement.classList.add("dark");
   mailDocument.body.classList.add("dark");
+}
+
+/** Fixed-width emails (a 600px column) are enlarged to fill a wide reader. */
+const MAX_FIT_ZOOM = 1.6;
+
+function getFitZoom(doc: Document, viewportWidth: number) {
+  let designWidth = 0;
+  for (const element of doc.body.querySelectorAll<HTMLElement>(
+    "table, div, td, center",
+  )) {
+    const declared = element.getAttribute("width") ?? element.style.width ?? "";
+    const match = /^(\d+(?:\.\d+)?)(?:px)?$/.exec(declared.trim());
+    if (match) designWidth = Math.max(designWidth, Number(match[1]));
+  }
+  if (designWidth < 320 || designWidth >= viewportWidth) return 1;
+  return Math.min(MAX_FIT_ZOOM, viewportWidth / designWidth);
 }
