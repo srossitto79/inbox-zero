@@ -9,6 +9,7 @@ import {
 } from "@/utils/email/local-mail-sync-budget";
 import { getEmailAccountForRuleExecution } from "@/utils/user/get";
 import { loadThreads } from "@/utils/threads/load";
+import { sleep } from "@/utils/sleep";
 import { runRules } from "@/utils/ai/choose-rule/run-rules";
 import { runBulkRulesChunk } from "@/utils/background-jobs/bulk-rules";
 import type { BulkRulesPayload } from "@/utils/background-jobs/bulk-rules.schema";
@@ -20,6 +21,7 @@ vi.mock("@/utils/user/get", () => ({
   getEmailAccountForRuleExecution: vi.fn(),
 }));
 vi.mock("@/utils/threads/load", () => ({ loadThreads: vi.fn() }));
+vi.mock("@/utils/sleep", () => ({ sleep: vi.fn() }));
 vi.mock("@/utils/ai/choose-rule/run-rules", () => ({ runRules: vi.fn() }));
 vi.mock("@/utils/email/local-mail-sync-budget", async (importOriginal) => ({
   ...(await importOriginal<
@@ -214,6 +216,129 @@ describe("runBulkRulesChunk", () => {
     });
   });
 
+  it("reads messages one at a time and runs the rules in parallel", async () => {
+    mockPage([thread("t1"), thread("t2"), thread("t3")]);
+    let activeReads = 0;
+    let maxReads = 0;
+    vi.mocked(withLocalMailSyncBudget).mockImplementation(
+      async (input, operation) => {
+        if (input.cost !== gmailMailSyncCosts.message) {
+          return operation(new AbortController().signal);
+        }
+        activeReads += 1;
+        maxReads = Math.max(maxReads, activeReads);
+        await Promise.resolve();
+        try {
+          return await operation(new AbortController().signal);
+        } finally {
+          activeReads -= 1;
+        }
+      },
+    );
+    let activeRules = 0;
+    let maxRules = 0;
+    vi.mocked(runRules).mockImplementation(async () => {
+      activeRules += 1;
+      maxRules = Math.max(maxRules, activeRules);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      activeRules -= 1;
+      return [];
+    });
+
+    const chunk = await runChunk();
+
+    expect(chunk.progressDone).toBe(3);
+    expect(maxReads).toBe(1);
+    expect(maxRules).toBe(3);
+  });
+
+  describe("short budget denials", () => {
+    it("waits and retries a short denial without pausing the job", async () => {
+      mockPage([thread("t1")]);
+      denyMessageReads(1, 1000);
+
+      const chunk = await runChunk();
+
+      expect(sleep).toHaveBeenCalledTimes(1);
+      expect(sleep).toHaveBeenCalledWith(1000);
+      expect(getMessage).toHaveBeenCalledTimes(1);
+      expect(chunk.pauseMs).toBeUndefined();
+      expect(chunk).toMatchObject({ finished: true, progressDone: 1 });
+    });
+
+    it("gives up after a bounded number of attempts and pauses", async () => {
+      mockPage([thread("t1"), thread("t2")]);
+      denyMessageReads(Number.POSITIVE_INFINITY, 1000);
+
+      const chunk = await runChunk();
+
+      const messageReads = vi
+        .mocked(withLocalMailSyncBudget)
+        .mock.calls.filter(
+          ([input]) => input.cost === gmailMailSyncCosts.message,
+        );
+      expect(messageReads).toHaveLength(5);
+      expect(sleep).toHaveBeenCalledTimes(4);
+      expect(chunk).toMatchObject({ finished: false, pauseMs: 1000 });
+      expect(chunk.progressDone).toBe(0);
+      expect(runRules).not.toHaveBeenCalled();
+    });
+
+    it("pauses at once on a long denial", async () => {
+      mockPage([thread("t1")]);
+      denyMessageReads(Number.POSITIVE_INFINITY, 30_000);
+
+      const chunk = await runChunk();
+
+      expect(sleep).not.toHaveBeenCalled();
+      expect(chunk).toMatchObject({ finished: false, pauseMs: 30_000 });
+    });
+
+    it("waits out a short denial of the page listing", async () => {
+      let listings = 0;
+      vi.mocked(withLocalMailSyncBudget).mockImplementation(
+        async (input, operation) => {
+          if (input.cost !== gmailMailSyncCosts.message && listings++ === 0) {
+            throw new LocalMailSyncPausedError(1000);
+          }
+          return operation(new AbortController().signal);
+        },
+      );
+      mockPage([thread("t1")]);
+
+      const chunk = await runChunk();
+
+      expect(sleep).toHaveBeenCalledWith(1000);
+      expect(chunk.progressDone).toBe(1);
+    });
+
+    it("stops waiting when cancellation was requested during the wait", async () => {
+      mockPage([thread("t1"), thread("t2")], "more");
+      denyMessageReads(Number.POSITIVE_INFINITY, 1000);
+      const checkpoint = vi.fn().mockResolvedValue(true);
+
+      const chunk = await runChunk({}, { checkpoint });
+
+      expect(sleep).toHaveBeenCalledTimes(1);
+      expect(chunk.pauseMs).toBeUndefined();
+      expect(chunk).toMatchObject({ finished: false, progressDone: 0 });
+      expect(runRules).not.toHaveBeenCalled();
+    });
+
+    it("stops waiting when cancellation arrives while listing", async () => {
+      vi.mocked(withLocalMailSyncBudget).mockRejectedValue(
+        new LocalMailSyncPausedError(1000),
+      );
+      const checkpoint = vi.fn().mockResolvedValue(true);
+
+      const chunk = await runChunk({}, { checkpoint });
+
+      expect(chunk).toMatchObject({ finished: false, progressDone: 0 });
+      expect(chunk.pauseMs).toBeUndefined();
+      expect(loadThreads).not.toHaveBeenCalled();
+    });
+  });
+
   it("fails the job after several emails fail in a row", async () => {
     mockPage([
       thread("t1"),
@@ -259,6 +384,20 @@ describe("runBulkRulesChunk", () => {
     expect(chunk.failure).toBeUndefined();
   });
 });
+
+// Denies the first `times` message reads with the given retry delay.
+function denyMessageReads(times: number, retryAfterMs: number) {
+  let denied = 0;
+  vi.mocked(withLocalMailSyncBudget).mockImplementation(
+    async (input, operation) => {
+      if (input.cost === gmailMailSyncCosts.message && denied < times) {
+        denied += 1;
+        throw new LocalMailSyncPausedError(retryAfterMs);
+      }
+      return operation(new AbortController().signal);
+    },
+  );
+}
 
 function thread(id: string, overrides: Record<string, unknown> = {}) {
   return {

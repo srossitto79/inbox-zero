@@ -14,7 +14,8 @@ import {
 import { runRules } from "@/utils/ai/choose-rule/run-rules";
 import { loadThreads, type LoadedThreads } from "@/utils/threads/load";
 import type { ThreadsQuery } from "@/utils/threads/validation";
-import type { RuleWithActions } from "@/utils/types";
+import type { ParsedMessage, RuleWithActions } from "@/utils/types";
+import { sleep } from "@/utils/sleep";
 import {
   bulkRulesPayloadSchema,
   bulkRulesResultSchema,
@@ -31,6 +32,12 @@ const CONCURRENCY = 3;
 const RECENT_ENTRIES = 20;
 const MAX_CONSECUTIVE_FAILURES = 5;
 const RATE_LIMIT_PAUSE_MS = 60_000;
+// A denial this short means another reader holds the account lease for a
+// moment, so waiting here is cheaper than returning to the worker tick.
+const SHORT_DENIAL_MAX_MS = 5000;
+const MAX_BUDGET_ATTEMPTS = 5;
+
+class CancelledWhileWaitingError extends Error {}
 
 /** Lists one page of threads and runs the rules on each eligible one. */
 export async function runBulkRulesChunk({
@@ -58,18 +65,31 @@ export async function runBulkRulesChunk({
     include: { actions: true },
   });
 
-  const page = await withMailBudget(
-    provider,
-    emailAccountId,
-    gmailMailSyncCosts.list + PAGE_SIZE * gmailMailSyncCosts.message,
-    () =>
-      loadThreads({
-        query: buildThreadsQuery(payload),
-        emailAccountId,
-        emailProvider: provider,
-        messageFormat: "metadata",
-      }),
-  );
+  let page: Awaited<ReturnType<typeof loadThreads>>;
+  try {
+    page = await withMailBudget(
+      provider,
+      emailAccountId,
+      gmailMailSyncCosts.list + PAGE_SIZE * gmailMailSyncCosts.message,
+      () =>
+        loadThreads({
+          query: buildThreadsQuery(payload),
+          emailAccountId,
+          emailProvider: provider,
+          messageFormat: "metadata",
+        }),
+      checkpoint,
+    );
+  } catch (error) {
+    if (!(error instanceof CancelledWhileWaitingError)) throw error;
+    // Nothing ran; the executor sees the cancel request on its next pass.
+    return {
+      payload,
+      progressDone: job.progressDone,
+      result,
+      finished: false,
+    };
+  }
 
   const alreadyRan = new Set(payload.pageProcessedThreadIds);
   const remainingQuota =
@@ -95,20 +115,40 @@ export async function runBulkRulesChunk({
     index += CONCURRENCY
   ) {
     const group = eligible.slice(index, index + CONCURRENCY);
+    // The account allows one mailbox read at a time, so reads go one by one;
+    // the slow part, running the rules, then goes in parallel.
+    const reads: ThreadRead[] = [];
+    for (const thread of group) {
+      const read = await readThread({
+        thread,
+        provider,
+        emailAccount,
+        checkpoint,
+        logger,
+      });
+      reads.push(read);
+      if (read.type === "paused" || read.type === "cancelled") break;
+    }
     const outcomes = await Promise.all(
-      group.map((thread) =>
-        processThread({
-          thread,
-          provider,
-          rules,
-          emailAccount,
-          payload,
-          logger,
-        }),
+      reads.map((read) =>
+        read.type === "message"
+          ? runThreadRules({
+              read,
+              provider,
+              rules,
+              emailAccount,
+              payload,
+              logger,
+            })
+          : read,
       ),
     );
 
     for (const outcome of outcomes) {
+      if (outcome.type === "cancelled") {
+        cancelRequested = true;
+        continue;
+      }
       if (outcome.type === "paused") {
         pauseMs = Math.max(pauseMs ?? 0, outcome.pauseMs);
         continue;
@@ -136,6 +176,7 @@ export async function runBulkRulesChunk({
     }
     if (pauseMs !== undefined) break;
 
+    if (cancelRequested) break;
     cancelRequested = await checkpoint({
       progressDone,
       progressTotal: progressDone + (eligible.length - index - group.length),
@@ -175,24 +216,30 @@ export async function runBulkRulesChunk({
   };
 }
 
-async function processThread({
+type ThreadRead =
+  | {
+      type: "message";
+      thread: LoadedThreads["threads"][number];
+      entry: BulkRulesEntry;
+      message: ParsedMessage;
+    }
+  | { type: "done"; entry: BulkRulesEntry; error?: string }
+  | { type: "paused"; pauseMs: number }
+  | { type: "cancelled" };
+
+async function readThread({
   thread,
   provider,
-  rules,
   emailAccount,
-  payload,
+  checkpoint,
   logger,
 }: {
   thread: LoadedThreads["threads"][number];
   provider: EmailProvider;
-  rules: RuleWithActions[];
   emailAccount: EmailAccountForRuleExecution;
-  payload: BulkRulesPayload;
+  checkpoint: JobHandlerContext["checkpoint"];
   logger: JobHandlerContext["logger"];
-}): Promise<
-  | { type: "done"; entry: BulkRulesEntry; error?: string }
-  | { type: "paused"; pauseMs: number }
-> {
+}): Promise<ThreadRead> {
   const latest = thread.messages.at(-1);
   const entry: BulkRulesEntry = {
     threadId: thread.id,
@@ -210,7 +257,31 @@ async function processThread({
       emailAccount.id,
       gmailMailSyncCosts.message,
       () => provider.getMessage(latest.id),
+      checkpoint,
     );
+    return { type: "message", thread, entry, message };
+  } catch (error) {
+    return toFailedRead({ error, entry, thread, emailAccount, logger });
+  }
+}
+
+async function runThreadRules({
+  read,
+  provider,
+  rules,
+  emailAccount,
+  payload,
+  logger,
+}: {
+  read: Extract<ThreadRead, { type: "message" }>;
+  provider: EmailProvider;
+  rules: RuleWithActions[];
+  emailAccount: EmailAccountForRuleExecution;
+  payload: BulkRulesPayload;
+  logger: JobHandlerContext["logger"];
+}): Promise<ThreadRead> {
+  const { entry, thread, message } = read;
+  try {
     const results = await runRules({
       isTest: false,
       provider,
@@ -229,19 +300,37 @@ async function processThread({
       },
     };
   } catch (error) {
-    const pauseMs = getPauseMs(error, emailAccount.account.provider);
-    if (pauseMs !== null) return { type: "paused", pauseMs };
-
-    logger.warn("Bulk rules failed on a thread", {
-      threadId: thread.id,
-      error,
-    });
-    return {
-      type: "done",
-      entry: { ...entry, failed: true },
-      error: error instanceof Error ? error.message : "Rules failed",
-    };
+    return toFailedRead({ error, entry, thread, emailAccount, logger });
   }
+}
+
+function toFailedRead({
+  error,
+  entry,
+  thread,
+  emailAccount,
+  logger,
+}: {
+  error: unknown;
+  entry: BulkRulesEntry;
+  thread: LoadedThreads["threads"][number];
+  emailAccount: EmailAccountForRuleExecution;
+  logger: JobHandlerContext["logger"];
+}): ThreadRead {
+  if (error instanceof CancelledWhileWaitingError) return { type: "cancelled" };
+
+  const pauseMs = getPauseMs(error, emailAccount.account.provider);
+  if (pauseMs !== null) return { type: "paused", pauseMs };
+
+  logger.warn("Bulk rules failed on a thread", {
+    threadId: thread.id,
+    error,
+  });
+  return {
+    type: "done",
+    entry: { ...entry, failed: true },
+    error: error instanceof Error ? error.message : "Rules failed",
+  };
 }
 
 function buildThreadsQuery(payload: BulkRulesPayload): ThreadsQuery {
@@ -256,18 +345,35 @@ function buildThreadsQuery(payload: BulkRulesPayload): ThreadsQuery {
 }
 
 // Mailbox reads are charged to the shared sync budget, so a bulk run cannot
-// use up the account's Gmail quota. Outlook has its own per-folder budget.
-function withMailBudget<T>(
+// use up the account Gmail quota. Outlook has its own per-folder budget.
+// A short denial is waited out here, a few times at most; anything longer
+// goes back to the worker, which requeues the job with a delay.
+async function withMailBudget<T>(
   provider: EmailProvider,
   emailAccountId: string,
   cost: number,
   operation: () => Promise<T>,
+  checkpoint: JobHandlerContext["checkpoint"],
 ): Promise<T> {
   if (provider.name !== "google") return operation();
-  return withLocalMailSyncBudget(
-    { emailAccountId, provider: "google", priority: "backfill", cost },
-    operation,
-  );
+
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await withLocalMailSyncBudget(
+        { emailAccountId, provider: "google", priority: "backfill", cost },
+        operation,
+      );
+    } catch (error) {
+      const retryable =
+        error instanceof LocalMailSyncPausedError &&
+        error.retryAfterMs <= SHORT_DENIAL_MAX_MS &&
+        attempt < MAX_BUDGET_ATTEMPTS;
+      if (!retryable) throw error;
+
+      await sleep(error.retryAfterMs);
+      if (await checkpoint()) throw new CancelledWhileWaitingError();
+    }
+  }
 }
 
 function getPauseMs(error: unknown, provider: string) {
