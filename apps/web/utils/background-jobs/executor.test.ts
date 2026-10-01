@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import prisma from "@/utils/__mocks__/prisma";
 import { LocalMailSyncPausedError } from "@/utils/email/local-mail-sync-budget";
+import { failOrphanedChatReplies } from "@/utils/background-jobs/chat-reply";
 import { runBulkRulesChunk } from "@/utils/background-jobs/bulk-rules";
 import {
   runBackgroundJobTick,
@@ -227,6 +228,85 @@ describe("runBackgroundJobTick", () => {
     expect(rows.get("chat-1")).toMatchObject({
       status: "FAILED",
       error: "Interrupted",
+    });
+  });
+
+  describe("stale heartbeats by kind", () => {
+    it("gives up a chat reply after 90 seconds without a heartbeat", async () => {
+      addJob(rows, {
+        id: "chat-1",
+        kind: "CHAT_REPLY",
+        status: "RUNNING",
+        heartbeatAt: new Date(Date.now() - 100_000),
+      });
+
+      await runBackgroundJobTick();
+      await waitForRunningBackgroundJobs();
+
+      expect(rows.get("chat-1")).toMatchObject({
+        status: "FAILED",
+        error: "Interrupted",
+      });
+    });
+
+    it("leaves a chat reply with a recent heartbeat alone", async () => {
+      addJob(rows, {
+        id: "chat-1",
+        kind: "CHAT_REPLY",
+        status: "RUNNING",
+        heartbeatAt: new Date(Date.now() - 60_000),
+      });
+
+      await runBackgroundJobTick();
+      await waitForRunningBackgroundJobs();
+
+      expect(rows.get("chat-1")?.status).toBe("RUNNING");
+    });
+
+    it("keeps the five minute grace period for jobs that resume", async () => {
+      addJob(rows, {
+        id: "job-1",
+        status: "RUNNING",
+        heartbeatAt: new Date(Date.now() - 100_000),
+      });
+
+      await runBackgroundJobTick();
+      await waitForRunningBackgroundJobs();
+
+      expect(runBulkRulesChunk).not.toHaveBeenCalled();
+      expect(rows.get("job-1")?.status).toBe("RUNNING");
+    });
+  });
+
+  describe("failOrphanedChatReplies", () => {
+    it("fails chat replies without an owner and leaves a fresh heartbeat alone", async () => {
+      addJob(rows, {
+        id: "chat-dead",
+        kind: "CHAT_REPLY",
+        status: "RUNNING",
+        heartbeatAt: new Date(Date.now() - 60_000),
+      });
+      addJob(rows, {
+        id: "chat-live",
+        kind: "CHAT_REPLY",
+        status: "RUNNING",
+        heartbeatAt: new Date(Date.now() - 20_000),
+      });
+      addJob(rows, {
+        id: "bulk-old",
+        status: "RUNNING",
+        heartbeatAt: new Date(Date.now() - 60_000),
+      });
+
+      const count = await failOrphanedChatReplies();
+
+      expect(count).toBe(1);
+      expect(rows.get("chat-dead")).toMatchObject({
+        status: "FAILED",
+        error: "Interrupted",
+      });
+      expect(rows.get("chat-live")?.status).toBe("RUNNING");
+      expect(rows.get("bulk-old")?.status).toBe("RUNNING");
     });
   });
 

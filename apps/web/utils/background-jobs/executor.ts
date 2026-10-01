@@ -5,6 +5,7 @@ import { createScopedLogger, type Logger } from "@/utils/logger";
 import { LocalMailSyncPausedError } from "@/utils/email/local-mail-sync-budget";
 import { isEmailProviderRateLimitError } from "@/utils/email/is-provider-rate-limit-error";
 import { runBulkRulesChunk } from "@/utils/background-jobs/bulk-rules";
+import { CHAT_REPLY_STALE_MS } from "@/utils/background-jobs/chat-reply";
 
 const logger = createScopedLogger("background-jobs");
 
@@ -61,7 +62,7 @@ export async function runBackgroundJobTick(now = new Date()) {
           status: "QUEUED",
           OR: [{ nextRunAt: null }, { nextRunAt: { lte: now } }],
         },
-        { status: "RUNNING", heartbeatAt: { lt: staleBefore } },
+        ...staleRunningConditions(now, staleBefore),
       ],
     },
     orderBy: { createdAt: "asc" },
@@ -105,6 +106,23 @@ export async function waitForRunningBackgroundJobs() {
   await Promise.all(runningJobs.values());
 }
 
+// Kinds that resume get a long grace period; a chat reply cannot resume, so it
+// is given up as soon as its heartbeat has clearly stopped.
+function staleRunningConditions(now: Date, staleBefore: Date) {
+  return [
+    {
+      status: "RUNNING" as const,
+      kind: { in: Object.keys(handlers) as BackgroundJobKind[] },
+      heartbeatAt: { lt: staleBefore },
+    },
+    {
+      status: "RUNNING" as const,
+      kind: "CHAT_REPLY" as const,
+      heartbeatAt: { lt: new Date(now.getTime() - CHAT_REPLY_STALE_MS) },
+    },
+  ];
+}
+
 async function claimJob(
   candidate: BackgroundJob,
   now: Date,
@@ -118,7 +136,7 @@ async function claimJob(
           status: "QUEUED",
           OR: [{ nextRunAt: null }, { nextRunAt: { lte: now } }],
         },
-        { status: "RUNNING", heartbeatAt: { lt: staleBefore } },
+        ...staleRunningConditions(now, staleBefore),
       ],
     },
     data: {

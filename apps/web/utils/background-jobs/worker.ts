@@ -1,4 +1,5 @@
 import { runBackgroundJobTick } from "@/utils/background-jobs/executor";
+import { failOrphanedChatReplies } from "@/utils/background-jobs/chat-reply";
 import { createScopedLogger } from "@/utils/logger";
 
 const logger = createScopedLogger("background-jobs");
@@ -17,6 +18,14 @@ export function startBackgroundJobWorker() {
   // Dev reloads re-run instrumentation in the same process.
   if (globalForWorker.backgroundJobWorkerStarted) return;
   globalForWorker.backgroundJobWorkerStarted = true;
+
+  failOrphanedChatReplies()
+    .then((count) => {
+      if (count > 0) logger.info("Failed orphaned chat replies", { count });
+    })
+    .catch((error) => {
+      logger.error("Failed to sweep orphaned chat replies", { error });
+    });
 
   let ticking = false;
   const timer = setInterval(async () => {
