@@ -33,6 +33,7 @@ function row(overrides: Partial<StoredCalendarEvent>): StoredCalendarEvent {
     originalStartTime: null,
     videoLink: null,
     htmlLink: null,
+    reminders: null,
     ...overrides,
   };
 }
