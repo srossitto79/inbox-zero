@@ -15,6 +15,12 @@ import {
   parsedMessagePatch,
 } from "@/utils/mail-api/observations";
 import { isProviderRateLimitModeError } from "@/utils/email/rate-limit-mode-error";
+import { getProviderRateLimitDelayMs } from "@/utils/email/rate-limit";
+import {
+  gmailMailSyncCosts,
+  LocalMailSyncPausedError,
+  withLocalMailSyncBudget,
+} from "@/utils/email/local-mail-sync-budget";
 import { extractErrorInfo as extractGmailErrorInfo } from "@/utils/gmail/retry";
 import { extractErrorInfo as extractOutlookErrorInfo } from "@/utils/microsoft/retry";
 import type { ParsedMessage } from "@/utils/types";
@@ -114,18 +120,28 @@ export function createEmailProviderMailboxSource(input: {
           },
         };
       } catch (error) {
-        return mapProviderError(error);
+        return mapProviderError(error, providerName);
       }
     },
     async enumerate({ page, session, pageSize }) {
       try {
         const token = JSON.parse(page) as BootstrapToken;
-        const syncPage = await provider.getMessagesWithPagination({
-          maxResults: Math.min(pageSize, maxPageSize),
-          folderId: token.folderId ?? undefined,
-          pageToken: token.pageToken,
-          includeDrafts: true,
-        });
+        const limit = Math.min(pageSize, maxPageSize);
+        const syncPage = await withGmailSyncBudget(
+          provider,
+          accountId,
+          {
+            priority: "backfill",
+            cost: gmailMailSyncCosts.list + limit * gmailMailSyncCosts.message,
+          },
+          () =>
+            provider.getMessagesWithPagination({
+              maxResults: limit,
+              folderId: token.folderId ?? undefined,
+              pageToken: token.pageToken,
+              includeDrafts: true,
+            }),
+        );
         const changes = syncPage.messages.map((message) =>
           parsedMessagePatch(accountId, providerName, message),
         );
@@ -174,7 +190,7 @@ export function createEmailProviderMailboxSource(input: {
         if (error instanceof InvalidMailboxSyncCursorError) {
           return { status: "reset_required", scopeId: "primary" };
         }
-        return mapProviderError(error);
+        return mapProviderError(error, providerName);
       }
     },
     async readChanges({ position, session, requestId, pageSize }) {
@@ -226,21 +242,35 @@ export function createEmailProviderMailboxSource(input: {
         if (error instanceof InvalidMailboxSyncCursorError) {
           return { status: "reset_required", scopeId: position.streamId };
         }
-        return mapProviderError(error);
+        return mapProviderError(error, providerName);
       }
     },
     async hydrate({ keys, purpose }) {
       try {
-        const messages = [];
-        const unresolved = [];
-        for (const key of keys) {
-          try {
-            messages.push(await provider.getMessage(key.messageId));
-          } catch (error) {
-            if (!isMissingProviderResource(error)) throw error;
-            unresolved.push({ key, reason: "not_found" as const });
-          }
-        }
+        const messages: ParsedMessage[] = [];
+        const unresolved: Array<{
+          key: (typeof keys)[number];
+          reason: "not_found";
+        }> = [];
+        // Opening a message hydrates through here too, so it is not backfill.
+        await withGmailSyncBudget(
+          provider,
+          accountId,
+          {
+            priority: "current",
+            cost: Math.max(1, keys.length) * gmailMailSyncCosts.message,
+          },
+          async () => {
+            for (const key of keys) {
+              try {
+                messages.push(await provider.getMessage(key.messageId));
+              } catch (error) {
+                if (!isMissingProviderResource(error)) throw error;
+                unresolved.push({ key, reason: "not_found" as const });
+              }
+            }
+          },
+        );
         return {
           status: "ok" as const,
           value: {
@@ -253,7 +283,7 @@ export function createEmailProviderMailboxSource(input: {
           },
         };
       } catch (error) {
-        return mapProviderError(error);
+        return mapProviderError(error, providerName);
       }
     },
     async readConversationMembership({
@@ -295,7 +325,8 @@ export function createEmailProviderMailboxSource(input: {
           },
         };
       } catch (error) {
-        if (!isMissingProviderResource(error)) return mapProviderError(error);
+        if (!isMissingProviderResource(error))
+          return mapProviderError(error, providerName);
         return { status: "ok", value: { status: "not_found" } };
       }
     },
@@ -344,7 +375,7 @@ export function createEmailProviderMailboxSource(input: {
         if (isMissingProviderResource(error)) {
           return { status: "not_found" as const };
         }
-        return mapProviderError(error);
+        return mapProviderError(error, providerName);
       }
     },
   };
@@ -467,7 +498,28 @@ function isMissingProviderResource(error: unknown) {
   );
 }
 
-function mapProviderError(error: unknown) {
+function mapProviderError(error: unknown, provider: Provider) {
+  if (error instanceof LocalMailSyncPausedError) {
+    return {
+      status: "paused" as const,
+      retryAfterMs: error.retryAfterMs,
+      reason: "throttled" as const,
+    };
+  }
+  // A raw quota error means the provider's retries are spent; retrying within
+  // seconds only spends more of a per-minute quota.
+  const rateLimitDelay = getProviderRateLimitDelayMs({
+    error,
+    provider,
+    attemptNumber: 1,
+  });
+  if (rateLimitDelay !== null) {
+    return {
+      status: "paused" as const,
+      retryAfterMs: Math.max(30_000, rateLimitDelay),
+      reason: "throttled" as const,
+    };
+  }
   if (isProviderRateLimitModeError(error)) {
     return {
       status: "paused" as const,
@@ -543,4 +595,22 @@ async function* streamToIterable(stream: ReadableStream<Uint8Array>) {
   } finally {
     await reader.cancel().catch(() => undefined);
   }
+}
+
+/**
+ * Gmail reads for the local mailbox go through the shared sync budget, so a
+ * large first download cannot use up the account's per-minute Gmail quota.
+ * Outlook keeps its own folder-delta budget.
+ */
+function withGmailSyncBudget<T>(
+  provider: EmailProvider,
+  accountId: string,
+  reservation: { priority: "backfill" | "current"; cost: number },
+  operation: () => Promise<T>,
+): Promise<T> {
+  if (provider.name !== "google") return operation();
+  return withLocalMailSyncBudget(
+    { emailAccountId: accountId, provider: "google", ...reservation },
+    operation,
+  );
 }
