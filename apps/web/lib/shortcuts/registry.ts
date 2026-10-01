@@ -107,6 +107,20 @@ const SHORTCUT_DEFINITIONS = [
     label: "Previous message",
   },
   {
+    id: "nextThread",
+    keys: ["arrowright"],
+    scope: "mail",
+    group: "Navigate",
+    label: "Next conversation",
+  },
+  {
+    id: "previousThread",
+    keys: ["arrowleft"],
+    scope: "mail",
+    group: "Navigate",
+    label: "Previous conversation",
+  },
+  {
     id: "open",
     keys: ["enter"],
     scope: "mail",

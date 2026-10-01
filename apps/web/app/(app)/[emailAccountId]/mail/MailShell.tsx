@@ -21,6 +21,7 @@ import {
   orderThreadsByQueue,
 } from "@/app/(app)/[emailAccountId]/mail/queue-grouping";
 import { useQueueViewMode } from "@/app/(app)/[emailAccountId]/mail/use-queue-view-mode";
+import { getSwipeNavigation } from "@/app/(app)/[emailAccountId]/mail/reader-swipe";
 import { ListToolbar } from "@/app/(app)/[emailAccountId]/mail/ListToolbar";
 import { getMailSearchFolders } from "@/app/(app)/[emailAccountId]/mail/outlook-folder-list";
 import { MailAccountSwitcher } from "@/app/(app)/[emailAccountId]/mail/MailAccountSwitcher";
@@ -174,6 +175,7 @@ export function MailShell() {
   } | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const pendingSearchFocusRef = useRef(false);
+  const readerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     setIsDesktopApp(Boolean(getInboxZeroDesktopApp()));
@@ -798,6 +800,24 @@ export function MailShell() {
     ],
   );
 
+  const swipeNavigation = useStableCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      const start = readerTouchStartRef.current;
+      readerTouchStartRef.current = null;
+      if (!start || !openThreadId) return;
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      const direction = getSwipeNavigation({
+        startX: start.x,
+        startY: start.y,
+        endX: touch.clientX,
+        endY: touch.clientY,
+      });
+      if (direction === "next") move(1);
+      else if (direction === "previous") move(-1);
+    },
+  );
+
   const extendSelection = useCallback(
     (delta: number) => {
       const next = clampIndex(clampedIndex + delta);
@@ -1086,6 +1106,10 @@ export function MailShell() {
         if (openThreadId && event?.key === "ArrowUp") return;
         move(-1);
       },
+      // Left/right walk whole conversations through the list the reader was
+      // opened from, so an unread inbox is stepped unread-to-unread.
+      nextThread: openThreadId ? () => move(1) : undefined,
+      previousThread: openThreadId ? () => move(-1) : undefined,
       open: openThreadId
         ? (event) => {
             if (
@@ -1522,7 +1546,16 @@ export function MailShell() {
           )}
 
           {showReader ? (
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div
+              className="flex min-h-0 min-w-0 flex-1 flex-col"
+              onTouchStart={(event) => {
+                const touch = event.touches[0];
+                readerTouchStartRef.current = touch
+                  ? { x: touch.clientX, y: touch.clientY }
+                  : null;
+              }}
+              onTouchEnd={swipeNavigation}
+            >
               {showList ? null : (
                 <MailTitlebarNav
                   showHistory={isDesktopApp}
