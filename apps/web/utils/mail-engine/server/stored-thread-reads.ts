@@ -12,6 +12,7 @@ import type { EmailProvider } from "@/utils/email/types";
 import type { Logger } from "@/utils/logger";
 import { getServerMailboxDriver } from "@/utils/mail-engine/server/engine-registry";
 import { storedMessageToParsed } from "@/utils/mail-engine/server/stored-reads";
+import { createStoredWriteBack } from "@/utils/mail-engine/server/stored-write-back";
 import type { ParsedMessage } from "@/utils/types";
 
 type ThreadReads = Pick<
@@ -38,30 +39,48 @@ export function storedThreadReads(
   emailAccountId: string,
   logger: Logger,
 ): ThreadReads {
+  const writeBack = createStoredWriteBack(provider, emailAccountId, logger);
   const readThread = (threadId: string, includeDrafts = false) =>
     readStoredThread(emailAccountId, threadId, includeDrafts, logger);
 
   return {
     getThread: async (threadId, options) => {
       const messages = await readThread(threadId, options?.includeDrafts);
-      if (!messages) return provider.getThread(threadId, options);
+      if (!messages) {
+        const thread = await provider.getThread(threadId, options);
+        writeBack(thread.messages);
+        return thread;
+      }
       return {
         id: threadId,
         messages,
         snippet: messages.at(-1)?.snippet ?? "",
       };
     },
-    getThreadMessages: async (threadId) =>
-      (await readThread(threadId)) ?? provider.getThreadMessages(threadId),
+    getThreadMessages: async (threadId) => {
+      const stored = await readThread(threadId);
+      if (stored) return stored;
+      const messages = await provider.getThreadMessages(threadId);
+      writeBack(messages);
+      return messages;
+    },
     getThreadMessagesInInbox: async (threadId) => {
       const messages = await readThread(threadId);
-      if (!messages) return provider.getThreadMessagesInInbox(threadId);
+      if (!messages) {
+        const inInbox = await provider.getThreadMessagesInInbox(threadId);
+        writeBack(inInbox);
+        return inInbox;
+      }
       return messages.filter((message) => message.labelIds?.includes("INBOX"));
     },
     getLatestMessageInThread: async (threadId) => {
       const messages = await readThread(threadId);
       // A thread of drafts only is rare enough to leave to the provider.
-      if (!messages?.length) return provider.getLatestMessageInThread(threadId);
+      if (!messages?.length) {
+        const latest = await provider.getLatestMessageInThread(threadId);
+        writeBack([latest]);
+        return latest;
+      }
       return getLatestNonDraftMessage({
         messages,
         getTimestamp: getMessageTimestamp,
@@ -71,17 +90,28 @@ export function storedThreadReads(
     // name a stored message.
     getOriginalMessage: async (originalMessageId) => {
       if (!originalMessageId) return null;
-      return (
-        (await readStoredByReference(
-          emailAccountId,
-          originalMessageId,
-          logger,
-        )) ?? provider.getOriginalMessage(originalMessageId)
+      const stored = await readStoredByReference(
+        emailAccountId,
+        originalMessageId,
+        logger,
       );
+      if (stored) return stored;
+      const original = await provider.getOriginalMessage(originalMessageId);
+      writeBack([original]);
+      return original;
     },
-    getMessageByRfc822MessageId: async (rfc822MessageId) =>
-      (await readStoredByReference(emailAccountId, rfc822MessageId, logger)) ??
-      provider.getMessageByRfc822MessageId(rfc822MessageId),
+    getMessageByRfc822MessageId: async (rfc822MessageId) => {
+      const stored = await readStoredByReference(
+        emailAccountId,
+        rfc822MessageId,
+        logger,
+      );
+      if (stored) return stored;
+      const message =
+        await provider.getMessageByRfc822MessageId(rfc822MessageId);
+      writeBack([message]);
+      return message;
+    },
   };
 }
 

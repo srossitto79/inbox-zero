@@ -16,6 +16,7 @@ import type { Logger } from "@/utils/logger";
 import { isMetadataCoverageComplete } from "@/utils/mail-engine/coverage";
 import { conversationMessageToParsed } from "@/utils/mail-engine/conversation-thread";
 import { getServerMailboxDriver } from "@/utils/mail-engine/server/engine-registry";
+import { createStoredWriteBack } from "@/utils/mail-engine/server/stored-write-back";
 import type { ThreadsQuery } from "@/utils/threads/validation";
 import type { ParsedMessage } from "@/utils/types";
 
@@ -67,11 +68,42 @@ type Handler<K extends keyof EmailProvider> = (
 
 function createHandlers(context: Context) {
   const { emailAccountId } = context;
+  // Gmail only, see createStoredQueryReads.
+  const writeBack = createStoredWriteBack(
+    { name: "google" },
+    emailAccountId,
+    context.logger,
+  );
+  // Lists in metadata format carry no bodies, so they are not stored.
+  const fetchThreads = async (
+    target: EmailProvider,
+    options: Parameters<EmailProvider["getThreadsWithQuery"]>[0],
+  ) => {
+    const page = await target.getThreadsWithQuery(options);
+    if (options.messageFormat !== "metadata") {
+      writeBack(page.threads.flatMap((thread) => thread.messages));
+    }
+    return page;
+  };
+  const fetchMessages = async (messages: Promise<ParsedMessage[]>) => {
+    const fetched = await messages;
+    writeBack(fetched);
+    return fetched;
+  };
+
+  const fetchMessagesPage = async (
+    target: EmailProvider,
+    options: Parameters<EmailProvider["getMessagesWithPagination"]>[0],
+  ) => {
+    const page = await target.getMessagesWithPagination(options);
+    writeBack(page.messages);
+    return page;
+  };
 
   const getThreadsWithQuery: Handler<"getThreadsWithQuery"> =
     (target, self) => async (options) => {
       const plan = planThreadsQuery(options);
-      if (!plan) return target.getThreadsWithQuery(options);
+      if (!plan) return fetchThreads(target, options);
       const metadataOnly = options.messageFormat === "metadata";
       const page = await readStore(
         context,
@@ -104,7 +136,7 @@ function createHandlers(context: Context) {
           return { ...conversations, messages };
         },
       );
-      if (!page) return target.getThreadsWithQuery(options);
+      if (!page) return fetchThreads(target, options);
 
       const threads = await toThreads(
         self,
@@ -143,7 +175,11 @@ function createHandlers(context: Context) {
           return { conversationIds: found.conversationIds, messages };
         },
       );
-      if (!page) return target.getThreadsWithParticipant(options);
+      if (!page) {
+        const threads = await target.getThreadsWithParticipant(options);
+        writeBack(threads.flatMap((thread) => thread.messages));
+        return threads;
+      }
       return toThreads(self, page.conversationIds, page.messages, {
         metadataOnly: false,
       });
@@ -154,7 +190,7 @@ function createHandlers(context: Context) {
       const predicate = messagesPredicate(options);
       const limit = options.maxResults || 20;
       if (!predicate || limit > MAX_MESSAGE_PAGE_SIZE) {
-        return target.getMessagesWithPagination(options);
+        return fetchMessagesPage(target, options);
       }
       const page = await readMessagePage({
         context,
@@ -163,7 +199,7 @@ function createHandlers(context: Context) {
         predicate,
         limit,
       });
-      if (!page) return target.getMessagesWithPagination(options);
+      if (!page) return fetchMessagesPage(target, options);
       return {
         messages: await hydrateMessages(self, page.messageIds),
         nextPageToken: page.nextPageToken,
@@ -179,7 +215,7 @@ function createHandlers(context: Context) {
         predicate: allMessages([{ kind: "role", role: "sent" }]),
         limit: Math.min(maxResults || 20, MAX_HYDRATED_MESSAGES),
       });
-      if (!page) return target.getSentMessages(maxResults);
+      if (!page) return fetchMessages(target.getSentMessages(maxResults));
       return hydrateMessages(self, page.messageIds);
     };
 
@@ -192,7 +228,7 @@ function createHandlers(context: Context) {
         predicate: allMessages([{ kind: "role", role: "inbox" }]),
         limit: Math.min(maxResults || 20, MAX_HYDRATED_MESSAGES),
       });
-      if (!page) return target.getInboxMessages(maxResults);
+      if (!page) return fetchMessages(target.getInboxMessages(maxResults));
       return hydrateMessages(self, page.messageIds);
     };
 

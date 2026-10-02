@@ -13,6 +13,7 @@ import {
 } from "@inboxzero/mail-sqlite/node";
 import type { SqliteDriver } from "@inboxzero/mail-sqlite/driver";
 import { createSqliteMailStore } from "@inboxzero/mail-sqlite/store";
+import type { MailStore } from "@inboxzero/mail-core/ports/mail-store";
 import { env } from "@/env";
 import { isMicrosoftProvider } from "@/utils/email/provider-types";
 import { createScopedLogger } from "@/utils/logger";
@@ -32,7 +33,12 @@ const ERROR_DELAY_MS = 1000;
 // history call when nothing changed.
 const CATCH_UP_INTERVAL_MS = 60_000;
 
-type ServerMailbox = { engine: MailEngine; driver: SqliteDriver };
+type ServerMailbox = {
+  engine: MailEngine;
+  driver: SqliteDriver;
+  store: MailStore;
+  session: { accountId: string; generation: string };
+};
 type ServerMailEngines = Map<string, Promise<ServerMailbox>>;
 
 // Next can load a route module more than once; one engine per account must
@@ -50,6 +56,15 @@ export async function getServerMailEngine(emailAccountId: string) {
 /** The SQLite driver behind the account's engine, for server-side reads. */
 export async function getServerMailboxDriver(emailAccountId: string) {
   return (await getServerMailbox(emailAccountId)).driver;
+}
+
+/**
+ * The store behind the account's engine and the session it was opened with,
+ * for writing provider reads back into it.
+ */
+export async function getServerMailStore(emailAccountId: string) {
+  const { store, session } = await getServerMailbox(emailAccountId);
+  return { store, session };
 }
 
 function getServerMailbox(emailAccountId: string) {
@@ -92,10 +107,11 @@ async function startEngine(emailAccountId: string): Promise<ServerMailbox> {
     runtime,
     bodyCodec: nodeBodyCodec,
   });
+  const session = { accountId: emailAccountId, generation: emailAccountId };
   await store.ensureAccount({
     accountId: emailAccountId,
     provider: isMicrosoftProvider(provider) ? "microsoft" : "google",
-    generation: emailAccountId,
+    generation: session.generation,
   });
 
   const context = { emailAccountId, provider, logger: accountLogger };
@@ -110,7 +126,7 @@ async function startEngine(emailAccountId: string): Promise<ServerMailbox> {
   await engine.requestSync([emailAccountId]);
   runForever(engine, emailAccountId, accountLogger);
   accountLogger.info("Started server mail engine");
-  return { engine, driver };
+  return { engine, driver, store, session };
 }
 
 function runForever(

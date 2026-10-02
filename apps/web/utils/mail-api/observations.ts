@@ -133,6 +133,23 @@ export function parsedMessageBodyObservation(
   };
 }
 
+export function hydratedBodies(
+  accountId: string,
+  messages: ParsedMessage[],
+): BodyObservation[] {
+  return messages.map(
+    (message) =>
+      parsedMessageBodyObservation(accountId, message) ?? {
+        key: { accountId, messageId: message.id },
+        version: message.historyId || null,
+        html: null,
+        text: null,
+        attachments: [],
+        isMeetingInvitation: false,
+      },
+  );
+}
+
 function parsedMessageAttachmentDescriptors(
   message: ParsedMessage,
 ): MessageAttachmentDescriptor[] {
