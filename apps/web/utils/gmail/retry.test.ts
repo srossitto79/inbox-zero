@@ -18,6 +18,18 @@ describe("Gmail retry helpers", () => {
     vi.clearAllMocks();
   });
 
+  it("backs off beyond the blocking limit when the per-minute quota is spent", () => {
+    const delay = calculateRetryDelay(
+      true,
+      false,
+      false,
+      1,
+      undefined,
+      "Quota exceeded for quota metric 'Total Query Cost' and limit 'Units per minute per user' of service 'gmail.googleapis.com'",
+    );
+    expect(delay).toBeGreaterThan(MAX_GMAIL_BLOCKING_RETRY_DELAY_MS);
+  });
+
   describe("isRetryableError", () => {
     it("should identify 502 status code as retryable server error", () => {
       const errorInfo = { status: 502, errorMessage: "Server Error" };

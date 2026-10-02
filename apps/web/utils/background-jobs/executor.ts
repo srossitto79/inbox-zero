@@ -271,6 +271,13 @@ async function requeueJob(jobId: string, delayMs: number) {
 
 function getPauseMs(error: unknown): number | null {
   if (error instanceof LocalMailSyncPausedError) return error.retryAfterMs;
-  if (isEmailProviderRateLimitError({ error })) return DEFAULT_PAUSE_MS;
+  // A job does not know its provider here, and a raw provider error carries
+  // no provider tag, so both providers are checked.
+  if (
+    isEmailProviderRateLimitError({ error, provider: "google" }) ||
+    isEmailProviderRateLimitError({ error, provider: "microsoft" })
+  ) {
+    return DEFAULT_PAUSE_MS;
+  }
   return null;
 }

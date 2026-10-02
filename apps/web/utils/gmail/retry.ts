@@ -276,6 +276,13 @@ export function calculateRetryDelay(
     return Math.min(5000 * 2 ** (attemptNumber - 1), 80_000);
   }
 
+  if (isRateLimit && /per minute per user/i.test(errorMessage ?? "")) {
+    // The minute window is spent: retrying within seconds only fails again and
+    // extends the lockout, so this is longer than the blocking limit and the
+    // caller backs off instead.
+    return 60_000;
+  }
+
   if (isRateLimit) {
     // Short exponential backoff keeps retries within request lifetimes unless Gmail provides an explicit retry time.
     return Math.min(1000 * 2 ** (attemptNumber - 1), 10_000);
