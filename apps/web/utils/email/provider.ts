@@ -11,6 +11,7 @@ import { recordEmailAccountProviderIssue } from "@/utils/email/provider-health";
 import type { Logger } from "@/utils/logger";
 import { flushLoggerSafely } from "@/utils/logger-flush";
 import { isServerMailStore } from "@/utils/mail-engine/mail-store-mode";
+import { withStoredLabelReads } from "@/utils/mail-engine/server/stored-label-reads";
 import { withStoredMailReads } from "@/utils/mail-engine/server/stored-reads";
 
 export async function createEmailProvider({
@@ -57,7 +58,11 @@ export async function createEmailProvider({
             { emailAccountId, provider: rateLimitProvider, logger },
           );
     return readStoredMail && isServerMailStore()
-      ? withStoredMailReads(created, emailAccountId, logger)
+      ? withStoredMailReads(
+          withStoredLabelReads(created, emailAccountId, logger),
+          emailAccountId,
+          logger,
+        )
       : created;
   } catch (error) {
     logger.warn("Failed to create email provider", {
