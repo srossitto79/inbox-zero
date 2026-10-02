@@ -161,6 +161,10 @@ export function createMockEmailProvider(
 
     // Filters
     getFiltersList: vi.fn().mockResolvedValue([]),
+    getForwardingAddresses: vi.fn().mockResolvedValue([]),
+    getMailboxHistoryId: vi.fn().mockResolvedValue(null),
+    listMailboxHistory: vi.fn().mockResolvedValue({ history: [] }),
+    modifyThreadLabels: vi.fn().mockResolvedValue(undefined),
     createFilter: vi.fn().mockResolvedValue({ status: 200 }),
     deleteFilter: vi.fn().mockResolvedValue({ status: 200 }),
     createAutoArchiveFilter: vi.fn().mockResolvedValue({ status: 200 }),

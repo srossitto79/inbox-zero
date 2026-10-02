@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createGenerateObject } from "@/utils/llms";
-import type { gmail_v1 } from "@googleapis/gmail";
+import type { EmailLabel } from "@/utils/email/types";
 import type { EmailAccountWithAI } from "@/utils/llms/types";
 import type { EmailSummary } from "@/utils/ai/report/summarize-emails";
 import { getModelForUseCase, LlmUseCase } from "@/utils/llms/use-cases";
@@ -21,7 +21,7 @@ const labelAnalysisSchema = z.object({
 export async function aiAnalyzeLabelOptimization(
   emailSummaries: EmailSummary[],
   emailAccount: EmailAccountWithAI,
-  gmailLabels: gmail_v1.Schema$Label[],
+  gmailLabels: EmailLabel[],
 ): Promise<z.infer<typeof labelAnalysisSchema>> {
   const system = `You are a Gmail organization expert. Analyze the user's current labels and email patterns to suggest specific optimizations that will improve their email organization and workflow efficiency.
 

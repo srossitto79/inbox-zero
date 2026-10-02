@@ -19,6 +19,7 @@ export async function createEmailProvider({
   provider,
   logger,
   readStoredMail = true,
+  skipRateLimitCheck = false,
 }: {
   emailAccountId: string;
   provider: string;
@@ -28,17 +29,21 @@ export async function createEmailProvider({
    * The mailbox's own sync turns this off: it is what fills the store.
    */
   readStoredMail?: boolean;
+  /** For cleanup that must still run while the account is rate limited, such as unwatching. */
+  skipRateLimitCheck?: boolean;
 }): Promise<EmailProvider> {
   const rateLimitProvider = toRateLimitProvider(provider);
   if (!rateLimitProvider) throw new Error(`Unsupported provider: ${provider}`);
 
   try {
-    await assertProviderNotRateLimited({
-      emailAccountId,
-      provider: rateLimitProvider,
-      logger,
-      source: "create-email-provider",
-    });
+    if (!skipRateLimitCheck) {
+      await assertProviderNotRateLimited({
+        emailAccountId,
+        provider: rateLimitProvider,
+        logger,
+        source: "create-email-provider",
+      });
+    }
 
     const created =
       rateLimitProvider === "google"

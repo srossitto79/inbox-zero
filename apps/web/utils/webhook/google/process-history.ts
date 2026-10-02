@@ -1,7 +1,7 @@
 import uniqBy from "lodash/uniqBy";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
-import { getGmailClientWithRefresh } from "@/utils/gmail/client";
+import { createEmailProvider } from "@/utils/email/provider";
 import { cleanupInvalidTokens } from "@/utils/auth/cleanup-invalid-tokens";
 import { GmailLabel } from "@/utils/gmail/label";
 import { captureException, isInvalidGrantError } from "@/utils/error";
@@ -10,7 +10,6 @@ import {
   type ProcessHistoryOptions,
 } from "@/utils/webhook/google/types";
 import { processHistoryItem } from "@/utils/webhook/google/process-history-item";
-import { getHistory } from "@/utils/gmail/history";
 import {
   validateWebhookAccount,
   getWebhookEmailAccount,
@@ -23,6 +22,7 @@ import {
 import prisma from "@/utils/prisma";
 import type { Logger } from "@/utils/logger";
 import type { gmail_v1 } from "@googleapis/gmail";
+import type { EmailProvider } from "@/utils/email/types";
 
 const MAX_GMAIL_HISTORY_ID_GAP = 3000;
 const GMAIL_HISTORY_PAGE_SIZE = 500;
@@ -120,17 +120,16 @@ export async function processHistoryForUser(
         source: "google/webhook",
       },
       async () => {
-        const gmail = await getGmailClientWithRefresh({
-          accessToken: accountAccessToken,
-          refreshToken: accountRefreshToken,
-          expiresAt:
-            validatedEmailAccount.account.expires_at?.getTime() || null,
+        // This is the sync layer that fills the mailbox store, so it reads the provider directly.
+        const emailProvider = await createEmailProvider({
           emailAccountId: validatedEmailAccount.id,
+          provider: "google",
           logger,
+          readStoredMail: false,
         });
 
         const historyResult = await fetchGmailHistoryResilient({
-          gmail,
+          emailProvider,
           emailAccount: validatedEmailAccount,
           webhookHistoryId: historyId,
           options,
@@ -161,7 +160,6 @@ export async function processHistoryForUser(
             {
               history: historyEntries,
               spamLearnedThreadIds: new Set<string>(),
-              gmail,
               accessToken: accountAccessToken,
               hasAutomationRules,
               hasAiAccess: userHasAiAccess,
@@ -360,13 +358,13 @@ function isHistoryIdExpiredError(error: unknown): boolean {
  * 2. Handles expired history IDs (404s) by resetting the sync point.
  */
 async function fetchGmailHistoryResilient({
-  gmail,
+  emailProvider,
   emailAccount,
   webhookHistoryId,
   options,
   logger,
 }: {
-  gmail: gmail_v1.Gmail;
+  emailProvider: EmailProvider;
   emailAccount: ValidatedWebhookAccountData;
   webhookHistoryId: string;
   options: { startHistoryId?: string };
@@ -437,18 +435,14 @@ async function fetchGmailHistoryResilient({
     let pageCount = 0;
 
     do {
-      const data = await getHistory(
-        gmail,
-        {
-          startHistoryId,
-          historyTypes: ["messageAdded", "labelAdded", "labelRemoved"],
-          maxResults: GMAIL_HISTORY_PAGE_SIZE,
-          pageToken,
-        },
-        logger,
-      );
+      const data = await emailProvider.listMailboxHistory({
+        startHistoryId,
+        historyTypes: ["messageAdded", "labelAdded", "labelRemoved"],
+        maxResults: GMAIL_HISTORY_PAGE_SIZE,
+        pageToken,
+      });
 
-      const pageHistory = data.history ?? [];
+      const pageHistory = data.history;
       historyEntries.push(...pageHistory);
       pageCount += 1;
       pageToken = data.nextPageToken || undefined;

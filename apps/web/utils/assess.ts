@@ -1,13 +1,11 @@
 import uniq from "lodash/uniq";
 import countBy from "lodash/countBy";
 import type { EmailProvider } from "@/utils/email/types";
-import { GmailProvider } from "@/utils/email/google";
 import { getEmailClient } from "@/utils/mail";
 import { isDefined } from "@/utils/types";
 import type { Logger } from "@/utils/logger";
 import { GmailLabel } from "@/utils/gmail/label";
 import { OutlookLabel } from "@/utils/outlook/constants";
-import { getFilters, getForwardingAddresses } from "@/utils/gmail/settings";
 
 export async function assessUser({
   client,
@@ -57,7 +55,7 @@ export async function assessUser({
 }
 
 async function getUnreadEmailCount(client: EmailProvider) {
-  if (client instanceof GmailProvider) {
+  if (client.name === "google") {
     const label = await client.getLabelById(GmailLabel.UNREAD);
     return label?.threadsTotal || 0;
   } else {
@@ -67,7 +65,7 @@ async function getUnreadEmailCount(client: EmailProvider) {
 }
 
 async function getInboxCount(client: EmailProvider) {
-  if (client instanceof GmailProvider) {
+  if (client.name === "google") {
     const label = await client.getLabelById(GmailLabel.INBOX);
     return label?.threadsTotal || 0;
   } else {
@@ -77,7 +75,7 @@ async function getInboxCount(client: EmailProvider) {
 }
 
 async function getUnreadCount(client: EmailProvider) {
-  if (client instanceof GmailProvider) {
+  if (client.name === "google") {
     const label = await client.getLabelById(GmailLabel.UNREAD);
     return label?.threadsTotal || 0;
   } else {
@@ -87,7 +85,7 @@ async function getUnreadCount(client: EmailProvider) {
 }
 
 async function getSentCount(client: EmailProvider) {
-  if (client instanceof GmailProvider) {
+  if (client.name === "google") {
     const label = await client.getLabelById(GmailLabel.SENT);
     return label?.threadsTotal || 0;
   } else {
@@ -98,7 +96,7 @@ async function getSentCount(client: EmailProvider) {
 
 async function getLabelCount(client: EmailProvider) {
   const labels = await client.getLabels();
-  if (client instanceof GmailProvider) {
+  if (client.name === "google") {
     const DEFAULT_LABEL_COUNT = 13;
     return labels.length - DEFAULT_LABEL_COUNT;
   } else {
@@ -108,10 +106,8 @@ async function getLabelCount(client: EmailProvider) {
 }
 
 async function getFiltersCount(client: EmailProvider) {
-  if (client instanceof GmailProvider) {
-    // biome-ignore lint/suspicious/noExplicitAny: existing loose external shape
-    const gmail = (client as any).client; // Access the internal Gmail client
-    const filters = await getFilters(gmail);
+  if (client.name === "google") {
+    const filters = await client.getFiltersList();
     return filters.length;
   }
   // Outlook doesn't have a direct equivalent to Gmail filters
@@ -122,11 +118,9 @@ async function getForwardingAddressesCount(
   client: EmailProvider,
   logger: Logger,
 ) {
-  if (client instanceof GmailProvider) {
+  if (client.name === "google") {
     try {
-      // biome-ignore lint/suspicious/noExplicitAny: existing loose external shape
-      const gmail = (client as any).client; // Access the internal Gmail client
-      const forwardingAddresses = await getForwardingAddresses(gmail);
+      const forwardingAddresses = await client.getForwardingAddresses();
       return forwardingAddresses.length;
     } catch (error) {
       // Can happen due to "Forwarding features disabled by administrator"

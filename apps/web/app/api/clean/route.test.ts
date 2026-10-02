@@ -29,12 +29,10 @@ vi.mock("@/utils/upstash", () => ({
 }));
 
 const mockGetThreadMessages = vi.fn();
-vi.mock("@/utils/gmail/thread", () => ({
-  getThreadMessages: (...args: unknown[]) => mockGetThreadMessages(...args),
-}));
-
-vi.mock("@/utils/gmail/client", () => ({
-  getGmailClientWithRefresh: vi.fn().mockResolvedValue({}),
+vi.mock("@/utils/email/provider", () => ({
+  createEmailProvider: vi.fn().mockResolvedValue({
+    getThreadMessages: (...args: unknown[]) => mockGetThreadMessages(...args),
+  }),
 }));
 
 const mockGetEmailAccountWithAiAndTokens = vi.fn();
@@ -117,6 +115,7 @@ describe("cleanThread", () => {
         access_token: "access-token",
         refresh_token: "refresh-token",
         expires_at: new Date(Date.now() + 3_600_000),
+        provider: "google",
       },
     });
 

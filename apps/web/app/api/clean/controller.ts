@@ -7,9 +7,8 @@ import { isMaybeReceipt, isReceipt } from "@/utils/ai/group/find-receipts";
 import { assertCleanerApiEnabled } from "@/utils/cleaner-feature";
 import { internalDateToDate } from "@/utils/date";
 import { SafeError } from "@/utils/error";
-import { getGmailClientWithRefresh } from "@/utils/gmail/client";
+import { createEmailProvider } from "@/utils/email/provider";
 import { GmailLabel } from "@/utils/gmail/label";
-import { getThreadMessages } from "@/utils/gmail/thread";
 import { getEmailForLLM } from "@/utils/get-email-from-message";
 import type { Logger } from "@/utils/logger";
 import { getCalendarEventStatus } from "@/utils/parse/calender-event";
@@ -71,15 +70,13 @@ export async function cleanThread({
   if (!premium) throw new SafeError("User not premium");
   if (!isActivePremium(premium)) throw new SafeError("Premium not active");
 
-  const gmail = await getGmailClientWithRefresh({
-    accessToken: emailAccount.tokens.access_token,
-    refreshToken: emailAccount.tokens.refresh_token,
-    expiresAt: emailAccount.tokens.expires_at,
+  const emailProvider = await createEmailProvider({
     emailAccountId,
+    provider: emailAccount.tokens.provider,
     logger,
   });
 
-  const messages = await getThreadMessages(threadId, gmail);
+  const messages = await emailProvider.getThreadMessages(threadId);
 
   logger.info("Fetched messages", {
     emailAccountId,

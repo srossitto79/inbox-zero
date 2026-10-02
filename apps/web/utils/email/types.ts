@@ -1,3 +1,4 @@
+import type { gmail_v1 } from "@googleapis/gmail";
 import type { LocalMailSyncRequest } from "@/utils/actions/local-mail-sync.validation";
 import type { LocalMailSyncResponse } from "@/utils/email/local-mail-sync-types";
 import type { ParsedMessage } from "@/utils/types";
@@ -46,6 +47,8 @@ export interface EmailLabel {
   name: string;
   threadsTotal?: number;
   // Only populated by providers that report per-label counts (Gmail `labels.get`)
+  messagesTotal?: number;
+  messagesUnread?: number;
   threadsUnread?: number;
   type: string;
 }
@@ -92,6 +95,11 @@ export interface SentMessagePage {
   messages: { id: string; threadId: string }[];
   nextPageToken?: string;
 }
+
+export type MailboxHistoryPage = {
+  history: gmail_v1.Schema$History[];
+  nextPageToken?: string;
+};
 
 export type BulkArchiveThread = {
   threadId: string;
@@ -205,6 +213,8 @@ export interface EmailProvider {
   getDrafts(options?: { maxResults?: number }): Promise<ParsedMessage[]>;
   getFiltersList(): Promise<EmailFilter[]>;
   getFolderCounts(): Promise<EmailFolderCount[]>;
+  /** Addresses the account forwards mail to. Providers without forwarding return none. */
+  getForwardingAddresses(): Promise<string[]>;
   getFolders(): Promise<OutlookFolder[]>;
   getInboxMessages(maxResults?: number): Promise<ParsedMessage[]>;
   getInboxStats(): Promise<{ total: number; unread: number }>;
@@ -215,12 +225,21 @@ export interface EmailProvider {
     thread: Pick<EmailThread, "id" | "messages">,
   ): Promise<ParsedMessage | null>;
   getLatestMessageInThread(threadId: string): Promise<ParsedMessage | null>;
+  /** The mailbox's current history cursor. Google only; Outlook throws. */
+  getMailboxHistoryId(): Promise<string | null>;
   getMailboxSyncPage(options: {
     after?: Date;
     cursor?: string;
     folderId?: string;
     limit: number;
   }): Promise<MailboxSyncPage>;
+  /** One page of mailbox changes since `startHistoryId`. Google only; Outlook throws. */
+  listMailboxHistory(options: {
+    startHistoryId: string;
+    historyTypes?: string[];
+    maxResults?: number;
+    pageToken?: string;
+  }): Promise<MailboxHistoryPage>;
   /** Threads in the mailbox outside spam, trash and drafts; null when the provider cannot say. */
   getMailboxThreadTotal(): Promise<number | null>;
   getMessage(
@@ -321,6 +340,11 @@ export interface EmailProvider {
     labelId: string;
     labelName: string | null;
   }): Promise<{ usedFallback?: boolean; actualLabelId?: string }>;
+  /** Adds and removes labels on every message of a thread. Google only; Outlook throws. */
+  modifyThreadLabels(
+    threadId: string,
+    changes: { addLabelIds?: string[]; removeLabelIds?: string[] },
+  ): Promise<void>;
   readonly localMailSyncStrategy: "account-history" | "folder-delta";
   markMessagesReadState(messageIds: string[], read: boolean): Promise<void>;
   markMessagesStarredState(

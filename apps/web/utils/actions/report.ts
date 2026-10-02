@@ -1,6 +1,5 @@
 "use server";
 
-import type { gmail_v1 } from "@googleapis/gmail";
 import { z } from "zod";
 import { fetchEmailsForReport } from "@/utils/ai/report/fetch";
 import { aiSummarizeEmails } from "@/utils/ai/report/summarize-emails";
@@ -12,10 +11,10 @@ import { aiAnalyzeLabelOptimization } from "@/utils/ai/report/analyze-label-opti
 import { aiGenerateActionableRecommendations } from "@/utils/ai/report/generate-actionable-recommendations";
 import { actionClient } from "@/utils/actions/safe-action";
 import { getEmailAccountWithAi } from "@/utils/user/get";
-import { getGmailClientForEmail } from "@/utils/email-account-client";
+import { createEmailProvider } from "@/utils/email/provider";
+import type { EmailLabel, EmailProvider } from "@/utils/email/types";
 import { getEmailForLLM } from "@/utils/get-email-from-message";
 import type { Logger } from "@/utils/logger";
-import { getGmailSignatures } from "@/utils/gmail/signature-settings";
 
 export type EmailReportData = Awaited<ReturnType<typeof getEmailReportData>>;
 
@@ -64,13 +63,14 @@ async function getEmailReportData({
     }),
   ]);
 
-  const gmail = await getGmailClientForEmail({
+  const emailProvider = await createEmailProvider({
     emailAccountId: emailAccount.id,
+    provider: emailAccount.account.provider,
     logger,
   });
 
-  const gmailLabels = await fetchGmailLabels(gmail, logger);
-  const gmailSignature = await fetchGmailSignature(gmail, logger);
+  const gmailLabels = await fetchLabels(emailProvider, logger);
+  const gmailSignature = await fetchSignature(emailProvider, logger);
 
   const [
     executiveSummary,
@@ -157,83 +157,68 @@ async function getEmailReportData({
   };
 }
 
-// TODO: should be able to import this functionality from elsewhere
-async function fetchGmailLabels(
-  gmail: gmail_v1.Gmail,
+async function fetchLabels(
+  emailProvider: EmailProvider,
   logger: Logger,
-): Promise<gmail_v1.Schema$Label[]> {
+): Promise<EmailLabel[]> {
   try {
-    const response = await gmail.users.labels.list({ userId: "me" });
+    const labels = await emailProvider.getLabels({ includeHidden: true });
 
-    const userLabels =
-      response.data.labels?.filter(
-        (label: gmail_v1.Schema$Label) =>
-          label.type === "user" &&
-          label.name &&
-          !label.name.startsWith("CATEGORY_") &&
-          !label.name.startsWith("CHAT"),
-      ) || [];
+    const userLabels = labels.filter(
+      (label) =>
+        label.type === "user" &&
+        !label.name.startsWith("CATEGORY_") &&
+        !label.name.startsWith("CHAT"),
+    );
 
     const labelsWithCounts = await Promise.all(
-      userLabels
-        .filter(
-          (
-            label,
-          ): label is gmail_v1.Schema$Label & { id: string; name: string } =>
-            Boolean(label.id && label.name),
-        )
-        .map(async (label) => {
-          try {
-            const labelDetail = await gmail.users.labels.get({
-              userId: "me",
-              id: label.id,
-            });
-            return {
-              ...label,
-              messagesTotal: labelDetail.data.messagesTotal || 0,
-              messagesUnread: labelDetail.data.messagesUnread || 0,
-              threadsTotal: labelDetail.data.threadsTotal || 0,
-              threadsUnread: labelDetail.data.threadsUnread || 0,
-            };
-          } catch (error) {
-            logger.warn("Failed to get details for label", {
-              labelName: label.name,
-              error,
-            });
-            return {
-              ...label,
-              messagesTotal: 0,
-              messagesUnread: 0,
-              threadsTotal: 0,
-              threadsUnread: 0,
-            };
-          }
-        }),
+      userLabels.map(async (label) => {
+        try {
+          const labelDetail = await emailProvider.getLabelById(label.id);
+          return {
+            ...label,
+            messagesTotal: labelDetail?.messagesTotal || 0,
+            messagesUnread: labelDetail?.messagesUnread || 0,
+            threadsTotal: labelDetail?.threadsTotal || 0,
+            threadsUnread: labelDetail?.threadsUnread || 0,
+          };
+        } catch (error) {
+          logger.warn("Failed to get details for label", {
+            labelName: label.name,
+            error,
+          });
+          return {
+            ...label,
+            messagesTotal: 0,
+            messagesUnread: 0,
+            threadsTotal: 0,
+            threadsUnread: 0,
+          };
+        }
+      }),
     );
 
-    const sortedLabels = labelsWithCounts.sort(
+    return labelsWithCounts.sort(
       (a, b) => (b.messagesTotal || 0) - (a.messagesTotal || 0),
     );
-
-    return sortedLabels;
   } catch (error) {
-    logger.warn("Failed to fetch Gmail labels", { error });
+    logger.warn("Failed to fetch labels", { error });
     return [];
   }
 }
 
-async function fetchGmailSignature(
-  gmail: gmail_v1.Gmail,
+async function fetchSignature(
+  emailProvider: EmailProvider,
   logger: Logger,
 ): Promise<string> {
   try {
-    const signatures = await getGmailSignatures(gmail);
+    const signatures = await emailProvider.getSignatures();
     const defaultSignature =
       signatures.find((sig) => sig.isDefault) || signatures[0];
 
     return defaultSignature?.signature || "";
   } catch (error) {
-    logger.warn("Failed to fetch Gmail signature", { error });
+    logger.warn("Failed to fetch signature", { error });
     return "";
   }
 }

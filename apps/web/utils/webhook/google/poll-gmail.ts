@@ -1,8 +1,7 @@
 import prisma from "@/utils/prisma";
 import type { Logger } from "@/utils/logger";
 import { getPremiumUserFilter } from "@/utils/premium";
-import { getGmailClientWithRefresh } from "@/utils/gmail/client";
-import { withGmailRetry } from "@/utils/gmail/retry";
+import { createEmailProvider } from "@/utils/email/provider";
 import { processHistoryForUser } from "@/utils/webhook/google/process-history";
 
 // Substitute for the Pub/Sub push webhook on deployments that cannot expose a
@@ -19,17 +18,7 @@ export async function pollGmailAccounts(logger: Logger) {
         { watchEmailsExpirationDate: { lt: now } },
       ],
     },
-    select: {
-      id: true,
-      email: true,
-      account: {
-        select: {
-          access_token: true,
-          refresh_token: true,
-          expires_at: true,
-        },
-      },
-    },
+    select: { id: true, email: true },
   });
 
   let polled = 0;
@@ -39,20 +28,14 @@ export async function pollGmailAccounts(logger: Logger) {
     const accountLogger = logger.with({ emailAccountId: emailAccount.id });
 
     try {
-      const gmail = await getGmailClientWithRefresh({
-        accessToken: emailAccount.account.access_token,
-        refreshToken: emailAccount.account.refresh_token,
-        expiresAt: emailAccount.account.expires_at?.getTime() ?? null,
+      const emailProvider = await createEmailProvider({
         emailAccountId: emailAccount.id,
+        provider: "google",
         logger: accountLogger,
+        readStoredMail: false,
       });
 
-      const profile = await withGmailRetry(
-        () => gmail.users.getProfile({ userId: "me" }),
-        5,
-        { logger: accountLogger },
-      );
-      const historyId = profile.data.historyId;
+      const historyId = await emailProvider.getMailboxHistoryId();
       if (!historyId) {
         throw new Error("Gmail did not return a mailbox history ID");
       }

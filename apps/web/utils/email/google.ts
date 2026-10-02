@@ -108,6 +108,7 @@ import type {
   EmailLabel,
   EmailFilter,
   EmailSignature,
+  MailboxHistoryPage,
   SentMessagePage,
   BulkArchiveThread,
   BulkArchiveResult,
@@ -117,6 +118,8 @@ import type {
 import type { SendEmailBody } from "@/utils/types/mail";
 import { createScopedLogger, type Logger } from "@/utils/logger";
 import { getGmailSignatures } from "@/utils/gmail/signature-settings";
+import { getForwardingAddresses } from "@/utils/gmail/settings";
+import { getHistory } from "@/utils/gmail/history";
 import { withRateLimitRecording } from "@/utils/email/rate-limit";
 import { shouldSkipAutoDraft } from "@/utils/auto-draft";
 import { extractUniqueEmailAddresses } from "@/utils/email";
@@ -248,6 +251,8 @@ export class GmailProvider implements EmailProvider {
         name: label.name!,
         type: label.type!,
         color: label.color || undefined,
+        messagesTotal: label.messagesTotal || undefined,
+        messagesUnread: label.messagesUnread || undefined,
         threadsTotal: label.threadsTotal || undefined,
         threadsUnread: label.threadsUnread || undefined,
       };
@@ -1251,6 +1256,50 @@ export class GmailProvider implements EmailProvider {
       gmail: this.client,
       threadId,
       removeLabelIds: labelIds,
+    });
+  }
+
+  async modifyThreadLabels(
+    threadId: string,
+    changes: { addLabelIds?: string[]; removeLabelIds?: string[] },
+  ): Promise<void> {
+    await this.withRateLimitTracking("modify-thread-labels", async () => {
+      await labelThread({ gmail: this.client, threadId, ...changes });
+    });
+  }
+
+  async getForwardingAddresses(): Promise<string[]> {
+    return this.withRateLimitTracking("get-forwarding-addresses", async () => {
+      const addresses = await getForwardingAddresses(this.client);
+      return addresses.flatMap((address) =>
+        address.forwardingEmail ? [address.forwardingEmail] : [],
+      );
+    });
+  }
+
+  async getMailboxHistoryId(): Promise<string | null> {
+    return this.withRateLimitTracking("get-mailbox-history-id", async () => {
+      const profile = await withGmailRetry(
+        () => this.client.users.getProfile({ userId: "me" }),
+        5,
+        { logger: this.logger },
+      );
+      return profile.data.historyId ?? null;
+    });
+  }
+
+  async listMailboxHistory(options: {
+    startHistoryId: string;
+    historyTypes?: string[];
+    maxResults?: number;
+    pageToken?: string;
+  }): Promise<MailboxHistoryPage> {
+    return this.withRateLimitTracking("list-mailbox-history", async () => {
+      const data = await getHistory(this.client, options, this.logger);
+      return {
+        history: data.history ?? [],
+        nextPageToken: data.nextPageToken || undefined,
+      };
     });
   }
 
