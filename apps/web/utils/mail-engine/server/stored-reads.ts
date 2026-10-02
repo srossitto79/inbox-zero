@@ -8,6 +8,10 @@ import type { EmailProvider } from "@/utils/email/types";
 import type { Logger } from "@/utils/logger";
 import { conversationMessageToParsed } from "@/utils/mail-engine/conversation-thread";
 import { getServerMailboxDriver } from "@/utils/mail-engine/server/engine-registry";
+import {
+  createStoredQueryReads,
+  findStoredQueryRead,
+} from "@/utils/mail-engine/server/stored-query-reads";
 import { storedThreadReads } from "@/utils/mail-engine/server/stored-thread-reads";
 import type { ParsedMessage } from "@/utils/types";
 
@@ -42,12 +46,15 @@ export function withStoredMailReads(
   };
 
   const threadReads = storedThreadReads(provider, emailAccountId, logger);
+  const queryReads = createStoredQueryReads(provider, emailAccountId, logger);
 
   return new Proxy(provider, {
     get(target, property, receiver) {
       if (Object.hasOwn(threadReads, property)) {
         return threadReads[property as keyof typeof threadReads];
       }
+      const queryRead = findStoredQueryRead(queryReads, property);
+      if (queryRead) return queryRead(target, receiver);
       if (property === "getMessage") {
         return async (
           messageId: string,
