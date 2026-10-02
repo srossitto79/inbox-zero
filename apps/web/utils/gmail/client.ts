@@ -7,6 +7,10 @@ import { SCOPES } from "@/utils/gmail/scopes";
 import { isInvalidGrantError, SafeError } from "@/utils/error";
 import { env } from "@/env";
 import {
+  installGmailQuotaMeter,
+  rememberGmailAccessToken,
+} from "@/utils/gmail/quota-meter";
+import {
   getGoogleGmailApiRootUrl,
   getGoogleOauthClientOptions,
   getGooglePeopleApiRootUrl,
@@ -80,6 +84,12 @@ export const getGmailClientWithRefresh = async ({
   // we handle refresh ourselves so not passing in expiresAt
   const auth = getAuth({ accessToken, refreshToken });
   const g = gmail({ version: "v1", auth, rootUrl: getGoogleGmailApiRootUrl() });
+  installGmailQuotaMeter({
+    authClient: auth,
+    client: g,
+    emailAccountId,
+    logger,
+  });
 
   const expiryDate = expiresAt ? expiresAt : null;
   if (expiryDate && expiryDate > Date.now() + TOKEN_REFRESH_BUFFER_MS) {
@@ -160,5 +170,6 @@ export const getAccessTokenFromClient = (client: gmail_v1.Gmail): string => {
   const accessToken = (client.context._options.auth as any).credentials
     .access_token;
   if (!accessToken) throw new Error("No access token");
+  rememberGmailAccessToken(client, accessToken);
   return accessToken;
 };

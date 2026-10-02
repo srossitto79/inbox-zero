@@ -1,6 +1,10 @@
 import { isDefined } from "@/utils/types";
 import { getGoogleGmailBatchUrl } from "@/utils/google/oauth";
 import { createScopedLogger } from "@/utils/logger";
+import {
+  chargeGmailBatch,
+  recordGmailQuotaResponse,
+} from "@/utils/gmail/quota-meter";
 
 const logger = createScopedLogger("gmail/batch");
 
@@ -20,6 +24,12 @@ export async function getBatch(
       `Request count exceeds the limit. Received: ${ids.length}, Limit: ${BATCH_LIMIT}`,
     );
   }
+
+  const meter = await chargeGmailBatch({
+    accessToken,
+    endpoint,
+    count: ids.length,
+  });
 
   let batchRequestBody = "";
   const query = queryString ? `?${queryString}` : "";
@@ -42,6 +52,26 @@ export async function getBatch(
   const textRes = await res.text();
 
   const batch = parseBatchResponse(textRes, res.headers.get("Content-Type"));
+
+  if (meter) {
+    const rateLimited =
+      res.status === 429
+        ? { status: 429 }
+        : batch.find((item) => item?.error?.code === 429 || isQuota403(item));
+    if (rateLimited) {
+      await recordGmailQuotaResponse({
+        error: {
+          response: {
+            status: res.status === 429 ? 429 : rateLimited.error.code,
+            data: { error: rateLimited.error },
+            headers: { "retry-after": res.headers.get("Retry-After") },
+          },
+        },
+        emailAccountId: meter.emailAccountId,
+        logger: meter.logger,
+      });
+    }
+  }
 
   return batch;
 }
@@ -99,4 +129,15 @@ function checkBatchResponseForError(batchResponse: string) {
   } catch {
     // not json. skipping
   }
+}
+
+function isQuota403(item: {
+  error?: { code?: number; errors?: { reason?: string }[] };
+}) {
+  return (
+    item?.error?.code === 403 &&
+    ["rateLimitExceeded", "userRateLimitExceeded", "quotaExceeded"].includes(
+      String(item.error.errors?.[0]?.reason),
+    )
+  );
 }

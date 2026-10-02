@@ -252,6 +252,13 @@ const parsedEnv = createEnv({
       .int()
       .nonnegative()
       .default(50),
+    // Per-account Gmail quota units spent per minute before requests are held
+    // back; Gmail's own limit is 15,000.
+    GMAIL_QUOTA_UNITS_PER_MINUTE: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(12_000),
     REASONING_RETENTION_DAYS: z.preprocess(
       (value) => (value === "" ? undefined : value),
       z.coerce.number().int().nonnegative().optional(),
