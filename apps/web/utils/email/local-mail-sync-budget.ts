@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getProviderRateLimitDelayMs } from "@/utils/email/rate-limit";
 import { redis } from "@/utils/redis";
+import { runWithGmailQuotaPriority } from "@/utils/gmail/quota-meter";
 import {
   getEmailProviderRateLimitStateFromRedis,
   isEmailProviderRateLimitRedisConfigured,
@@ -185,7 +186,11 @@ export async function withLocalMailSyncBudget<T>(
       .catch(pause);
   }, 20_000);
   try {
-    const result = await operation(controller.signal);
+    // Gmail requests made by the operation are metered in real units by the
+    // transport; the lease only passes its priority down.
+    const result = await runWithGmailQuotaPriority(input.priority, () =>
+      operation(controller.signal),
+    );
     if (pauseError) throw pauseError;
     return result;
   } catch (error) {
