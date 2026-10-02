@@ -21,6 +21,7 @@
     "./migrations": "./src/migrations.ts",
     "./maintenance": "./src/maintenance.ts",
     "./stored-messages": "./src/stored-messages.ts",
+    "./stored-queries": "./src/stored-queries.ts",
     "./node": "./src/node-sqlite.ts",
     "./blob-store": "./src/blob-store.ts",
     "./capabilities": "./src/capabilities.ts",

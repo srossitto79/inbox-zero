@@ -12,6 +12,7 @@ import {
   type EmailAccountForRuleExecution,
 } from "@/utils/user/get";
 import { runRules } from "@/utils/ai/choose-rule/run-rules";
+import { isStoreToken } from "@/utils/mail-engine/server/stored-query-reads";
 import { loadThreads, type LoadedThreads } from "@/utils/threads/load";
 import type { ThreadsQuery } from "@/utils/threads/validation";
 import type { ParsedMessage, RuleWithActions } from "@/utils/types";
@@ -65,21 +66,26 @@ export async function runBulkRulesChunk({
     include: { actions: true },
   });
 
+  const listPage = () =>
+    loadThreads({
+      query: buildThreadsQuery(payload),
+      emailAccountId,
+      emailProvider: provider,
+      messageFormat: "metadata",
+    });
   let page: Awaited<ReturnType<typeof loadThreads>>;
   try {
-    page = await withMailBudget(
-      provider,
-      emailAccountId,
-      gmailMailSyncCosts.list + PAGE_SIZE * gmailMailSyncCosts.message,
-      () =>
-        loadThreads({
-          query: buildThreadsQuery(payload),
+    // A page that continues a mailbox-store listing never reaches Gmail, so
+    // it has nothing to charge to the budget.
+    page = isStoreToken(payload.nextPageToken)
+      ? await listPage()
+      : await withMailBudget(
+          provider,
           emailAccountId,
-          emailProvider: provider,
-          messageFormat: "metadata",
-        }),
-      checkpoint,
-    );
+          gmailMailSyncCosts.list + PAGE_SIZE * gmailMailSyncCosts.message,
+          listPage,
+          checkpoint,
+        );
   } catch (error) {
     if (!(error instanceof CancelledWhileWaitingError)) throw error;
     // Nothing ran; the executor sees the cancel request on its next pass.
