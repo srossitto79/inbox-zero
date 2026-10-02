@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withError, type RequestWithLogger } from "@/utils/middleware";
-import { getGmailClientWithRefresh } from "@/utils/gmail/client";
-import { GmailLabel, labelThread } from "@/utils/gmail/label";
+import { createEmailProvider } from "@/utils/email/provider";
+import { GmailLabel } from "@/utils/gmail/label";
 import { SafeError } from "@/utils/error";
 import prisma from "@/utils/prisma";
 import { isDefined } from "@/utils/types";
@@ -42,7 +42,7 @@ async function performGmailAction({
         select: {
           access_token: true,
           refresh_token: true,
-          expires_at: true,
+          provider: true,
         },
       },
     },
@@ -52,11 +52,9 @@ async function performGmailAction({
   if (!account.account?.access_token || !account.account?.refresh_token)
     throw new SafeError("No Gmail account found", 404);
 
-  const gmail = await getGmailClientWithRefresh({
-    accessToken: account.account.access_token,
-    refreshToken: account.account.refresh_token,
-    expiresAt: account.account.expires_at?.getTime() || null,
+  const emailProvider = await createEmailProvider({
     emailAccountId,
+    provider: account.account.provider,
     logger,
   });
 
@@ -75,9 +73,7 @@ async function performGmailAction({
 
   logger.info("Handling thread", { threadId, shouldArchive, shouldMarkAsRead });
 
-  await labelThread({
-    gmail,
-    threadId,
+  await emailProvider.modifyThreadLabels(threadId, {
     addLabelIds,
     removeLabelIds,
   });

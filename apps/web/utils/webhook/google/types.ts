@@ -17,7 +17,6 @@ export type ProcessHistoryOptions = {
   // Gmail labels every message in a thread as spam, so junking one thread fires one
   // event per message. Spam learning is thread-scoped, so it only runs for the first.
   spamLearnedThreadIds: Set<string>;
-  gmail: gmail_v1.Gmail;
   accessToken: string;
   rules: RuleWithActions[];
   hasAutomationRules: boolean;

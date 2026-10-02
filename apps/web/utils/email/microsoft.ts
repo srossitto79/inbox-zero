@@ -92,6 +92,7 @@ import type {
   EmailLabel,
   EmailFilter,
   EmailSignature,
+  MailboxHistoryPage,
   EmailFolderCount,
   SentMessagePage,
   BulkArchiveThread,
@@ -2521,6 +2522,22 @@ export class OutlookProvider implements EmailProvider {
       unread: folder.unreadItemCount ?? 0,
       systemType: folder.systemType,
     }));
+  }
+
+  async getForwardingAddresses(): Promise<string[]> {
+    return [];
+  }
+
+  async getMailboxHistoryId(): Promise<string | null> {
+    throw new Error("Mailbox history is not supported for Outlook");
+  }
+
+  async listMailboxHistory(): Promise<MailboxHistoryPage> {
+    throw new Error("Mailbox history is not supported for Outlook");
+  }
+
+  async modifyThreadLabels(): Promise<void> {
+    throw new Error("Modifying thread labels is not supported for Outlook");
   }
 
   async getSignatures(): Promise<EmailSignature[]> {

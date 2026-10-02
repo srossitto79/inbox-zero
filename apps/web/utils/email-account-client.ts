@@ -27,7 +27,9 @@ export async function getGmailClientForEmail({
   return gmail;
 }
 
-export async function getGmailAndAccessTokenForEmail({
+// Refreshes the Google OAuth token and returns only the token, never a Gmail
+// client: Gmail API calls must go through the EmailProvider.
+export async function getGoogleAccessTokenForEmail({
   emailAccountId,
   logger,
 }: {
@@ -43,7 +45,7 @@ export async function getGmailAndAccessTokenForEmail({
     logger,
   });
   const accessToken = getAccessTokenFromClient(gmail);
-  return { gmail, accessToken, tokens };
+  return { accessToken, tokens };
 }
 
 export async function getOutlookClientForEmail({

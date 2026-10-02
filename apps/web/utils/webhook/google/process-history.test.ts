@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { processHistoryForUser } from "./process-history";
 import { cleanupInvalidTokens } from "@/utils/auth/cleanup-invalid-tokens";
-import { getHistory } from "@/utils/gmail/history";
 import {
   getWebhookEmailAccount,
   validateWebhookAccount,
@@ -12,12 +11,12 @@ import { createTestLogger } from "@/__tests__/helpers";
 
 const logger = createTestLogger();
 
-vi.mock("@/utils/gmail/client", () => ({
-  getGmailClientWithRefresh: vi.fn().mockResolvedValue({}),
+const { listMailboxHistory } = vi.hoisted(() => ({
+  listMailboxHistory: vi.fn(),
 }));
 
-vi.mock("@/utils/gmail/history", () => ({
-  getHistory: vi.fn(),
+vi.mock("@/utils/email/provider", () => ({
+  createEmailProvider: vi.fn().mockResolvedValue({ listMailboxHistory }),
 }));
 
 vi.mock("@/utils/webhook/validate-webhook-account", () => ({
@@ -88,7 +87,7 @@ describe("processHistoryForUser - 404 Handling", () => {
     // Simulate Gmail 404 error
     const error404 = new Error("Requested entity was not found");
     (error404 as any).status = 404;
-    vi.mocked(getHistory).mockRejectedValue(error404);
+    vi.mocked(listMailboxHistory).mockRejectedValue(error404);
 
     const result = await processHistoryForUser(
       { emailAddress: email, historyId },
@@ -127,7 +126,7 @@ describe("processHistoryForUser - 404 Handling", () => {
         hasAiAccess: false,
       },
     } as any);
-    vi.mocked(getHistory).mockResolvedValue({
+    vi.mocked(listMailboxHistory).mockResolvedValue({
       history: [
         {
           id: "1500",
@@ -189,7 +188,7 @@ describe("processHistoryForUser - 404 Handling", () => {
 
     const jsonResponse = await (result as any).json();
     expect(jsonResponse).toEqual({ ok: true });
-    expect(getHistory).not.toHaveBeenCalled();
+    expect(listMailboxHistory).not.toHaveBeenCalled();
   });
 
   it("should continue processing when rate-limit state lookup fails", async () => {
@@ -221,7 +220,7 @@ describe("processHistoryForUser - 404 Handling", () => {
     vi.mocked(getEmailProviderRateLimitState).mockRejectedValueOnce(
       new Error("redis unavailable"),
     );
-    vi.mocked(getHistory).mockResolvedValue({ history: [] });
+    vi.mocked(listMailboxHistory).mockResolvedValue({ history: [] });
 
     const result = await processHistoryForUser(
       { emailAddress: email, historyId },
@@ -231,7 +230,7 @@ describe("processHistoryForUser - 404 Handling", () => {
 
     const jsonResponse = await (result as any).json();
     expect(jsonResponse).toEqual({ ok: true });
-    expect(getHistory).toHaveBeenCalled();
+    expect(listMailboxHistory).toHaveBeenCalled();
   });
 
   it("does not truncate moderate history ID gaps", async () => {
@@ -261,14 +260,12 @@ describe("processHistoryForUser - 404 Handling", () => {
       },
     } as any);
 
-    vi.mocked(getHistory).mockResolvedValue({ history: [] });
+    vi.mocked(listMailboxHistory).mockResolvedValue({ history: [] });
 
     await processHistoryForUser({ emailAddress: email, historyId }, {}, logger);
 
-    expect(getHistory).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(listMailboxHistory).toHaveBeenCalledWith(
       expect.objectContaining({ startHistoryId: "1000" }),
-      expect.any(Object),
     );
   });
 
@@ -299,14 +296,12 @@ describe("processHistoryForUser - 404 Handling", () => {
       },
     } as any);
 
-    vi.mocked(getHistory).mockResolvedValue({ history: [] });
+    vi.mocked(listMailboxHistory).mockResolvedValue({ history: [] });
 
     await processHistoryForUser({ emailAddress: email, historyId }, {}, logger);
 
-    expect(getHistory).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(listMailboxHistory).toHaveBeenCalledWith(
       expect.objectContaining({ startHistoryId: "2000" }),
-      expect.any(Object),
     );
     expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
   });
@@ -338,14 +333,12 @@ describe("processHistoryForUser - 404 Handling", () => {
       },
     } as any);
 
-    vi.mocked(getHistory).mockResolvedValue({ history: [] });
+    vi.mocked(listMailboxHistory).mockResolvedValue({ history: [] });
 
     await processHistoryForUser({ emailAddress: email, historyId }, {}, logger);
 
-    expect(getHistory).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(listMailboxHistory).toHaveBeenCalledWith(
       expect.objectContaining({ startHistoryId: "90071992547409931000" }),
-      expect.any(Object),
     );
   });
 
@@ -376,7 +369,7 @@ describe("processHistoryForUser - 404 Handling", () => {
       },
     } as any);
 
-    vi.mocked(getHistory)
+    vi.mocked(listMailboxHistory)
       .mockResolvedValueOnce({
         history: [{ id: "1100", messagesAdded: [] }],
         nextPageToken: "page-2",
@@ -387,26 +380,22 @@ describe("processHistoryForUser - 404 Handling", () => {
 
     await processHistoryForUser({ emailAddress: email, historyId }, {}, logger);
 
-    expect(getHistory).toHaveBeenCalledTimes(2);
-    expect(getHistory).toHaveBeenNthCalledWith(
+    expect(listMailboxHistory).toHaveBeenCalledTimes(2);
+    expect(listMailboxHistory).toHaveBeenNthCalledWith(
       1,
-      expect.anything(),
       expect.objectContaining({
         startHistoryId: "1000",
         maxResults: 500,
         pageToken: undefined,
       }),
-      expect.any(Object),
     );
-    expect(getHistory).toHaveBeenNthCalledWith(
+    expect(listMailboxHistory).toHaveBeenNthCalledWith(
       2,
-      expect.anything(),
       expect.objectContaining({
         startHistoryId: "1000",
         maxResults: 500,
         pageToken: "page-2",
       }),
-      expect.any(Object),
     );
     expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
   });
@@ -442,7 +431,7 @@ describe("processHistoryForUser - authentication failures", () => {
     "invalid_grant",
     "Token refresh failed: invalid_grant",
   ])("cleans up the failed grant before acknowledging %s from a Gmail API call", async (message) => {
-    vi.mocked(getHistory).mockRejectedValueOnce(new Error(message));
+    vi.mocked(listMailboxHistory).mockRejectedValueOnce(new Error(message));
 
     const response = await processHistoryForUser(
       { emailAddress: "user@example.com", historyId: 2000 },
@@ -463,7 +452,9 @@ describe("processHistoryForUser - authentication failures", () => {
   });
 
   it("acknowledges invalid grants even if cleanup fails", async () => {
-    vi.mocked(getHistory).mockRejectedValueOnce(new Error("invalid_grant"));
+    vi.mocked(listMailboxHistory).mockRejectedValueOnce(
+      new Error("invalid_grant"),
+    );
     vi.mocked(cleanupInvalidTokens).mockRejectedValueOnce(
       new Error("Database unavailable"),
     );
@@ -479,7 +470,7 @@ describe("processHistoryForUser - authentication failures", () => {
   });
 
   it("does not disconnect accounts for transient Gmail API failures", async () => {
-    vi.mocked(getHistory).mockRejectedValueOnce(
+    vi.mocked(listMailboxHistory).mockRejectedValueOnce(
       new Error("Service unavailable"),
     );
 

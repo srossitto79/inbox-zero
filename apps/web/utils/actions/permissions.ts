@@ -4,7 +4,7 @@ import { z } from "zod";
 import { handleGmailPermissionsCheck } from "@/utils/gmail/permissions";
 import { actionClient, adminActionClient } from "@/utils/actions/safe-action";
 import {
-  getGmailAndAccessTokenForEmail,
+  getGoogleAccessTokenForEmail,
   getOutlookClientForEmail,
 } from "@/utils/email-account-client";
 import prisma from "@/utils/prisma";
@@ -27,7 +27,7 @@ export const checkPermissionsAction = actionClient
     }
 
     try {
-      const { accessToken, tokens } = await getGmailAndAccessTokenForEmail({
+      const { accessToken, tokens } = await getGoogleAccessTokenForEmail({
         emailAccountId,
         logger,
       });
@@ -77,7 +77,7 @@ export const adminCheckPermissionsAction = adminActionClient
         throw new SafeError("Unsupported provider");
       }
 
-      const { accessToken, tokens } = await getGmailAndAccessTokenForEmail({
+      const { accessToken, tokens } = await getGoogleAccessTokenForEmail({
         emailAccountId,
         logger,
       });

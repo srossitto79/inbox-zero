@@ -8,20 +8,10 @@ import {
 } from "@/utils/premium";
 import { unwatchEmails } from "@/utils/email/watch-manager";
 import { createEmailProvider } from "@/utils/email/provider";
-import {
-  getGmailClientForEmail,
-  getOutlookClientForEmail,
-} from "@/utils/email-account-client";
-import { GmailProvider } from "@/utils/email/google";
-import { OutlookProvider } from "@/utils/email/microsoft";
 import prisma from "@/utils/prisma";
 import type { Logger } from "@/utils/logger";
 import { logErrorWithDedupe } from "@/utils/log-error-with-dedupe";
 import type { Prisma } from "@/generated/prisma/client";
-import {
-  isGoogleProvider,
-  isMicrosoftProvider,
-} from "@/utils/email/provider-types";
 
 const webhookEmailAccountSelect = {
   id: true,
@@ -174,10 +164,12 @@ export async function cleanupWebhookAccountOnRateLimitSkip(
 
   let provider = null;
   try {
-    provider = await createEmailProviderForWebhookCleanup({
+    provider = await createEmailProvider({
       emailAccountId: emailAccount.id,
-      provider: emailAccount.account?.provider,
+      provider: emailAccount.account?.provider ?? "",
       logger,
+      skipRateLimitCheck: true,
+      readStoredMail: false,
     });
   } catch (error) {
     logger.warn("Provider creation failed for webhook cleanup", {
@@ -310,26 +302,4 @@ function getWebhookAccountPremium(
     : isPremiumRecord(emailAccount.user.premium)
       ? emailAccount.user.premium
       : undefined;
-}
-
-async function createEmailProviderForWebhookCleanup({
-  emailAccountId,
-  provider,
-  logger,
-}: {
-  emailAccountId: string;
-  provider: string | null | undefined;
-  logger: Logger;
-}) {
-  if (isGoogleProvider(provider)) {
-    const client = await getGmailClientForEmail({ emailAccountId, logger });
-    return new GmailProvider(client, logger, emailAccountId);
-  }
-
-  if (isMicrosoftProvider(provider)) {
-    const client = await getOutlookClientForEmail({ emailAccountId, logger });
-    return new OutlookProvider(client, logger);
-  }
-
-  return null;
 }

@@ -16,10 +16,6 @@ vi.mock("@/app/api/watch/controller");
 vi.mock("@/utils/email/provider");
 vi.mock("@/utils/email/watch-manager");
 vi.mock("@/utils/prisma");
-vi.mock("@/utils/email-account-client", () => ({
-  getGmailClientForEmail: vi.fn(),
-  getOutlookClientForEmail: vi.fn(),
-}));
 vi.mock("@/utils/log-error-with-dedupe", () => ({
   logErrorWithDedupe: vi.fn(),
 }));
@@ -28,7 +24,6 @@ import { hasAiAccess, isPremiumRecord } from "@/utils/premium";
 import { unwatchEmails } from "@/utils/email/watch-manager";
 import { createEmailProvider } from "@/utils/email/provider";
 import { logErrorWithDedupe } from "@/utils/log-error-with-dedupe";
-import { getGmailClientForEmail } from "@/utils/email-account-client";
 
 describe("validateWebhookAccount", () => {
   const mockEmailProvider = { type: "google" as const };
@@ -37,7 +32,6 @@ describe("validateWebhookAccount", () => {
     vi.clearAllMocks();
     vi.mocked(createEmailProvider).mockResolvedValue(mockEmailProvider as any);
     vi.mocked(unwatchEmails).mockResolvedValue(undefined);
-    vi.mocked(getGmailClientForEmail).mockResolvedValue({} as any);
   });
 
   function createMockEmailAccount(
@@ -133,15 +127,18 @@ describe("validateWebhookAccount", () => {
 
       await cleanupWebhookAccountOnRateLimitSkip(emailAccount, logger);
 
-      expect(getGmailClientForEmail).toHaveBeenCalledWith({
+      expect(createEmailProvider).toHaveBeenCalledWith({
         emailAccountId: "account-id",
+        provider: "google",
         logger,
+        skipRateLimitCheck: true,
+        readStoredMail: false,
       });
       expect(unwatchEmails).toHaveBeenCalledWith(
         expect.objectContaining({
           emailAccountId: "account-id",
           subscriptionId: "subscription-id",
-          provider: expect.objectContaining({ name: "google" }),
+          provider: mockEmailProvider,
         }),
       );
     });

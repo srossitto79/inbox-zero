@@ -3,11 +3,11 @@ import prisma from "@/utils/prisma";
 import { createTestLogger } from "@/__tests__/helpers";
 import { pollGmailAccounts } from "./poll-gmail";
 import { processHistoryForUser } from "@/utils/webhook/google/process-history";
-import { getGmailClientWithRefresh } from "@/utils/gmail/client";
+import { createEmailProvider } from "@/utils/email/provider";
 
 vi.mock("@/utils/prisma");
 vi.mock("@/utils/premium", () => ({ getPremiumUserFilter: () => ({}) }));
-vi.mock("@/utils/gmail/client", () => ({ getGmailClientWithRefresh: vi.fn() }));
+vi.mock("@/utils/email/provider", () => ({ createEmailProvider: vi.fn() }));
 vi.mock("@/utils/webhook/google/process-history", () => ({
   processHistoryForUser: vi.fn(),
 }));
@@ -17,18 +17,11 @@ const logger = createTestLogger();
 const emailAccount = (id: string, email: string) => ({
   id,
   email,
-  account: {
-    access_token: "access",
-    refresh_token: "refresh",
-    expires_at: new Date(),
-  },
 });
 
 function mockGmailWithHistoryId(historyId: string | null | undefined) {
-  vi.mocked(getGmailClientWithRefresh).mockResolvedValue({
-    users: {
-      getProfile: vi.fn().mockResolvedValue({ data: { historyId } }),
-    },
+  vi.mocked(createEmailProvider).mockResolvedValue({
+    getMailboxHistoryId: vi.fn().mockResolvedValue(historyId ?? null),
   } as never);
 }
 
@@ -74,12 +67,10 @@ describe("pollGmailAccounts", () => {
       emailAccount("account-1", "first@example.com"),
       emailAccount("account-2", "second@example.com"),
     ] as never);
-    vi.mocked(getGmailClientWithRefresh)
+    vi.mocked(createEmailProvider)
       .mockRejectedValueOnce(new Error("invalid_grant"))
       .mockResolvedValueOnce({
-        users: {
-          getProfile: vi.fn().mockResolvedValue({ data: { historyId: "99" } }),
-        },
+        getMailboxHistoryId: vi.fn().mockResolvedValue("99"),
       } as never);
 
     const result = await pollGmailAccounts(logger);
