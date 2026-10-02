@@ -8,12 +8,13 @@ import type { EmailProvider } from "@/utils/email/types";
 import type { Logger } from "@/utils/logger";
 import { conversationMessageToParsed } from "@/utils/mail-engine/conversation-thread";
 import { getServerMailboxDriver } from "@/utils/mail-engine/server/engine-registry";
+import { storedThreadReads } from "@/utils/mail-engine/server/stored-thread-reads";
 import type { ParsedMessage } from "@/utils/types";
 
 /**
  * Serves message reads from the server mailbox when it holds the message with
- * its body and headers, and asks the provider for the rest. Threads, searches
- * and everything else still go to the provider.
+ * its body and headers, and asks the provider for the rest. Searches and
+ * everything else still go to the provider.
  */
 export function withStoredMailReads(
   provider: EmailProvider,
@@ -40,8 +41,13 @@ export function withStoredMailReads(
     });
   };
 
+  const threadReads = storedThreadReads(provider, emailAccountId, logger);
+
   return new Proxy(provider, {
     get(target, property, receiver) {
+      if (Object.hasOwn(threadReads, property)) {
+        return threadReads[property as keyof typeof threadReads];
+      }
       if (property === "getMessage") {
         return async (
           messageId: string,
