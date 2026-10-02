@@ -16,14 +16,7 @@ interface FooterProps {
 // Simple footer for self-hosted deployments
 const selfHostedFooter = {
   resources: [
-    {
-      name: "Documentation",
-      href: "https://docs.getinboxzero.com",
-      target: "_blank",
-    },
     { name: "Contact us", href: `mailto:${env.NEXT_PUBLIC_SUPPORT_EMAIL}` },
-    { name: "GitHub", href: "/github", target: "_blank" },
-    { name: "Discord", href: "/discord", target: "_blank" },
   ],
   legal: [
     { name: "Terms", href: "/terms" },
@@ -32,6 +25,8 @@ const selfHostedFooter = {
 };
 
 export function Footer({ className, variant = "default" }: FooterProps) {
+  const copyrightName = env.NEXT_PUBLIC_BRAND_NAME;
+
   if (env.NEXT_PUBLIC_BYPASS_PREMIUM_CHECKS) {
     return (
       <footer className="border-t border-[#E7E7E7A3] bg-cover bg-center bg-no-repeat overflow-hidden">
@@ -64,15 +59,8 @@ export function Footer({ className, variant = "default" }: FooterProps) {
             ))}
           </div>
           <p className="mt-6 text-center text-xs leading-5 text-gray-500">
-            Powered by{" "}
-            <Link
-              href="https://getinboxzero.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-gray-900"
-            >
-              Inbox Zero
-            </Link>
+            &copy; {new Date().getFullYear()} {copyrightName}. All rights
+            reserved.
           </p>
         </div>
       </footer>

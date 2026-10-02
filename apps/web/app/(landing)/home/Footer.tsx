@@ -168,14 +168,7 @@ export const footerNavigation = {
 // Simple footer for self-hosted deployments
 const selfHostedFooter = {
   resources: [
-    {
-      name: "Documentation",
-      href: "https://docs.getinboxzero.com",
-      target: "_blank",
-    },
     { name: "Contact us", href: `mailto:${env.NEXT_PUBLIC_SUPPORT_EMAIL}` },
-    { name: "GitHub", href: "/github", target: "_blank" },
-    { name: "Discord", href: "/discord", target: "_blank" },
   ],
   legal: [
     { name: "Terms", href: "/terms" },
@@ -184,8 +177,7 @@ const selfHostedFooter = {
 };
 
 export function Footer() {
-  const copyrightName =
-    BRAND_NAME === "Inbox Zero" ? "Inbox Zero Inc." : BRAND_NAME;
+  const copyrightName = BRAND_NAME;
 
   if (env.NEXT_PUBLIC_BYPASS_PREMIUM_CHECKS) {
     return (
@@ -217,15 +209,8 @@ export function Footer() {
             ))}
           </div>
           <p className="mt-6 text-center text-xs leading-5 text-muted-foreground">
-            Powered by{" "}
-            <Link
-              href="https://getinboxzero.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-foreground"
-            >
-              Inbox Zero
-            </Link>
+            &copy; {new Date().getFullYear()} {copyrightName}. All rights
+            reserved.
           </p>
         </div>
       </footer>

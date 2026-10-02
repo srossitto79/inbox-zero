@@ -33,6 +33,7 @@ import { type Tier, tiers } from "@/app/(app)/premium/config";
 import { Briefcase } from "@/components/new-landing/icons/Briefcase";
 import { landingPageAnalytics } from "@/hooks/useAnalytics";
 import { cn } from "@/utils";
+import { env } from "@/env";
 
 type PricingTier = Tier & {
   badges?: {
@@ -171,9 +172,7 @@ export function Pricing() {
               </div>
               <Button variant="secondary-two" size="lg" asChild>
                 <Link
-                  href="https://go.getinboxzero.com/sales"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={`mailto:${env.NEXT_PUBLIC_SUPPORT_EMAIL}`}
                   onClick={() =>
                     landingPageAnalytics.pricingCtaClicked(posthog, {
                       tier: "Enterprise",

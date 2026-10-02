@@ -461,10 +461,10 @@ const parsedEnv = createEnv({
     NEXT_PUBLIC_IMAGE_PROXY_USE_APP_ROUTE: booleanString
       .optional()
       .default(false),
-    NEXT_PUBLIC_BRAND_NAME: z.string().trim().min(1).default("Inbox Zero"),
+    NEXT_PUBLIC_BRAND_NAME: z.string().trim().min(1).default("Inbox AI"),
     NEXT_PUBLIC_BRAND_LOGO_URL: z.string().optional(),
     NEXT_PUBLIC_BRAND_ICON_URL: z.string().optional().default("/icon.png"),
-    NEXT_PUBLIC_SLACK_BOT_NAME: z.string().trim().min(1).default("Inbox Zero"),
+    NEXT_PUBLIC_SLACK_BOT_NAME: z.string().trim().min(1).default("Inbox AI"),
     NEXT_PUBLIC_SELF_HOSTED_LOGIN_FOOTER_TEXT: z.string().optional(),
     NEXT_PUBLIC_CONTACTS_ENABLED: booleanString.optional().default(false),
     NEXT_PUBLIC_MAIL_ENGINE_TEST_INSPECT: booleanString
