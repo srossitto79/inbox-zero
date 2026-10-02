@@ -13,6 +13,10 @@ import {
   findStoredQueryRead,
 } from "@/utils/mail-engine/server/stored-query-reads";
 import { storedThreadReads } from "@/utils/mail-engine/server/stored-thread-reads";
+import {
+  createStoredWriteBack,
+  isStoredMessageUsable,
+} from "@/utils/mail-engine/server/stored-write-back";
 import type { ParsedMessage } from "@/utils/types";
 
 /**
@@ -25,6 +29,7 @@ export function withStoredMailReads(
   emailAccountId: string,
   logger: Logger,
 ): EmailProvider {
+  const writeBack = createStoredWriteBack(provider, emailAccountId, logger);
   const readMany = async (
     messageIds: string[],
     fetchMissing: (missingIds: string[]) => Promise<ParsedMessage[]>,
@@ -32,6 +37,7 @@ export function withStoredMailReads(
     const stored = await readUsableMessages(emailAccountId, messageIds, logger);
     const missingIds = messageIds.filter((id) => !stored.has(id));
     const fetched = missingIds.length ? await fetchMissing(missingIds) : [];
+    writeBack(fetched);
     const fetchedById = new Map(
       fetched.map((message) => [message.id, message]),
     );
@@ -69,7 +75,11 @@ export function withStoredMailReads(
             [messageId],
             logger,
           );
-          return stored.get(messageId) ?? target.getMessage(messageId, options);
+          const found = stored.get(messageId);
+          if (found) return found;
+          const fetched = await target.getMessage(messageId, options);
+          writeBack([fetched]);
+          return fetched;
         };
       }
       if (property === "getMessagesBatch") {
@@ -115,11 +125,11 @@ async function readUsableMessages(
  * Null unless the message was stored with its headers and body: older rows
  * predate stored headers, and a message without a body is only partly known.
  */
-export function storedMessageToParsed({
-  message,
-  content,
-}: StoredMessage): ParsedMessage | null {
-  if (!message.headers || !content) return null;
+export function storedMessageToParsed(
+  entry: StoredMessage,
+): ParsedMessage | null {
+  if (!isStoredMessageUsable(entry)) return null;
+  const { message, content } = entry;
   const parsed = conversationMessageToParsed(
     {
       key: {

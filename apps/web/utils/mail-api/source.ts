@@ -11,6 +11,7 @@ import {
 } from "@/utils/email/mailbox-sync";
 import type { EmailProvider } from "@/utils/email/types";
 import {
+  hydratedBodies,
   parsedMessageBodyObservation,
   parsedMessagePatch,
 } from "@/utils/mail-api/observations";
@@ -390,23 +391,6 @@ function parsedMessageBodies(accountId: string, messages: ParsedMessage[]) {
     else requiredHydration.push({ accountId, messageId: message.id });
   }
   return { requiredHydration, bodies };
-}
-
-function hydratedBodies(
-  accountId: string,
-  messages: ParsedMessage[],
-): BodyObservation[] {
-  return messages.map(
-    (message) =>
-      parsedMessageBodyObservation(accountId, message) ?? {
-        key: { accountId, messageId: message.id },
-        version: message.historyId || null,
-        html: null,
-        text: null,
-        attachments: [],
-        isMeetingInvitation: false,
-      },
-  );
 }
 
 async function catchUpCheckpoint(
