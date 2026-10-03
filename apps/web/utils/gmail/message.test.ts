@@ -112,7 +112,59 @@ describe("parseMessage", () => {
     expect(message.inline).toEqual([inlineImage]);
     expect(message.attachments).toEqual([pdfAttachment]);
   });
+
+  it("keeps every HTML fragment of an Apple Mail body split by attachments", () => {
+    const message = parseMessage({
+      payload: {
+        mimeType: "multipart/alternative",
+        parts: [
+          textPart("text/plain", "Hello\n\n[sheet.xlsx]\n\nThanks"),
+          {
+            mimeType: "multipart/mixed",
+            parts: [
+              textPart("text/html", "<div>Hello</div>"),
+              {
+                mimeType: "application/vnd.ms-excel",
+                filename: "sheet.xlsx",
+                body: { attachmentId: "sheet", size: 10 },
+              },
+              textPart("text/html", "<div>Thanks</div>"),
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(message.textHtml).toBe("<div>Hello</div><div>Thanks</div>");
+    expect(message.textPlain).toBe("Hello\n\n[sheet.xlsx]\n\nThanks");
+  });
+
+  it("ignores the body of an attached message", () => {
+    const message = parseMessage({
+      payload: {
+        mimeType: "multipart/mixed",
+        parts: [
+          textPart("text/html", "<p>See attached</p>"),
+          {
+            mimeType: "message/rfc822",
+            filename: "",
+            parts: [textPart("text/html", "<p>Forwarded body</p>")],
+          },
+        ],
+      },
+    });
+
+    expect(message.textHtml).toBe("<p>See attached</p>");
+  });
 });
+
+function textPart(mimeType: string, content: string) {
+  return {
+    mimeType,
+    headers: [{ name: "Content-Type", value: `${mimeType}; charset=utf-8` }],
+    body: { data: Buffer.from(content).toString("base64url") },
+  };
+}
 
 describe("getMessagesBatch", () => {
   const logger = createTestLogger();

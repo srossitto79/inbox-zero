@@ -30,6 +30,11 @@ export function parseMessage(
 
   return {
     ...parsed,
+    // gmail-api-parse-message keeps only the last text part of each type,
+    // which drops most of the body when Apple Mail interleaves HTML fragments
+    // with attachments.
+    textHtml: getBodyText(message.payload, "text/html") ?? parsed.textHtml,
+    textPlain: getBodyText(message.payload, "text/plain") ?? parsed.textPlain,
     isMeetingInvitation: calendarParts.length
       ? calendarParts.length === 1
       : undefined,
@@ -313,4 +318,47 @@ function getCalendarParts(
     if (parts.length > 1) break;
   }
   return parts;
+}
+
+function getBodyText(
+  payload: gmail_v1.Schema$MessagePart | undefined,
+  mimeType: "text/html" | "text/plain",
+): string | undefined {
+  const fragments = getBodyTextParts(payload, mimeType, true);
+  return fragments.length ? fragments.join("") : undefined;
+}
+
+function getBodyTextParts(
+  part: gmail_v1.Schema$MessagePart | undefined,
+  mimeType: string,
+  isRoot = false,
+): string[] {
+  if (!part) return [];
+  const partType = part.mimeType?.toLowerCase() ?? "";
+  // An attached message has its own body; it is not part of this one.
+  if (!isRoot && partType === "message/rfc822") return [];
+
+  if (part.parts?.length) {
+    if (partType === "multipart/alternative") {
+      // Alternatives are renditions of the same content; the last is preferred.
+      for (const child of [...part.parts].reverse()) {
+        const fragments = getBodyTextParts(child, mimeType);
+        if (fragments.length) return fragments;
+      }
+      return [];
+    }
+    return part.parts.flatMap((child) => getBodyTextParts(child, mimeType));
+  }
+
+  if (!partType.startsWith(mimeType) || !part.body?.data) return [];
+  if (part.body.attachmentId || isAttachmentDisposition(part)) return [];
+  return [Buffer.from(part.body.data, "base64url").toString("utf8")];
+}
+
+function isAttachmentDisposition(part: gmail_v1.Schema$MessagePart) {
+  return part.headers?.some(
+    (header) =>
+      header.name?.toLowerCase() === "content-disposition" &&
+      header.value?.toLowerCase().startsWith("attachment"),
+  );
 }
