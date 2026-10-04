@@ -1,3 +1,4 @@
+import { basePath } from "@/utils/api-path";
 import { Badge } from "@/components/new-landing/common/Badge";
 import { BlurFade } from "@/components/new-landing/common/BlurFade";
 import { Card } from "@/components/new-landing/common/Card";
@@ -124,7 +125,7 @@ export function StartedInMinutes({ title, subtitle }: StartedInMinutesProps) {
             >
               <div className="pt-6 pl-6">
                 <Image
-                  src="/images/new-landing/new-message.png"
+                  src={`${basePath}/images/new-landing/new-message.png`}
                   alt="Pre-drafted replies"
                   width={1407}
                   height={852}

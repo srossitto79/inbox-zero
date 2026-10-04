@@ -1,3 +1,5 @@
+import { basePath } from "@/utils/api-path";
+
 export function getMailAccountUrl(accountId: string, search: string) {
   const params = new URLSearchParams(search);
   const hasAccountScopedFilter =
@@ -11,5 +13,5 @@ export function getMailAccountUrl(accountId: string, search: string) {
   params.delete("folderId");
   if (hasAccountScopedFilter) params.delete("type");
   const query = params.toString();
-  return `/${accountId}/mail${query ? `?${query}` : ""}`;
+  return `${basePath}/${accountId}/mail${query ? `?${query}` : ""}`;
 }

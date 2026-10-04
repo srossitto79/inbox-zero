@@ -1,5 +1,6 @@
 "use client";
 
+import { basePath } from "@/utils/api-path";
 import Image from "next/image";
 import { SectionDescription } from "@/components/Typography";
 import { TypographyH3 } from "@/components/Typography";
@@ -24,7 +25,7 @@ export function IntroStep({
       <PremiumAlertWithData className="mb-20" activeOnly />
       <div className="text-center">
         <Image
-          src="/images/illustrations/home-office.svg"
+          src={`${basePath}/images/illustrations/home-office.svg`}
           alt="clean up"
           width={200}
           height={200}

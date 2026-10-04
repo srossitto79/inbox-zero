@@ -1,6 +1,7 @@
 import { createAuthClient } from "better-auth/react";
 import { ssoClient } from "@better-auth/sso/client";
 import { emailOTPClient, organizationClient } from "better-auth/client/plugins";
+import { apiPath } from "@/utils/api-path";
 
 export const {
   signIn,
@@ -11,13 +12,15 @@ export const {
   sso,
   emailOtp,
 } = createAuthClient({
+  // Under a Next.js basePath the client must call the prefixed auth routes.
+  baseURL: `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth`,
   plugins: [ssoClient(), organizationClient(), emailOTPClient()],
 });
 
 export async function signInWithSocialRedirect(
   options: Parameters<typeof signIn.social>[0],
 ) {
-  const response = await fetch("/api/auth/sign-in/social", {
+  const response = await fetch(apiPath("/api/auth/sign-in/social"), {
     method: "POST",
     headers: {
       "content-type": "application/json",

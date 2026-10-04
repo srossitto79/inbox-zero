@@ -227,6 +227,32 @@ describe("write-back of provider reads", () => {
     expect(stored).toEqual([]);
   });
 
+  it("does not store an invitation whose parts carry no body", async () => {
+    const partial = {
+      ...providerMessage("m1"),
+      textHtml: undefined,
+      textPlain: undefined,
+      isMeetingInvitation: true,
+    } as ParsedMessage;
+    const provider = withStoredMailReads(
+      {
+        name: "google",
+        getMessage: async () => partial,
+      } as unknown as EmailProvider,
+      "acc-1",
+      logger,
+    );
+
+    await provider.getMessage("m1");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const stored = await readStoredMessages(registry.driver!, nodeBodyCodec, {
+      accountId: "acc-1",
+      messageIds: ["m1"],
+    });
+    expect(stored).toEqual([]);
+  });
+
   it("answers the read when the write fails", async () => {
     registry.storeFailure = new Error("store unavailable");
     const getMessage = vi.fn(async () => providerMessage("m1"));

@@ -1,3 +1,4 @@
+import { basePath } from "@/utils/api-path";
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -52,7 +53,7 @@ export default async function MicrosoftAdminConsentPage(props: {
                   className="flex items-center justify-center"
                 >
                   <Image
-                    src="/images/microsoft.svg"
+                    src={`${basePath}/images/microsoft.svg`}
                     alt="Microsoft"
                     width={24}
                     height={24}

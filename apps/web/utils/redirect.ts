@@ -1,4 +1,5 @@
 import { normalizeInternalPath } from "@/utils/path";
+import { apiPath } from "@/utils/api-path";
 import { isInboxZeroAppCallbackUrl } from "@/utils/mobile-auth/app-callback-url";
 import { isNativeAcceptableRedirectUri } from "@/utils/mcp/oauth-registration";
 
@@ -84,7 +85,12 @@ export function redirectToSafeUrl(
   redirectUrl: string | null | undefined,
   options: SafeRedirectUrlOptions = {},
 ) {
-  window.location.assign(getSafeRedirectUrl(redirectUrl, options));
+  const safeUrl = getSafeRedirectUrl(redirectUrl, options);
+  // window.location.assign bypasses Next's basePath handling, so bare internal
+  // paths need the prefix applied here (idempotent for already-prefixed paths).
+  window.location.assign(
+    safeUrl.startsWith("/") ? apiPath(safeUrl as `/${string}`) : safeUrl,
+  );
 }
 
 function getCurrentOrigin() {

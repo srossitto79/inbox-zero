@@ -194,5 +194,9 @@ function parseSetCookies(value: string) {
 }
 
 function getPublicRedirectUrl(path = WELCOME_PATH) {
-  return new URL(path, env.NEXT_PUBLIC_BASE_URL);
+  // Root-relative paths discard NEXT_PUBLIC_BASE_URL's path component, so the
+  // deployment basePath must be joined explicitly.
+  const base = new URL(env.NEXT_PUBLIC_BASE_URL);
+  const basePath = base.pathname.replace(/\/+$/u, "");
+  return new URL(path, `${base.origin}${basePath}`);
 }

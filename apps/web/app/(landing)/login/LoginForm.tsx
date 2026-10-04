@@ -1,5 +1,6 @@
 "use client";
 
+import { basePath } from "@/utils/api-path";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -13,6 +14,7 @@ import {
   type DesktopAuthProvider,
 } from "@/utils/desktop-app";
 import { WELCOME_PATH } from "@/utils/config";
+import { apiPath } from "@/utils/api-path";
 import { toastError } from "@/components/Toast";
 import { normalizeInternalPath } from "@/utils/path";
 import { buildRedirectUrl, redirectToSafeUrl } from "@/utils/redirect";
@@ -113,7 +115,7 @@ export function LoginForm({
         <Button size="2xl" loading={loadingGoogle} onClick={handleGoogleSignIn}>
           <span className="flex items-center justify-center">
             <Image
-              src="/images/google.svg"
+              src={`${basePath}/images/google.svg`}
               alt="Google"
               width={24}
               height={24}
@@ -132,7 +134,7 @@ export function LoginForm({
         >
           <span className="flex items-center justify-center">
             <Image
-              src="/images/microsoft.svg"
+              src={`${basePath}/images/microsoft.svg`}
               alt="Microsoft"
               width={24}
               height={24}
@@ -203,10 +205,12 @@ export function LoginForm({
 }
 
 function getAuthCallbackUrls(next: string | null) {
-  const callbackURL = normalizeInternalPath(next) ?? WELCOME_PATH;
+  // better-auth constructs the post-login redirect from this value outside
+  // Next's basePath handling, so it must carry the deployment prefix.
+  const callbackURL = normalizeInternalPath(next) ?? apiPath(WELCOME_PATH);
   const errorCallbackURL = isOrganizationInvitationPath(callbackURL)
-    ? "/login/error?reason=org_invite"
-    : "/login/error";
+    ? apiPath("/login/error?reason=org_invite")
+    : apiPath("/login/error");
 
   return { callbackURL, errorCallbackURL };
 }

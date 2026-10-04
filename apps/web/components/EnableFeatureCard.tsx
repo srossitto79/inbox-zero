@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { basePath } from "@/utils/api-path";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -48,7 +49,7 @@ export function EnableFeatureCard({
     >
       <div className="text-center">
         <Image
-          src={imageSrc}
+          src={basePath + imageSrc}
           alt={imageAlt}
           width={200}
           height={200}

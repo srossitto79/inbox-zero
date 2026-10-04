@@ -1,3 +1,4 @@
+import { basePath } from "@/utils/api-path";
 import Image from "next/image";
 import {
   Section,
@@ -29,7 +30,7 @@ export function BulkUnsubscribe() {
           className="hidden md:block md:mx-20 lg:mx-40 xl:mx-52"
         >
           <Image
-            src="/images/new-landing/bulk-unsubscribe.png"
+            src={`${basePath}/images/new-landing/bulk-unsubscribe.png`}
             alt="bulk unsubscribe"
             width={1000}
             height={1000}
@@ -38,7 +39,7 @@ export function BulkUnsubscribe() {
         <div className="flex flex-col gap-2">
           <CardWrapper padding="xs" rounded="md" className="block md:hidden">
             <Image
-              src="/images/new-landing/bulk-unsubscribe-mobile.png"
+              src={`${basePath}/images/new-landing/bulk-unsubscribe-mobile.png`}
               alt="bulk unsubscribe"
               width={1000}
               height={1000}

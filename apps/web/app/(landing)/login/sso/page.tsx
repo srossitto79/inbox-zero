@@ -10,6 +10,7 @@ import { Input } from "@/components/Input";
 import { toastError, toastSuccess } from "@/components/Toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { normalizeInternalPath } from "@/utils/path";
+import { apiPath } from "@/utils/api-path";
 import type {
   GetSsoSignInParams,
   GetSsoSignInResponse,
@@ -71,7 +72,7 @@ function SSOLoginForm() {
           next: nextPath,
         }).toString();
         const url = new URL(
-          `/api/sso/signin?${paramsString}`,
+          apiPath(`/api/sso/signin?${paramsString}`),
           window.location.origin,
         );
 

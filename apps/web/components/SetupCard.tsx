@@ -2,6 +2,7 @@
 
 import type { ComponentProps, ReactNode } from "react";
 import Image from "next/image";
+import { basePath } from "@/utils/api-path";
 import { Card, CardFooter } from "@/components/ui/card";
 import { SectionDescription, TypographyH3 } from "@/components/Typography";
 import {
@@ -79,7 +80,7 @@ function SetupContent({
   return (
     <>
       <Image
-        src={imageSrc}
+        src={basePath + imageSrc}
         alt={imageAlt}
         width={200}
         height={200}

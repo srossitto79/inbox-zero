@@ -19,9 +19,12 @@ export function isMobileAuthReturnUrlMode(
 }
 
 export function getMobileAuthWebCallbackUrl(state: string): string {
+  // NEXT_PUBLIC_BASE_URL may carry the deployment basePath (subpath hosting);
+  // the callback route only exists under that prefix.
+  const baseUrl = new URL(env.NEXT_PUBLIC_BASE_URL);
   const callbackUrl = new URL(
     MOBILE_AUTH_WEB_CALLBACK_PATH,
-    getMobileAuthBaseUrlOrigin(),
+    `${baseUrl.origin}${baseUrl.pathname.replace(/\/+$/u, "")}`,
   );
   callbackUrl.searchParams.set("state", state);
   return callbackUrl.toString();
@@ -43,7 +46,11 @@ export function getMobileAuthAppCallbackUrl(
     return new URL(getCustomSchemeCallbackUrl("MOBILE_AUTH_ORIGIN"));
   }
 
-  return new URL(MOBILE_AUTH_APP_CALLBACK_PATH, baseUrl.origin);
+  // Subpath deployments: the /auth-callback page lives under the basePath.
+  return new URL(
+    MOBILE_AUTH_APP_CALLBACK_PATH,
+    `${baseUrl.origin}${baseUrl.pathname.replace(/\/+$/u, "")}`,
+  );
 }
 
 export function getMobileAuthBaseUrlOrigin(): string {

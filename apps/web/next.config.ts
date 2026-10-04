@@ -28,6 +28,7 @@ const zodV4CorePath = path.join(
 const indexingAllowed = isIndexingAllowed(env.NEXT_PUBLIC_BASE_URL);
 
 const nextConfig: NextConfig = {
+  basePath: "",
   allowedDevOrigins: ["127.0.0.1"],
   // Sequential Playwright feature groups use separate dev servers. Isolating
   // their caches prevents a new Turbopack process from restoring stale tasks.
@@ -234,7 +235,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        destination: "/mail",
+        destination: "/",
         has: [
           {
             key: "__Secure-better-auth.session_token",

@@ -1,3 +1,4 @@
+import { basePath } from "@/utils/api-path";
 import Image from "next/image";
 import { BlurFade } from "@/components/new-landing/common/BlurFade";
 import { CardWrapper } from "@/components/new-landing/common/CardWrapper";
@@ -33,7 +34,7 @@ export function EverythingElseSection() {
               icon={<Analytics />}
             >
               <Image
-                src="/images/new-landing/metrics.svg"
+                src={`${basePath}/images/new-landing/metrics.svg`}
                 alt="metrics"
                 width={1000}
                 height={400}
@@ -47,7 +48,7 @@ export function EverythingElseSection() {
               icon={<Link />}
             >
               <Image
-                src="/images/new-landing/integrations.png"
+                src={`${basePath}/images/new-landing/integrations.png`}
                 alt="App integrations"
                 width={1000}
                 height={400}
@@ -61,7 +62,7 @@ export function EverythingElseSection() {
               icon={<ChatTwo />}
             >
               <Image
-                src="/images/new-landing/create-rules.png"
+                src={`${basePath}/images/new-landing/create-rules.png`}
                 alt="Customize"
                 width={1000}
                 height={400}

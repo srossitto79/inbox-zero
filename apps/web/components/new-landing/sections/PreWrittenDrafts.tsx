@@ -1,3 +1,4 @@
+import { basePath } from "@/utils/api-path";
 import {
   Section,
   SectionContent,
@@ -21,7 +22,7 @@ export function PreWrittenDrafts({ title, subtitle }: PreWrittenDraftsProps) {
       <SectionContent className="flex justify-center">
         <Image
           className="hidden h-auto w-full md:block"
-          src="/images/new-landing/pre-written-drafts.png"
+          src={`${basePath}/images/new-landing/pre-written-drafts.png`}
           alt="pre-written drafts"
           width={1932}
           height={904}
@@ -29,7 +30,7 @@ export function PreWrittenDrafts({ title, subtitle }: PreWrittenDraftsProps) {
         />
         <Image
           className="block h-auto w-full md:hidden"
-          src="/images/new-landing/pre-written-drafts-mobile.png"
+          src={`${basePath}/images/new-landing/pre-written-drafts-mobile.png`}
           alt="pre-written drafts"
           width={1311}
           height={2377}

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import type { GetEmailAccountsResponse } from "@/app/api/user/email-accounts/route";
 import { setLastEmailAccountAction } from "@/utils/actions/email-account-cookie";
 import { unownedAccountRedirectUrl } from "@/utils/account-switch-url";
+import { stripBasePath } from "@/utils/api-path";
 import { ownedLastEmailAccountId } from "@/utils/cookies";
 import {
   fetchEmailAccounts,
@@ -92,7 +93,7 @@ export function EmailAccountProvider({
     // Pathname is read here so this app-wide provider does not re-render on
     // every account-scoped navigation.
     const next = unownedAccountRedirectUrl({
-      pathname: window.location.pathname,
+      pathname: stripBasePath(window.location.pathname),
       routeAccountId: emailAccountId,
       ownedRouteId,
       fallbackAccountId: emailAccount?.id,

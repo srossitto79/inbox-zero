@@ -1,3 +1,4 @@
+import { basePath } from "@/utils/api-path";
 import Image from "next/image";
 import { Gmail } from "@/components/new-landing/icons/Gmail";
 import { Outlook } from "@/components/new-landing/icons/Outlook";
@@ -74,7 +75,7 @@ export function HeroVideoPlayer() {
       <div className="relative block overflow-hidden rounded-3xl border border-border md:rounded-[43px]">
         <HeroVideoDialog />
         <Image
-          src="/images/new-landing/video-thumbnail.jpg"
+          src={`${basePath}/images/new-landing/video-thumbnail.jpg`}
           alt="an organized inbox"
           width={2560}
           height={1404}

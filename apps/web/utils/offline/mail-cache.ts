@@ -1,3 +1,5 @@
+import { basePath, stripBasePath } from "@/utils/api-path";
+
 const MAIL_PATH = /^\/[^/]+\/mail\/?$/u;
 export const ACCOUNT_PATH = "/api/user/email-accounts";
 export const OFFLINE_MAIL_CACHE_PREFIX = "inbox-zero:offline-mail:";
@@ -52,8 +54,8 @@ export function createOfflineMailCache({
     const startedAccountsGeneration = accountsGeneration;
     const url = new URL(request.url);
     // Mail's query parameters select client-side views of the same account.
-    const key = `${origin}${url.pathname}`;
-    const isDocument = isOfflineMailPath(url.pathname);
+    const key = `${origin}${basePath}${stripBasePath(url.pathname)}`;
+    const isDocument = isOfflineMailPath(stripBasePath(url.pathname));
     const controller = new AbortController();
     const abortRequest = () => controller.abort(request.signal.reason);
     request.signal.addEventListener("abort", abortRequest, { once: true });
@@ -145,7 +147,7 @@ export function createOfflineMailCache({
     if (
       activeClears ||
       parsed.origin !== origin ||
-      !isOfflineMailPath(parsed.pathname)
+      !isOfflineMailPath(stripBasePath(parsed.pathname))
     )
       return Promise.resolve();
     const key = parsed.pathname;
@@ -172,7 +174,7 @@ export function createOfflineMailCache({
       )
         return;
       await handle(
-        new Request(`${origin}${ACCOUNT_PATH}`, {
+        new Request(`${origin}${basePath}${ACCOUNT_PATH}`, {
           credentials: "include",
         }),
         trackWork,
@@ -209,9 +211,10 @@ export function matchesOfflineMailRequest(request: Request, origin: string) {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== origin) return false;
   if (request.headers.has("RSC")) return false;
+  const pathname = stripBasePath(url.pathname);
   return (
-    (request.mode === "navigate" && isOfflineMailPath(url.pathname)) ||
-    (url.pathname === ACCOUNT_PATH && !url.search)
+    (request.mode === "navigate" && isOfflineMailPath(pathname)) ||
+    (pathname === ACCOUNT_PATH && !url.search)
   );
 }
 
@@ -221,12 +224,13 @@ export function matchesMailEngineStaticRequest(
 ) {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== origin) return false;
-  if (url.pathname.includes("hot-update") || url.pathname.endsWith(".map")) {
+  const pathname = stripBasePath(url.pathname);
+  if (pathname.includes("hot-update") || pathname.endsWith(".map")) {
     return false;
   }
   return (
-    url.pathname.startsWith("/_next/static/") ||
-    url.pathname.endsWith(".wasm") ||
+    pathname.startsWith("/_next/static/") ||
+    pathname.endsWith(".wasm") ||
     request.destination === "worker"
   );
 }
@@ -246,20 +250,22 @@ export function isSafeOfflineMailAccountId(accountId: string) {
 
 export function offlineMailAccountCacheKeys(origin: string, accountId: string) {
   return {
-    mailKeys: [`${origin}/${accountId}/mail`, `${origin}/${accountId}/mail/`],
-    accountsKey: `${origin}${ACCOUNT_PATH}`,
+    mailKeys: [
+      `${origin}${basePath}/${accountId}/mail`,
+      `${origin}${basePath}/${accountId}/mail/`,
+    ],
+    accountsKey: `${origin}${basePath}${ACCOUNT_PATH}`,
   };
 }
 
 export function clearsOfflineMailOnGet(request: Request, origin: string) {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== origin) return false;
+  const pathname = stripBasePath(url.pathname);
   return (
-    url.pathname === "/api/sso/signin" ||
-    url.pathname.startsWith("/api/auth/sso/") ||
+    pathname === "/api/sso/signin" ||
+    pathname.startsWith("/api/auth/sso/") ||
     (request.mode === "navigate" &&
-      ["/login", "/welcome-redirect", "/connect-mailbox"].includes(
-        url.pathname,
-      ))
+      ["/login", "/welcome-redirect", "/connect-mailbox"].includes(pathname))
   );
 }

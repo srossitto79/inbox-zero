@@ -1,5 +1,6 @@
 "use client";
 
+import { basePath } from "@/utils/api-path";
 import Image from "next/image";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -66,7 +67,7 @@ export const NotLoggedIn = () => (
     </Button>
     <div className="mt-8">
       <Image
-        src="/images/illustrations/falling.svg"
+        src={`${basePath}/images/illustrations/falling.svg`}
         alt=""
         width={400}
         height={400}

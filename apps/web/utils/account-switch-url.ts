@@ -1,3 +1,5 @@
+import { basePath, stripBasePath } from "@/utils/api-path";
+
 export function getAccountSwitchUrl({
   pathname,
   currentAccountId,
@@ -9,12 +11,14 @@ export function getAccountSwitchUrl({
   targetAccountId: string;
   tab: string | null;
 }) {
-  const segments = pathname.split("?")[0].split("/").filter(Boolean);
+  const segments = stripBasePath(pathname.split("?")[0])
+    .split("/")
+    .filter(Boolean);
   if (currentAccountId && segments[0] === currentAccountId) {
     segments[0] = targetAccountId;
   }
   const query = tab ? `?${new URLSearchParams({ tab })}` : "";
-  return `/${segments.join("/")}${query}`;
+  return `${basePath}/${segments.join("/")}${query}`;
 }
 
 export function unownedAccountRedirectUrl({

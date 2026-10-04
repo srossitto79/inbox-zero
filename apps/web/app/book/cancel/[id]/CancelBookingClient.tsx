@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/Input";
 import { publicCancelBookingBody } from "@/utils/actions/booking.validation";
+import { apiPath } from "@/utils/api-path";
 import { getApiError } from "../../[slug]/booking-helpers";
 
 const cancelFormSchema = publicCancelBookingBody.pick({ reason: true });
@@ -35,14 +36,17 @@ export function CancelBookingClient({
     if (!bookingToken) return;
     setError(null);
     try {
-      const response = await fetch(`/api/public/bookings/${id}/cancel`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: bookingToken,
-          reason: values.reason || undefined,
-        }),
-      });
+      const response = await fetch(
+        apiPath(`/api/public/bookings/${id}/cancel`),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token: bookingToken,
+            reason: values.reason || undefined,
+          }),
+        },
+      );
       const body = await response.json();
       if (!response.ok) throw new Error(getApiError(body));
       setDone(true);

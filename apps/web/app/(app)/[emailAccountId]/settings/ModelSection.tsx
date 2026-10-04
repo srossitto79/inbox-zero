@@ -34,6 +34,7 @@ import {
 import { useUser } from "@/hooks/useUser";
 import { useAccount } from "@/providers/EmailAccountProvider";
 import { prefixPath } from "@/utils/path";
+import { apiPath } from "@/utils/api-path";
 import { updateAiSettingsAction } from "@/utils/actions/settings";
 
 export function ModelSection() {
@@ -322,7 +323,7 @@ async function fetchEndpointModels(
   baseUrl: string,
   apiKey: string,
 ): Promise<GetLlmModelsResponse> {
-  const response = await fetch("/api/user/llm-models", {
+  const response = await fetch(apiPath("/api/user/llm-models"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ baseUrl, apiKey: apiKey || undefined }),

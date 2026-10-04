@@ -99,6 +99,14 @@ const mobileAuthOrigins = env.MOBILE_AUTH_ORIGIN
 const desktopAuthOrigins = env.DESKTOP_AUTH_ORIGIN
   ? [env.DESKTOP_AUTH_ORIGIN]
   : [];
+// Subpath deployments: Next strips the basePath before handlers run, so paths
+// derived from baseURL lose the prefix. Compute it once for explicit pinning.
+const basePathOrigin = env.NEXT_PUBLIC_BASE_URL
+  ? new URL(env.NEXT_PUBLIC_BASE_URL).origin
+  : "";
+const basePathFromUrl = env.NEXT_PUBLIC_BASE_URL
+  ? new URL(env.NEXT_PUBLIC_BASE_URL).pathname.replace(/\/+$/, "")
+  : "";
 const googleSocialProvider =
   googleLoginEnabled && !useGoogleOauthEmulator
     ? {
@@ -108,6 +116,9 @@ const googleSocialProvider =
         accessType: "offline" as const,
         prompt: "select_account consent" as const,
         disableIdTokenSignIn: true,
+        // Subpath deployments: Next strips the basePath before handlers run, so
+        // the derived redirect URI loses the prefix. Pin it explicitly.
+        redirectURI: `${basePathOrigin}${basePathFromUrl}/api/auth/callback/google`,
         // For preview deployments, redirect through staging (which proxies back to preview URL)
         ...(env.OAUTH_PROXY_URL && {
           redirectURI: `${env.OAUTH_PROXY_URL}/api/auth/callback/google`,
@@ -133,6 +144,9 @@ const microsoftSocialProvider =
           });
           return {};
         },
+        ...(basePathFromUrl && {
+          redirectURI: `${basePathOrigin}${basePathFromUrl}/api/auth/callback/microsoft`,
+        }),
         ...(env.OAUTH_PROXY_URL && {
           redirectURI: `${env.OAUTH_PROXY_URL}/api/auth/callback/microsoft`,
         }),
@@ -170,6 +184,9 @@ const appleSocialProvider = appleLoginEnabled
           ? { email: existingAppleAccount.user.email }
           : {};
       },
+      ...(basePathFromUrl && {
+        redirectURI: `${basePathOrigin}${basePathFromUrl}/api/auth/callback/apple`,
+      }),
       ...(env.OAUTH_PROXY_URL && {
         redirectURI: `${env.OAUTH_PROXY_URL}/api/auth/callback/apple`,
       }),
@@ -242,9 +259,18 @@ export const betterAuthConfig = betterAuth({
       }
     },
   },
-  baseURL: env.NEXT_PUBLIC_BASE_URL,
+  // Next.js strips the basePath before route handlers run (the logger proves
+  // handlers see "/api/cron/...", not "/mail/api/cron/..."), so better-auth keeps
+  // its default basePath and only needs a bare-origin baseURL: a path on baseURL
+  // would leak into the router's match prefix and break every auth route.
+  baseURL: env.NEXT_PUBLIC_BASE_URL
+    ? new URL(env.NEXT_PUBLIC_BASE_URL).origin
+    : "",
   disabledPaths: ["/token"],
   trustedOrigins: [
+    ...(env.NEXT_PUBLIC_BASE_URL
+      ? [new URL(env.NEXT_PUBLIC_BASE_URL).origin]
+      : []),
     env.NEXT_PUBLIC_BASE_URL,
     "https://appleid.apple.com",
     ...(env.OAUTH_PROXY_URL ? [env.OAUTH_PROXY_URL] : []),

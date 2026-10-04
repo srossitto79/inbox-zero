@@ -111,7 +111,21 @@ export function isStoredMessageUsable(
   message: { headers: NonNullable<StoredMessage["message"]["headers"]> };
   content: NonNullable<StoredMessage["content"]>;
 } {
-  return Boolean(entry.message.headers && entry.content);
+  return Boolean(
+    entry.message.headers &&
+      entry.content &&
+      !isBodilessInvitation(entry.content),
+  );
+}
+
+// An invitation always carries a readable part; a stored one without it was
+// written from a response that listed the MIME parts but not their data.
+function isBodilessInvitation(content: {
+  html: string | null;
+  text: string | null;
+  isMeetingInvitation: boolean;
+}) {
+  return content.isMeetingInvitation && !content.html && !content.text;
 }
 
 // A message parsed without its Message-ID header came from a partial fetch;
@@ -120,6 +134,9 @@ function isFullyFetched(
   message: ParsedMessage | null | undefined,
 ): message is ParsedMessage {
   return Boolean(
-    message?.id && message.threadId && message.headers?.["message-id"],
+    message?.id &&
+      message.threadId &&
+      message.headers?.["message-id"] &&
+      !(message.isMeetingInvitation && !message.textHtml && !message.textPlain),
   );
 }

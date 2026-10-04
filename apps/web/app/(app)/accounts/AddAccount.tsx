@@ -1,5 +1,6 @@
 "use client";
 
+import { basePath } from "@/utils/api-path";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,7 @@ export function AddAccount({
           disabled={isLoadingGoogle || isLoadingMicrosoft}
         >
           <Image
-            src="/images/google.svg"
+            src={`${basePath}/images/google.svg`}
             alt=""
             width={24}
             height={24}
@@ -67,7 +68,7 @@ export function AddAccount({
           disabled={isLoadingGoogle || isLoadingMicrosoft}
         >
           <Image
-            src="/images/microsoft.svg"
+            src={`${basePath}/images/microsoft.svg`}
             alt=""
             width={24}
             height={24}

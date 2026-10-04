@@ -1,3 +1,4 @@
+import { basePath } from "@/utils/api-path";
 import {
   Section,
   SectionContent,
@@ -21,7 +22,7 @@ export function OrganizedInbox({ title, subtitle }: OrganizedInboxProps) {
       <SectionContent className="flex justify-center">
         <Image
           className="hidden h-auto w-full md:block"
-          src="/images/new-landing/an-organized-inbox.png"
+          src={`${basePath}/images/new-landing/an-organized-inbox.png`}
           alt="an organized inbox"
           width={2120}
           height={1294}
@@ -29,7 +30,7 @@ export function OrganizedInbox({ title, subtitle }: OrganizedInboxProps) {
         />
         <Image
           className="block h-auto w-full md:hidden"
-          src="/images/new-landing/an-organized-inbox-mobile.png"
+          src={`${basePath}/images/new-landing/an-organized-inbox-mobile.png`}
           alt="an organized inbox"
           width={1431}
           height={3301}

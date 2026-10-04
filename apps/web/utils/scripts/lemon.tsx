@@ -1,5 +1,6 @@
 "use client";
 
+import { basePath } from "@/utils/api-path";
 import { env } from "@/env";
 import NextScript from "next/script";
 import type { ComponentType } from "react";
@@ -16,7 +17,7 @@ export function LemonScript() {
 
   return (
     <ExternalScript
-      src="/vendor/lemon/affiliate.js"
+      src={`${basePath}/vendor/lemon/affiliate.js`}
       defer
       onError={(e) => {
         console.error("Failed to load Lemon Squeezy affiliate script:", e);

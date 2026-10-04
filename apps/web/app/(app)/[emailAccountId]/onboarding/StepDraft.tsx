@@ -1,5 +1,6 @@
 "use client";
 
+import { basePath } from "@/utils/api-path";
 import Image from "next/image";
 import { CheckIcon, PenIcon, XIcon } from "lucide-react";
 import { PageHeading, TypographyP } from "@/components/Typography";
@@ -72,7 +73,7 @@ export function StepDraft({
       <div className="fixed top-0 right-0 w-1/2 h-screen bg-card items-center justify-center hidden xl:flex px-10">
         <div className="rounded-2xl p-4 bg-muted border border-border">
           <Image
-            src="/images/onboarding/draft.png"
+            src={`${basePath}/images/onboarding/draft.png`}
             alt="Draft replies"
             width={1200}
             height={800}

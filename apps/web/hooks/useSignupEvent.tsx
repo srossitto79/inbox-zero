@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { trackClientConversion } from "@/utils/analytics/client-conversions";
+import { apiPath } from "@/utils/api-path";
 
 export const useSignUpEvent = () => {
   useEffect(() => {
-    fetch("/api/user/complete-registration", {
+    fetch(apiPath("/api/user/complete-registration"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

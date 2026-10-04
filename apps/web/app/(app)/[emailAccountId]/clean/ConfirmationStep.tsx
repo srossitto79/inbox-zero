@@ -1,5 +1,6 @@
 "use client";
 
+import { basePath } from "@/utils/api-path";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -65,7 +66,7 @@ export function ConfirmationStep({
   return (
     <div className="text-center">
       <Image
-        src="/images/illustrations/business-success-chart.svg"
+        src={`${basePath}/images/illustrations/business-success-chart.svg`}
         alt="clean up"
         width={200}
         height={200}

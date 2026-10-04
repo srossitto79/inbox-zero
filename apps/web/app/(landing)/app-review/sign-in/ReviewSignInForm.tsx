@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WELCOME_PATH } from "@/utils/config";
+import { apiPath } from "@/utils/api-path";
 import { normalizeInternalPath } from "@/utils/path";
 import { redirectToSafeUrl } from "@/utils/redirect";
 
@@ -82,7 +83,7 @@ export function ReviewSignInForm() {
     setError(null);
 
     try {
-      const response = await fetch("/api/mobile-review/sign-in", {
+      const response = await fetch(apiPath("/api/mobile-review/sign-in"), {
         body: JSON.stringify({ code: values.password, email: values.email }),
         headers: { "Content-Type": "application/json" },
         method: "POST",

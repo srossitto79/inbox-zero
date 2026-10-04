@@ -1,3 +1,4 @@
+import { basePath } from "@/utils/api-path";
 import Image from "next/image";
 
 export function PersonWithLogo({
@@ -31,7 +32,7 @@ export function PersonWithLogo({
 export function ABTestimonial() {
   return (
     <PersonWithLogo
-      src="/images/case-studies/clicks-talent/ab-lieberman.png"
+      src={`${basePath}/images/case-studies/clicks-talent/ab-lieberman.png`}
       name='Abraham "AB" Lieberman'
       title="Founder & CEO of Clicks Talent"
     />

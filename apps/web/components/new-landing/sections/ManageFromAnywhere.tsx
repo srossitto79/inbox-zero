@@ -1,3 +1,4 @@
+import { basePath } from "@/utils/api-path";
 import Image from "next/image";
 import { Globe, Smartphone } from "lucide-react";
 import { BlurFade } from "@/components/new-landing/common/BlurFade";
@@ -19,17 +20,36 @@ const platforms: {
 }[] = [
   {
     name: "Slack",
-    icon: <Image src="/images/slack.svg" alt="Slack" width={56} height={56} />,
+    icon: (
+      <Image
+        src={`${basePath}/images/slack.svg`}
+        alt="Slack"
+        width={56}
+        height={56}
+      />
+    ),
   },
   {
     name: "Telegram",
     icon: (
-      <Image src="/images/telegram.svg" alt="Telegram" width={56} height={56} />
+      <Image
+        src={`${basePath}/images/telegram.svg`}
+        alt="Telegram"
+        width={56}
+        height={56}
+      />
     ),
   },
   {
     name: "Teams",
-    icon: <Image src="/images/teams.png" alt="Teams" width={56} height={56} />,
+    icon: (
+      <Image
+        src={`${basePath}/images/teams.png`}
+        alt="Teams"
+        width={56}
+        height={56}
+      />
+    ),
     comingSoon: true,
   },
   {

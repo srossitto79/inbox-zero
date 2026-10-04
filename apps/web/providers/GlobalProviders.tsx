@@ -19,6 +19,7 @@ import {
   shouldCheckForDesktopWebUpdate,
   shouldPromptDesktopWebUpdate,
 } from "@/utils/desktop-app";
+import { apiPath } from "@/utils/api-path";
 
 const DESKTOP_WEB_UPDATE_TOAST_ID = "desktop-web-update";
 const DESKTOP_WEB_UPDATE_RELOAD_GRACE_MS = 3000;
@@ -29,7 +30,7 @@ export function GlobalProviders(props: { children: React.ReactNode }) {
     // webpack plugin used to inject this registration, but it doesn't support
     // Turbopack. cacheOnNavigation={false} matches the old plugin default.
     <SerwistProvider
-      swUrl="/sw.js"
+      swUrl={apiPath("/sw.js")}
       register={false}
       cacheOnNavigation={false}
       disable={process.env.NODE_ENV !== "production"}

@@ -1,5 +1,6 @@
 "use client";
 
+import { basePath } from "@/utils/api-path";
 import { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -94,7 +95,7 @@ export function ConnectDrive() {
           className="flex items-center gap-2 w-full md:w-auto"
         >
           <Image
-            src="/images/google.svg"
+            src={`${basePath}/images/google.svg`}
             alt="Google Drive"
             width={16}
             height={16}
@@ -111,7 +112,7 @@ export function ConnectDrive() {
           className="flex items-center gap-2 w-full md:w-auto"
         >
           <Image
-            src="/images/microsoft.svg"
+            src={`${basePath}/images/microsoft.svg`}
             alt="OneDrive"
             width={16}
             height={16}

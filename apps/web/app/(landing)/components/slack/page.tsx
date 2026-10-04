@@ -1,3 +1,4 @@
+import { basePath } from "@/utils/api-path";
 import { Fragment, type ReactNode } from "react";
 import Image from "next/image";
 import { Container } from "@/components/Container";
@@ -255,7 +256,7 @@ function SlackPreviewCard({ preview }: { preview: SlackPreview }) {
             alt=""
             className="size-10 shrink-0 rounded-lg"
             height={40}
-            src="/icons/icon-192x192.png"
+            src={`${basePath}/icons/icon-192x192.png`}
             width={40}
           />
           <div className="min-w-0 flex-1">

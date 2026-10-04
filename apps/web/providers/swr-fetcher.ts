@@ -4,6 +4,7 @@ import {
   MICROSOFT_AUTH_EXPIRED_ERROR_CODE,
   NO_REFRESH_TOKEN_ERROR_CODE,
 } from "@/utils/config";
+import { apiPath } from "@/utils/api-path";
 import { prefixPath } from "@/utils/path";
 import {
   getSWRFetchErrorMessage,
@@ -25,7 +26,10 @@ export const swrFetcher = async (
 
   const newInit = { ...init, headers };
 
-  const res = await fetch(url, newInit);
+  const res = await fetch(
+    url.startsWith("/") ? apiPath(url as `/${string}`) : url,
+    newInit,
+  );
 
   if (!res.ok) {
     // Try to parse JSON, but handle cases where response isn't JSON (e.g. HMR 404s)

@@ -1,5 +1,6 @@
 "use client";
 
+import { basePath } from "@/utils/api-path";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -81,7 +82,7 @@ export default function PermissionsConsentPage() {
 
       <div className="mt-8">
         <Image
-          src="/images/illustrations/falling.svg"
+          src={`${basePath}/images/illustrations/falling.svg`}
           alt=""
           width={400}
           height={400}

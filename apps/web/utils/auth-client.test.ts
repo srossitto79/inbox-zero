@@ -36,6 +36,7 @@ describe("auth-client", () => {
     await import("./auth-client");
 
     expect(mockCreateAuthClient).toHaveBeenCalledWith({
+      baseURL: expect.stringMatching(/\/api\/auth$/u),
       plugins: ["sso-client", "organization-client", "email-otp-client"],
     });
   });

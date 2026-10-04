@@ -1,4 +1,5 @@
 import { EMAIL_ACCOUNT_HEADER } from "@/utils/config";
+import { apiPath } from "@/utils/api-path";
 
 /**
  * A wrapper around the native fetch function that automatically adds the
@@ -21,5 +22,10 @@ export const fetchWithAccount = async ({
 
   const newInit = { ...init, headers };
 
-  return fetch(url, newInit);
+  return fetch(
+    typeof url === "string" && url.startsWith("/")
+      ? apiPath(url as `/${string}`)
+      : url,
+    newInit,
+  );
 };

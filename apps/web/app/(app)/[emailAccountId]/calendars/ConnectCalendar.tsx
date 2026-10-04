@@ -1,5 +1,6 @@
 "use client";
 
+import { basePath } from "@/utils/api-path";
 import { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -115,7 +116,7 @@ export function ConnectCalendar({
           className="flex w-full items-center gap-2 md:w-auto"
         >
           <Image
-            src="/images/google.svg"
+            src={`${basePath}/images/google.svg`}
             alt="Google"
             width={16}
             height={16}
@@ -137,7 +138,7 @@ export function ConnectCalendar({
           className="flex w-full items-center gap-2 md:w-auto"
         >
           <Image
-            src="/images/microsoft.svg"
+            src={`${basePath}/images/microsoft.svg`}
             alt="Microsoft"
             width={16}
             height={16}

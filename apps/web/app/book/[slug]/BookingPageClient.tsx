@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/utils";
 import { randomUuid } from "@/utils/uuid";
+import { apiPath } from "@/utils/api-path";
 import { BookingSidebar } from "./BookingSidebar";
 import { useAvailability } from "./useAvailability";
 import { PickTimeStep, useSlotSelection } from "./PickTimeStep";
@@ -97,7 +98,7 @@ export function BookingPageClient({
     if (!selectedSlot) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/public/bookings", {
+      const response = await fetch(apiPath("/api/public/bookings"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
