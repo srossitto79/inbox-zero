@@ -53,7 +53,7 @@ Enable it with `GMAIL_POLLING_ENABLED=true` in `apps/web/.env`. The prebuilt ups
 docker compose -f docker-compose.yml -f docker-compose.fork.yml   --env-file apps/web/.env --profile all up -d --build
 ```
 
-The overlay builds the web image from `docker/Dockerfile.prod` and starts a `gmail-poller` service that calls the route every 60 seconds. `build_docker.sh` runs the same command. On Windows, keep shell scripts on LF endings (`.gitattributes` enforces this).
+The overlay builds the web image from `docker/Dockerfile.prod` and starts a `gmail-poller` service that calls the route every 60 seconds when `GMAIL_POLLING_ENABLED=true` and idles otherwise. With a public HTTPS endpoint, prefer Pub/Sub (`docs/hosting/google-pubsub.mdx`) and leave `GMAIL_POLLING_ENABLED` unset. `build_docker.sh` runs the same command. On Windows, keep shell scripts on LF endings (`.gitattributes` enforces this).
 
 ### Updating
 

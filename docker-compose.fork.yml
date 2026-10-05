@@ -1,5 +1,5 @@
 # Fork overlay: builds the web image from this checkout and adds the Gmail
-# polling fallback. See "About this fork" in README.md.
+# polling fallback and the calendar poller. See "About this fork" in README.md.
 #
 #   docker compose -f docker-compose.yml -f docker-compose.fork.yml \
 #     --env-file apps/web/.env --profile all up -d --build
@@ -17,14 +17,19 @@ services:
     volumes:
       - mail-store-data:/data/mail
 
+  # Idles unless GMAIL_POLLING_ENABLED=true; with Pub/Sub the watch handles new mail.
   gmail-poller:
     image: alpine:latest
     command: >
       sh -c "
         apk add --no-cache curl &&
         while true; do
-          curl -s -m 290 -X GET 'http://web:3000/api/cron/poll-gmail' -H \"Authorization: Bearer $${CRON_SECRET}\" || echo \"[gmail-poller] request failed\"
-          sleep 60
+          if [ \"$${GMAIL_POLLING_ENABLED}\" = \"true\" ]; then
+            curl -s -m 290 -X GET 'http://web:3000/api/cron/poll-gmail' -H \"Authorization: Bearer $${CRON_SECRET}\" || echo \"[gmail-poller] request failed\"
+            sleep 60
+          else
+            sleep 3600
+          fi
         done
       "
     env_file:
