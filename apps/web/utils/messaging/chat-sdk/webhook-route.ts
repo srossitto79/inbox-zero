@@ -4,6 +4,7 @@ import {
   hasMessagingAdapter,
   withMessagingRequestLogger,
 } from "@/utils/messaging/chat-sdk/bot";
+import { ensureMessagingAdaptersHydrated } from "@/utils/messaging/chat-sdk/adapter-hydration";
 import type { MessagingPlatform } from "@/utils/messaging/platforms";
 import type { Logger } from "@/utils/logger";
 
@@ -27,6 +28,8 @@ export async function handleMessagingWebhookRoute({
   if (!isConfigured) {
     return NextResponse.json({ error: notConfiguredError }, { status: 503 });
   }
+
+  await ensureMessagingAdaptersHydrated();
 
   if (!hasMessagingAdapter(platform)) {
     return NextResponse.json(

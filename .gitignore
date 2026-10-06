@@ -120,3 +120,4 @@ eval-results/
 .deepsec/
 .tmp/
 google_creds/**/*
+apps/web/data/mail/**/*

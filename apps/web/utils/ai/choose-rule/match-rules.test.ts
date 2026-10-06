@@ -1866,6 +1866,7 @@ function getRule(overrides: Partial<RuleWithActions> = {}): RuleWithActions {
     categoryFilterType = null,
     systemType = null,
     promptText = null,
+    showInQueuesSidebar = false,
     actions = [],
   } = overrides;
 
@@ -1877,6 +1878,7 @@ function getRule(overrides: Partial<RuleWithActions> = {}): RuleWithActions {
     enabled,
     automate,
     runOnThreads,
+    showInQueuesSidebar,
     emailAccountId,
     conditionalOperator,
     instructions,

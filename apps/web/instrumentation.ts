@@ -10,6 +10,13 @@ export async function register() {
     );
     startBackgroundJobWorker();
 
+    // Bots built from in-app configs must be ready before the first webhook or
+    // notification send; failures are logged and retried lazily per request.
+    const { ensureMessagingAdaptersHydrated } = await import(
+      "@/utils/messaging/chat-sdk/adapter-hydration"
+    );
+    ensureMessagingAdaptersHydrated();
+
     // this is your Sentry.init call from `sentry.server.config.js|ts`
     Sentry.init({
       dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,

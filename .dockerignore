@@ -20,6 +20,11 @@ out
 coverage
 *.log
 
+# Test/scratch artifacts (playwright caches, reports)
+**/.tmp
+**/test-results
+**/playwright-report
+
 # OS/editor junk
 .DS_Store
 *.swp

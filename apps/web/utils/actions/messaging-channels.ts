@@ -10,6 +10,9 @@ import {
   linkSlackWorkspaceBody,
   createMessagingLinkCodeBody,
   toggleRuleChannelBody,
+  saveMessagingAppConfigBody,
+  deleteMessagingAppConfigBody,
+  type MessagingAppProvider,
 } from "@/utils/actions/messaging-channels.validation";
 import prisma from "@/utils/prisma";
 import { SafeError } from "@/utils/error";
@@ -23,10 +26,15 @@ import {
 } from "@/generated/prisma/enums";
 import { generateMessagingLinkCode } from "@/utils/messaging/chat-sdk/link-code";
 import {
+  resolveTeamsBotCredentials,
+  resolveTelegramBotCredentials,
+} from "@/utils/messaging/app-credentials";
+import { invalidateMessagingAdapterHydration } from "@/utils/messaging/chat-sdk/adapter-hydration";
+import { fetchAndCheckIsAdmin } from "@/utils/organizations/access";
+import {
   DRAFT_REPLY_ACTION_TYPES,
   MESSAGING_CHANNEL_ACTION_TYPES,
 } from "@/utils/actions/draft-reply";
-import { env } from "@/env";
 import {
   getMessagingChannelReconnectMessage,
   isOperationalSlackChannel,
@@ -42,7 +50,6 @@ import { upsertSlackRoute } from "@/utils/messaging/slack-routes";
 import { sendSlackOnboardingDirectMessageWithLogging } from "@/utils/messaging/providers/slack/send-onboarding-direct-message";
 import { lookupSlackUserByEmail } from "@/utils/messaging/providers/slack/users";
 import { callTelegramBotApi } from "@/utils/messaging/providers/telegram/api";
-import { isTeamsBotConfigured } from "@/utils/messaging/chat-sdk/teams-config";
 import { assertCanUseDigests } from "@/utils/premium/server";
 
 export const updateSlackRouteAction = actionClient
@@ -306,20 +313,26 @@ export const createMessagingLinkCodeAction = actionClient
   .metadata({ name: "createMessagingLinkCode" })
   .inputSchema(createMessagingLinkCodeBody)
   .action(async ({ ctx: { emailAccountId }, parsedInput: { provider } }) => {
+    let botUrl: string | undefined;
+
     if (provider === "TEAMS") {
-      if (!isTeamsBotConfigured()) {
+      const credentials = await resolveTeamsBotCredentials(emailAccountId);
+      if (!credentials) {
         throw new SafeError("Teams integration is not configured");
       }
-    } else if (!env.TELEGRAM_BOT_TOKEN) {
-      throw new SafeError("Telegram integration is not configured");
+      botUrl = getTeamsBotUrl(credentials);
+    } else {
+      const credentials = await resolveTelegramBotCredentials(emailAccountId);
+      if (!credentials) {
+        throw new SafeError("Telegram integration is not configured");
+      }
+      botUrl = await getTelegramBotUrl(credentials.botToken);
     }
 
     const code = generateMessagingLinkCode({
       emailAccountId,
       provider,
     });
-    const botUrl =
-      provider === "TELEGRAM" ? await getTelegramBotUrl() : getTeamsBotUrl();
 
     return {
       code,
@@ -448,12 +461,69 @@ export const toggleRuleChannelAction = actionClient
     },
   );
 
-async function getTelegramBotUrl() {
-  if (!env.TELEGRAM_BOT_TOKEN) return;
+export const saveMessagingAppConfigAction = actionClient
+  .metadata({ name: "saveMessagingAppConfig" })
+  .inputSchema(saveMessagingAppConfigBody)
+  .action(async ({ ctx: { emailAccountId, userId, logger }, parsedInput }) => {
+    const { provider, ...fields } = parsedInput;
 
+    const organizationId = await requireOrgAdmin({ emailAccountId, userId });
+
+    const existing = await prisma.messagingAppConfig.findUnique({
+      where: { organizationId_provider: { organizationId, provider } },
+    });
+
+    const merged = {
+      clientId: fields.clientId ?? existing?.clientId,
+      clientSecret: fields.clientSecret ?? existing?.clientSecret,
+      signingSecret: fields.signingSecret ?? existing?.signingSecret,
+      appId: fields.appId ?? existing?.appId,
+      appPassword: fields.appPassword ?? existing?.appPassword,
+      tenantId: fields.tenantId ?? existing?.tenantId,
+      botToken: fields.botToken ?? existing?.botToken,
+      botSecretToken: fields.botSecretToken ?? existing?.botSecretToken,
+    };
+
+    const missing = getMissingAppConfigFields(provider, merged);
+    if (missing.length > 0) {
+      throw new SafeError(
+        `Missing required fields for ${provider}: ${missing.join(", ")}`,
+      );
+    }
+
+    await prisma.messagingAppConfig.upsert({
+      where: { organizationId_provider: { organizationId, provider } },
+      // Only the submitted fields change so admins can rotate one secret.
+      update: fields,
+      create: { organizationId, provider, ...merged },
+    });
+
+    await invalidateMessagingAdapterHydration();
+
+    logger.info("Messaging app config saved", { organizationId, provider });
+  });
+
+export const deleteMessagingAppConfigAction = actionClient
+  .metadata({ name: "deleteMessagingAppConfig" })
+  .inputSchema(deleteMessagingAppConfigBody)
+  .action(async ({ ctx: { emailAccountId, userId, logger }, parsedInput }) => {
+    const { provider } = parsedInput;
+
+    const organizationId = await requireOrgAdmin({ emailAccountId, userId });
+
+    await prisma.messagingAppConfig.deleteMany({
+      where: { organizationId, provider },
+    });
+
+    await invalidateMessagingAdapterHydration();
+
+    logger.info("Messaging app config deleted", { organizationId, provider });
+  });
+
+async function getTelegramBotUrl(botToken: string) {
   try {
     const result = await callTelegramBotApi<{ username?: string }>({
-      botToken: env.TELEGRAM_BOT_TOKEN,
+      botToken,
       apiMethod: "getMe",
       requestMethod: "GET",
     });
@@ -467,15 +537,11 @@ async function getTelegramBotUrl() {
   }
 }
 
-function getTeamsBotUrl() {
-  if (!env.TEAMS_BOT_APP_ID) return;
+function getTeamsBotUrl(credentials: { appId: string; tenantId?: string }) {
+  const url = new URL(`https://teams.microsoft.com/l/app/${credentials.appId}`);
 
-  const url = new URL(
-    `https://teams.microsoft.com/l/app/${env.TEAMS_BOT_APP_ID}`,
-  );
-
-  if (env.TEAMS_BOT_APP_TENANT_ID) {
-    url.searchParams.set("tenantId", env.TEAMS_BOT_APP_TENANT_ID);
+  if (credentials.tenantId) {
+    url.searchParams.set("tenantId", credentials.tenantId);
   }
 
   return url.toString();
@@ -528,4 +594,44 @@ async function syncMessagingFeatureRoute({
       targetId: rulesRoute.targetId,
     },
   });
+}
+
+async function requireOrgAdmin({
+  emailAccountId,
+  userId,
+}: {
+  emailAccountId: string;
+  userId?: string;
+}) {
+  if (!userId) throw new SafeError("Not authenticated");
+
+  const membership = await prisma.member.findFirst({
+    where: { emailAccountId },
+    select: { organizationId: true },
+  });
+  if (!membership) {
+    throw new SafeError(
+      "You must belong to an organization to configure messaging apps",
+    );
+  }
+
+  await fetchAndCheckIsAdmin({
+    organizationId: membership.organizationId,
+    userId,
+  });
+
+  return membership.organizationId;
+}
+
+function getMissingAppConfigFields(
+  provider: MessagingAppProvider,
+  config: Record<string, string | null | undefined>,
+): string[] {
+  const requiredFields: Record<MessagingAppProvider, string[]> = {
+    SLACK: ["clientId", "clientSecret", "signingSecret"],
+    TEAMS: ["appId", "appPassword", "tenantId"],
+    TELEGRAM: ["botToken", "botSecretToken"],
+  };
+
+  return requiredFields[provider].filter((field) => !config[field]);
 }

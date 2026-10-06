@@ -1,30 +1,39 @@
 import { NextResponse } from "next/server";
 import prisma from "@/utils/prisma";
 import { withEmailAccount } from "@/utils/middleware";
-import { env } from "@/env";
 import type { MessagingProvider } from "@/generated/prisma/enums";
 import { MessagingRoutePurpose } from "@/generated/prisma/enums";
 import {
   isMessagingChannelOperational,
   isOperationalSlackChannel,
 } from "@/utils/messaging/channel-validity";
+import {
+  getAvailableMessagingProviders,
+  getEnvConfiguredProviders,
+} from "@/utils/messaging/app-credentials";
+import { ADMIN_ROLES } from "@/utils/organizations/roles";
 import { getMessagingRouteSummary } from "@/utils/messaging/routes";
 import { listChannels } from "@/utils/messaging/providers/slack/channels";
 import { createSlackClient } from "@/utils/messaging/providers/slack/client";
-import { isTeamsBotConfigured } from "@/utils/messaging/chat-sdk/teams-config";
 
 export type GetMessagingChannelsResponse = Awaited<ReturnType<typeof getData>>;
 
 export const GET = withEmailAccount(
   "user/messaging-channels",
   async (request) => {
-    const { emailAccountId } = request.auth;
-    const result = await getData({ emailAccountId });
+    const { emailAccountId, userId } = request.auth;
+    const result = await getData({ emailAccountId, userId });
     return NextResponse.json(result);
   },
 );
 
-async function getData({ emailAccountId }: { emailAccountId: string }) {
+async function getData({
+  emailAccountId,
+  userId,
+}: {
+  emailAccountId: string;
+  userId: string;
+}) {
   const channels = await prisma.messagingChannel.findMany({
     where: { emailAccountId },
     select: {
@@ -104,16 +113,49 @@ async function getData({ emailAccountId }: { emailAccountId: string }) {
         };
       },
     ),
-    availableProviders: getAvailableProviders(),
+    availableProviders: await getAvailableMessagingProviders(emailAccountId),
+    appSetup: await getAppSetup({ emailAccountId, userId }),
   };
 }
 
-function getAvailableProviders(): MessagingProvider[] {
-  const providers: MessagingProvider[] = [];
-  if (env.SLACK_CLIENT_ID && env.SLACK_CLIENT_SECRET) providers.push("SLACK");
-  if (isTeamsBotConfigured()) providers.push("TEAMS");
-  if (env.TELEGRAM_BOT_TOKEN) providers.push("TELEGRAM");
-  return providers;
+async function getAppSetup({
+  emailAccountId,
+  userId,
+}: {
+  emailAccountId: string;
+  userId: string;
+}) {
+  const accountMembership = await prisma.member.findFirst({
+    where: { emailAccountId },
+    select: { organizationId: true },
+  });
+  const organizationId = accountMembership?.organizationId ?? null;
+
+  const [adminMembership, storedConfigs] = await Promise.all([
+    organizationId
+      ? prisma.member.findFirst({
+          where: {
+            organizationId,
+            emailAccount: { userId },
+            role: { in: ADMIN_ROLES },
+          },
+          select: { role: true },
+        })
+      : null,
+    organizationId
+      ? prisma.messagingAppConfig.findMany({
+          where: { organizationId },
+          select: { provider: true },
+        })
+      : [],
+  ]);
+
+  return {
+    organizationId,
+    canEdit: Boolean(adminMembership),
+    envProviders: getEnvConfiguredProviders(),
+    storedProviders: storedConfigs.map((config) => config.provider),
+  };
 }
 
 async function getSlackTargetNames(

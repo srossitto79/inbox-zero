@@ -332,6 +332,24 @@ describe("useShortcuts", () => {
     expect(backToApp).not.toHaveBeenCalled();
   });
 
+  it("leaves Enter to a focused button so its own activation runs", () => {
+    const open = vi.fn();
+    render(
+      <ShortcutsProvider scopes={MAIL_SCOPES}>
+        <Bindings handlers={{ open }} isDesktopApp={false} />
+        <button type="button">List group header</button>
+      </ShortcutsProvider>,
+    );
+
+    const event = press(
+      { key: "Enter", code: "Enter" },
+      screen.getByRole("button", { name: "List group header" }),
+    );
+
+    expect(open).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it("does not bind keys that have no handler", () => {
     const archive = vi.fn();
     renderShortcuts({ archive });

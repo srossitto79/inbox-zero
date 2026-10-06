@@ -1,3 +1,4 @@
+import type { CollapsedGroupHeader } from "@inboxzero/mail-ui/MailboxSurface";
 import { formatDateGroupLabel } from "@/utils/date";
 import { getThreadTimestamp } from "@/utils/threads/sort";
 
@@ -193,4 +194,47 @@ export function groupThreadsByDate<
   });
 
   return groups;
+}
+
+/**
+ * Removes the runs whose label the user collapsed and reports a header for
+ * each, positioned in the *visible* list. Headers mirror `groupItemsByLabel`:
+ * runs are consecutive equal labels, so a label that reappears after a visible
+ * run yields its own header — the list can render each collapsed stretch
+ * where it actually sat.
+ */
+export function partitionCollapsedGroups<T>(
+  items: T[],
+  getGroupLabel: (item: T) => string | null,
+  collapsedLabels: ReadonlySet<string>,
+): { visibleItems: T[]; collapsedHeaders: CollapsedGroupHeader[] } {
+  if (collapsedLabels.size === 0) {
+    return { visibleItems: items, collapsedHeaders: [] };
+  }
+
+  const visibleItems: T[] = [];
+  const collapsedHeaders: CollapsedGroupHeader[] = [];
+  // Label of the collapsed run being accumulated; a visible item or a
+  // different label ends it, so runs stay consecutive like the grouping.
+  let runLabel: string | null = null;
+  let runHeader: CollapsedGroupHeader | null = null;
+
+  for (const item of items) {
+    const label = getGroupLabel(item);
+
+    if (label && collapsedLabels.has(label)) {
+      if (runLabel !== label) {
+        runHeader = { label, count: 0, beforeIndex: visibleItems.length };
+        collapsedHeaders.push(runHeader);
+        runLabel = label;
+      }
+      if (runHeader) runHeader.count++;
+    } else {
+      runLabel = null;
+      runHeader = null;
+      visibleItems.push(item);
+    }
+  }
+
+  return { visibleItems, collapsedHeaders };
 }

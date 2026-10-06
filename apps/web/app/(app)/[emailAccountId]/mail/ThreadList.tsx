@@ -1,9 +1,8 @@
 "use client";
 
-import { addDays } from "date-fns/addDays";
-import { startOfDay } from "date-fns/startOfDay";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
 import { MailboxThreadList } from "@inboxzero/mail-ui/MailboxSurface";
+import type { CollapsedGroupHeader } from "@inboxzero/mail-ui/MailboxSurface";
 import { ThreadRow } from "@/app/(app)/[emailAccountId]/mail/ThreadRow";
 import type {
   ListThread,
@@ -17,15 +16,9 @@ import { useUiVariant } from "@/providers/UiPreferencesProvider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSentMessageOpensForThreads } from "@/hooks/useSentMessageOpens";
 import { cn } from "@/utils";
-import { formatDateGroupLabel } from "@/utils/date";
-import { getThreadTimestamp } from "@/utils/threads/sort";
 import { GmailLabel } from "@/utils/gmail/label";
-import {
-  QUEUE_DOT_CLASS,
-  getQueueIdByName,
-  getQueueName,
-  type QueueId,
-} from "@/app/(app)/[emailAccountId]/mail/queue-grouping";
+import type { MailQueue } from "@/utils/queues";
+import { QUEUE_DOT_CLASS } from "@/app/(app)/[emailAccountId]/mail/queue-grouping";
 
 const NO_LABELS: EmailLabels = {};
 
@@ -51,8 +44,16 @@ export type ThreadListProps = {
   /** Identity of the current view so prefetch state does not leak across splits. */
   listKey: string;
   showSentOpenStatus?: boolean;
-  /** Groups by queue instead of date; `threads` must already be in queue order. */
-  getQueueId?: (thread: ListThread) => QueueId | null;
+  /** Queue name (queues mode) or date label (timeline mode) for a thread. */
+  getGroupLabel: (thread: ListThread) => string | null;
+  /** Queue mode renders dot + count headers; timeline renders plain labels. */
+  groupByQueue: boolean;
+  /** Rule-derived queues; queue mode uses them for the header dots. */
+  queues: MailQueue[];
+  /** Headers of groups the user hid, positioned in the visible list. */
+  collapsedHeaders: CollapsedGroupHeader[];
+  /** Shows/hides a group's rows; wired to the persisted collapse state. */
+  onToggleGroup: (label: string) => void;
 };
 
 export const ThreadList = memo(function ThreadList({
@@ -75,11 +76,14 @@ export const ThreadList = memo(function ThreadList({
   onLoadMore,
   listKey,
   showSentOpenStatus = false,
-  getQueueId,
+  getGroupLabel,
+  groupByQueue,
+  queues,
+  collapsedHeaders,
+  onToggleGroup,
 }: ThreadListProps) {
   const isMobile = useIsMobile();
   const isNext = useUiVariant() === "next";
-  const dayStart = useDayStart();
   const sentThreadIds = useMemo(
     () =>
       showSentOpenStatus
@@ -100,16 +104,6 @@ export const ThreadList = memo(function ThreadList({
       : "font-normal text-sm",
     selectionEnabled ? "pl-[3.25rem]" : "pl-8",
   );
-  const getGroupLabel = useCallback(
-    (thread: ListThread) => {
-      if (getQueueId) return getQueueName(getQueueId(thread));
-      const timestamp = getThreadTimestamp(thread);
-      return timestamp
-        ? formatDateGroupLabel(new Date(timestamp), new Date(dayStart))
-        : null;
-    },
-    [dayStart, getQueueId],
-  );
 
   return (
     <MailboxThreadList
@@ -117,17 +111,21 @@ export const ThreadList = memo(function ThreadList({
       focusedIndex={focusedIndex}
       getGroupLabel={getGroupLabel}
       getKey={getListThreadKey}
+      collapsedHeaders={collapsedHeaders}
+      onToggleGroup={onToggleGroup}
       renderGroupHeader={
-        getQueueId
+        groupByQueue
           ? ({ label, count }) => {
-              const queueId = getQueueIdByName(label);
+              const queue = queues.find(
+                (candidate) => candidate.name === label,
+              );
               return (
                 <span className="flex items-center gap-2">
                   <span
                     className={cn(
                       "size-2 rounded-full",
-                      queueId
-                        ? QUEUE_DOT_CLASS[queueId]
+                      queue
+                        ? QUEUE_DOT_CLASS[queue.colorVar]
                         : "bg-muted-foreground/40",
                     )}
                   />
@@ -193,27 +191,3 @@ export const ThreadList = memo(function ThreadList({
     />
   );
 });
-
-/** Refreshes idle lists at midnight and when a suspended tab becomes active. */
-function useDayStart() {
-  const [, setDayStart] = useState(() => startOfDay(new Date()).getTime());
-  // Read the clock on every render, even if a background timer has not fired yet.
-  const dayStart = startOfDay(new Date()).getTime();
-
-  useEffect(() => {
-    const refresh = () => setDayStart(startOfDay(new Date()).getTime());
-    const timeout = setTimeout(
-      refresh,
-      Math.max(0, addDays(new Date(dayStart), 1).getTime() - Date.now()),
-    );
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-    return () => {
-      clearTimeout(timeout);
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
-    };
-  }, [dayStart]);
-
-  return dayStart;
-}

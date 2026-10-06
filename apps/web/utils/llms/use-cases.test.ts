@@ -118,6 +118,7 @@ describe("LLM use cases", () => {
       [LlmUseCase.CategorizeSendersBulk]: "economy",
       [LlmUseCase.ChatCompaction]: "economy",
       [LlmUseCase.ChatMemoryExtraction]: "economy",
+      [LlmUseCase.ChatTitleGeneration]: "economy",
       [LlmUseCase.CleanInbox]: "default",
       [LlmUseCase.ComposeAutocomplete]: "default",
       [LlmUseCase.DetectRecurringPattern]: "chat",

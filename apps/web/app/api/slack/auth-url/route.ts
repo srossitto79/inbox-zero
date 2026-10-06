@@ -4,6 +4,10 @@ import { withEmailAccount } from "@/utils/middleware";
 import prisma from "@/utils/prisma";
 import { MessagingProvider } from "@/generated/prisma/enums";
 import {
+  getSlackRedirectUri,
+  resolveSlackAppCredentials,
+} from "@/utils/messaging/app-credentials";
+import {
   SLACK_STATE_COOKIE_NAME,
   SLACK_OAUTH_STATE_TYPE,
   SLACK_SCOPES,
@@ -21,20 +25,24 @@ export type GetSlackAuthUrlResponse = {
 export const GET = withEmailAccount("slack/auth-url", async (request) => {
   const { emailAccountId } = request.auth;
 
-  if (!env.SLACK_CLIENT_ID || !env.SLACK_CLIENT_SECRET) {
+  const credentials = await resolveSlackAppCredentials(emailAccountId);
+  if (!credentials) {
     return NextResponse.json(
       { error: "Slack integration not configured" },
       { status: 503 },
     );
   }
 
-  const { url, state, redirectUri } = getAuthUrl({ emailAccountId });
+  const { url, state, redirectUri } = getAuthUrl({
+    emailAccountId,
+    clientId: credentials.clientId,
+  });
 
   const existingWorkspace = await findOrgMateWorkspace(emailAccountId);
 
   request.logger.info("Slack auth URL generated", {
     redirectUri,
-    clientId: env.SLACK_CLIENT_ID,
+    clientId: credentials.clientId,
     baseUrl: env.NEXT_PUBLIC_BASE_URL,
     webhookUrl: env.WEBHOOK_URL ?? null,
     hasExistingWorkspace: !!existingWorkspace,
@@ -50,16 +58,22 @@ export const GET = withEmailAccount("slack/auth-url", async (request) => {
   return response;
 });
 
-function getAuthUrl({ emailAccountId }: { emailAccountId: string }) {
+function getAuthUrl({
+  emailAccountId,
+  clientId,
+}: {
+  emailAccountId: string;
+  clientId: string;
+}) {
   const state = generateSignedOAuthState({
     emailAccountId,
     type: SLACK_OAUTH_STATE_TYPE,
   });
 
-  const redirectUri = `${env.WEBHOOK_URL || env.NEXT_PUBLIC_BASE_URL}/api/slack/callback`;
+  const redirectUri = getSlackRedirectUri();
 
   const params = new URLSearchParams({
-    client_id: env.SLACK_CLIENT_ID!,
+    client_id: clientId,
     scope: SLACK_SCOPES,
     redirect_uri: redirectUri,
     state,

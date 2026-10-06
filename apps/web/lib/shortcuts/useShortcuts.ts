@@ -224,6 +224,16 @@ function resolveTarget(
   ) {
     return;
   }
+  // Enter on a native button belongs to the button (it activates on keydown);
+  // running the shortcut here would also preventDefault the activation away.
+  if (
+    target?.type === "entry" &&
+    target.entry.id === "open" &&
+    event.target instanceof Element &&
+    event.target.closest("button")
+  ) {
+    return;
+  }
   return target;
 }
 

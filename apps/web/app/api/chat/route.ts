@@ -26,6 +26,7 @@ import {
   RECENT_MESSAGES_TO_KEEP,
 } from "@/utils/ai/assistant/compact";
 import { getInboxStatsForChatContext } from "@/utils/ai/assistant/get-inbox-stats-for-chat-context";
+import { labelChat } from "@/utils/ai/assistant/chat-title";
 import { formatUtcDate } from "@/utils/date";
 import {
   buildUserChatMessageMetadata,
@@ -173,6 +174,18 @@ export const POST = withEmailAccount("chat", async (request) => {
     trackFirstTimeEvent({
       emailAccountId,
       event: FIRST_TIME_EVENTS.FIRST_CHAT_MESSAGE,
+    }),
+  );
+
+  // Naming runs after the response so the title/description never delays
+  // the reply; updateMany guards keep it from overwriting user renames.
+  after(() =>
+    labelChat({
+      chatId: chat.id,
+      user,
+      currentName: chat.name,
+      currentDescription: chat.description,
+      logger: runLogger,
     }),
   );
 

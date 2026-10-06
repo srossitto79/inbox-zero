@@ -24,6 +24,10 @@ import {
 } from "@/utils/redis/oauth-code";
 import { syncSlackInstallation } from "@/utils/messaging/chat-sdk/bot";
 import { sendSlackOnboardingDirectMessageWithLogging } from "@/utils/messaging/providers/slack/send-onboarding-direct-message";
+import {
+  getSlackRedirectUri,
+  resolveSlackAppCredentials,
+} from "@/utils/messaging/app-credentials";
 
 const slackOAuthStateSchema = z.object({
   emailAccountId: z.string().min(1).max(64),
@@ -97,7 +101,16 @@ export async function handleSlackCallback(
       });
     }
 
-    const tokens = await exchangeCodeForTokens(code, logger);
+    const credentials = await resolveSlackAppCredentials(emailAccountId);
+    if (!credentials) {
+      throw new Error("Slack integration not configured");
+    }
+
+    const tokens = await exchangeCodeForTokens({
+      code,
+      logger: callbackLogger,
+      credentials,
+    });
 
     await upsertMessagingChannel({
       teamId: tokens.team.id,
@@ -311,15 +324,20 @@ function buildChannelsRedirectUrl(emailAccountId: string): URL {
   return url;
 }
 
-async function exchangeCodeForTokens(
-  code: string,
-  logger: Logger,
-): Promise<SlackOAuthResponse> {
-  const redirectUri = `${env.WEBHOOK_URL || env.NEXT_PUBLIC_BASE_URL}/api/slack/callback`;
+async function exchangeCodeForTokens({
+  code,
+  logger,
+  credentials,
+}: {
+  code: string;
+  logger: Logger;
+  credentials: { clientId: string; clientSecret: string };
+}): Promise<SlackOAuthResponse> {
+  const redirectUri = getSlackRedirectUri();
 
   logger.info("Exchanging Slack code for tokens", {
     redirectUri,
-    clientId: env.SLACK_CLIENT_ID,
+    clientId: credentials.clientId,
     baseUrl: env.NEXT_PUBLIC_BASE_URL,
     webhookUrl: env.WEBHOOK_URL ?? null,
     codeLength: code.length,
@@ -331,8 +349,8 @@ async function exchangeCodeForTokens(
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: new URLSearchParams({
-      client_id: env.SLACK_CLIENT_ID!,
-      client_secret: env.SLACK_CLIENT_SECRET!,
+      client_id: credentials.clientId,
+      client_secret: credentials.clientSecret,
       code,
       redirect_uri: redirectUri,
     }),
@@ -344,7 +362,7 @@ async function exchangeCodeForTokens(
     logger.error("Slack token exchange failed", {
       slackError: raw.error,
       redirectUri,
-      clientId: env.SLACK_CLIENT_ID,
+      clientId: credentials.clientId,
     });
     throw new Error(`Slack OAuth error: ${raw.error}`);
   }

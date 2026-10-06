@@ -1,12 +1,13 @@
 import { NextResponse, after } from "next/server";
 import { withError } from "@/utils/middleware";
-import { env } from "@/env";
 import {
   ensureSlackTeamInstallation,
   extractSlackTeamIdFromWebhook,
   getMessagingChatSdkBot,
   withMessagingRequestLogger,
 } from "@/utils/messaging/chat-sdk/bot";
+import { ensureMessagingAdaptersHydrated } from "@/utils/messaging/chat-sdk/adapter-hydration";
+import { resolvePrimarySlackSigningSecret } from "@/utils/messaging/app-credentials";
 import { validateSlackWebhookRequest } from "@/utils/messaging/providers/slack/verify-signature";
 import { publishAppHome } from "@/utils/messaging/providers/slack/app-home";
 import { handleSlackAppUninstalled } from "@/utils/messaging/providers/slack/uninstall";
@@ -16,12 +17,15 @@ export const maxDuration = 120;
 export const POST = withError("slack/events", async (request) => {
   const logger = request.logger;
 
-  if (!env.SLACK_SIGNING_SECRET) {
+  const signingSecret = await resolvePrimarySlackSigningSecret();
+  if (!signingSecret) {
     return NextResponse.json(
       { error: "Slack not configured" },
       { status: 503 },
     );
   }
+
+  await ensureMessagingAdaptersHydrated();
 
   const rawBody = await request.text();
   const contentType = request.headers.get("content-type") ?? "";
@@ -31,7 +35,7 @@ export const POST = withError("slack/events", async (request) => {
   // Validate before installation seeding so invalid requests cannot trigger DB/Redis work.
   // The Slack adapter also validates internally when handling the webhook.
   const signatureValidation = validateSlackWebhookRequest({
-    signingSecret: env.SLACK_SIGNING_SECRET,
+    signingSecret,
     timestamp,
     body: rawBody,
     signature,

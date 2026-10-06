@@ -9,7 +9,10 @@ import {
   toggleRuleChannelAction,
   updateSlackRouteAction,
   updateMessagingFeatureRouteAction,
+  saveMessagingAppConfigAction,
+  deleteMessagingAppConfigAction,
 } from "@/utils/actions/messaging-channels";
+import { invalidateMessagingAdapterHydration } from "@/utils/messaging/chat-sdk/adapter-hydration";
 import {
   getChannelInfo,
   listChannels,
@@ -19,6 +22,10 @@ import { createSlackClient } from "@/utils/messaging/providers/slack/client";
 import { sendChannelConfirmation } from "@/utils/messaging/providers/slack/send";
 
 vi.mock("@/utils/prisma");
+vi.mock("@/utils/messaging/chat-sdk/adapter-hydration", () => ({
+  ensureMessagingAdaptersHydrated: vi.fn(async () => {}),
+  invalidateMessagingAdapterHydration: vi.fn(async () => {}),
+}));
 vi.mock("@/utils/auth", () => ({
   auth: vi.fn(async () => ({
     user: { id: "user-1", email: "user@example.com" },
@@ -42,6 +49,7 @@ const { mockEnv, generateMessagingLinkCodeMock } = vi.hoisted(() => ({
     TEAMS_BOT_APP_PASSWORD: "teams-app-password",
     TEAMS_BOT_APP_TENANT_ID: "tenant-id" as string | undefined,
     TELEGRAM_BOT_TOKEN: "telegram-bot-token" as string | undefined,
+    TELEGRAM_BOT_SECRET_TOKEN: "telegram-secret-token" as string | undefined,
   },
   generateMessagingLinkCodeMock: vi.fn(
     (_args: { emailAccountId: string; provider: string }) => "test-link-code",
@@ -68,6 +76,7 @@ describe("createMessagingLinkCodeAction", () => {
     mockEnv.TEAMS_BOT_APP_PASSWORD = "teams-app-password";
     mockEnv.TEAMS_BOT_APP_TENANT_ID = "tenant-id";
     mockEnv.TELEGRAM_BOT_TOKEN = "telegram-bot-token";
+    mockEnv.TELEGRAM_BOT_SECRET_TOKEN = "telegram-secret-token";
 
     prisma.emailAccount.findUnique.mockResolvedValue({
       email: "user@example.com",
@@ -625,5 +634,167 @@ describe("toggleRuleChannelAction", () => {
       "Please reconnect Teams before configuring notifications.",
     );
     expect(prisma.action.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("saveMessagingAppConfigAction", () => {
+  const mockMembership = (role: string | null) => {
+    prisma.member.findFirst.mockImplementation((async (args: any) => {
+      if (args?.where?.emailAccountId) return { organizationId: "org-1" };
+      return role ? { role } : null;
+    }) as never);
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prisma.emailAccount.findUnique.mockResolvedValue({
+      email: "user@example.com",
+      account: { userId: "user-1", provider: "google" },
+    } as any);
+    prisma.member.findFirst.mockResolvedValue(null as never);
+    prisma.messagingAppConfig.findUnique.mockResolvedValue(null as never);
+    vi.mocked(invalidateMessagingAdapterHydration).mockClear();
+  });
+
+  it("rejects when the account has no organization", async () => {
+    const result = await saveMessagingAppConfigAction(
+      "email-account-1" as any,
+      {
+        provider: "TELEGRAM",
+        botToken: "token",
+        botSecretToken: "secret",
+      } as any,
+    );
+
+    expect(result?.serverError).toMatch(/organization/i);
+    expect(prisma.messagingAppConfig.upsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects members without an admin role", async () => {
+    mockMembership("member");
+
+    const result = await saveMessagingAppConfigAction(
+      "email-account-1" as any,
+      {
+        provider: "TELEGRAM",
+        botToken: "token",
+        botSecretToken: "secret",
+      } as any,
+    );
+
+    expect(result?.serverError).toMatch(/admin/i);
+    expect(prisma.messagingAppConfig.upsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects a config missing required fields for the provider", async () => {
+    mockMembership("admin");
+
+    const result = await saveMessagingAppConfigAction(
+      "email-account-1" as any,
+      { provider: "SLACK", clientId: "only-client-id" } as any,
+    );
+
+    expect(result?.serverError).toMatch(/Missing required fields/i);
+    expect(prisma.messagingAppConfig.upsert).not.toHaveBeenCalled();
+  });
+
+  it("saves a complete config and refreshes the adapters", async () => {
+    mockMembership("admin");
+
+    const result = await saveMessagingAppConfigAction(
+      "email-account-1" as any,
+      {
+        provider: "TELEGRAM",
+        botToken: "bot-token",
+        botSecretToken: "secret-token",
+      } as any,
+    );
+
+    expect(result?.serverError).toBeUndefined();
+    expect(prisma.messagingAppConfig.upsert).toHaveBeenCalledWith({
+      where: {
+        organizationId_provider: {
+          organizationId: "org-1",
+          provider: "TELEGRAM",
+        },
+      },
+      update: { botToken: "bot-token", botSecretToken: "secret-token" },
+      create: {
+        organizationId: "org-1",
+        provider: "TELEGRAM",
+        botToken: "bot-token",
+        botSecretToken: "secret-token",
+      },
+    });
+    expect(invalidateMessagingAdapterHydration).toHaveBeenCalledOnce();
+  });
+
+  it("only updates the submitted fields when rotating one secret", async () => {
+    mockMembership("admin");
+    prisma.messagingAppConfig.findUnique.mockResolvedValue({
+      clientId: "client-id",
+      clientSecret: "client-secret",
+      signingSecret: "old-signing",
+    } as never);
+
+    const result = await saveMessagingAppConfigAction(
+      "email-account-1" as any,
+      { provider: "SLACK", signingSecret: "new-signing" } as any,
+    );
+
+    expect(result?.serverError).toBeUndefined();
+    expect(prisma.messagingAppConfig.upsert).toHaveBeenCalledWith({
+      where: {
+        organizationId_provider: { organizationId: "org-1", provider: "SLACK" },
+      },
+      update: { signingSecret: "new-signing" },
+      create: {
+        organizationId: "org-1",
+        provider: "SLACK",
+        clientId: "client-id",
+        clientSecret: "client-secret",
+        signingSecret: "new-signing",
+      },
+    });
+  });
+});
+
+describe("deleteMessagingAppConfigAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prisma.emailAccount.findUnique.mockResolvedValue({
+      email: "user@example.com",
+      account: { userId: "user-1", provider: "google" },
+    } as any);
+    prisma.member.findFirst.mockResolvedValue(null as never);
+    vi.mocked(invalidateMessagingAdapterHydration).mockClear();
+  });
+
+  it("rejects when the account has no organization", async () => {
+    const result = await deleteMessagingAppConfigAction(
+      "email-account-1" as any,
+      { provider: "SLACK" } as any,
+    );
+
+    expect(result?.serverError).toMatch(/organization/i);
+    expect(prisma.messagingAppConfig.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("deletes the config and refreshes the adapters", async () => {
+    prisma.member.findFirst.mockImplementation((async (args: any) => {
+      if (args?.where?.emailAccountId) return { organizationId: "org-1" };
+      return { role: "admin" };
+    }) as never);
+
+    const result = await deleteMessagingAppConfigAction(
+      "email-account-1" as any,
+      { provider: "SLACK" } as any,
+    );
+
+    expect(result?.serverError).toBeUndefined();
+    expect(prisma.messagingAppConfig.deleteMany).toHaveBeenCalledWith({
+      where: { organizationId: "org-1", provider: "SLACK" },
+    });
+    expect(invalidateMessagingAdapterHydration).toHaveBeenCalledOnce();
   });
 });

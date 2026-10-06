@@ -327,6 +327,7 @@ export function getRule(
     body: null,
     to: null,
     enabled: true,
+    showInQueuesSidebar: false,
     categoryFilterType: null,
     conditionalOperator: LogicalOperator.AND,
     systemType: null,

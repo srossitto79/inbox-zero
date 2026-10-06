@@ -397,6 +397,7 @@ describe("Chat opened without a selected conversation", () => {
 const chatHistoryEntry = {
   id: "chat-1",
   name: "Project update",
+  description: null,
   createdAt: new Date("2026-05-23T00:00:00.000Z"),
   updatedAt: new Date("2026-05-23T00:00:00.000Z"),
   lastMessageAt: new Date("2026-05-23T00:00:00.000Z"),

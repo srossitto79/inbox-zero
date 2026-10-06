@@ -27,30 +27,7 @@ afterEach(() => {
 
 describe("ChatHistoryItem", () => {
   it("keeps the actions menu open when the cursor leaves the chat row toward the actions", async () => {
-    const chat = {
-      id: "chat-1",
-      name: "Project update",
-      createdAt: new Date("2026-05-23T00:00:00.000Z"),
-      updatedAt: new Date("2026-05-23T00:00:00.000Z"),
-      lastMessageAt: new Date("2026-05-23T00:00:00.000Z"),
-      deletedAt: null,
-      compactionCount: 0,
-      lastSeenRulesRevision: null,
-      emailAccountId: "email-account-1",
-    } satisfies ChatHistoryEntry;
-
-    render(
-      <DropdownMenu open={true}>
-        <DropdownMenuContent>
-          <ChatHistoryItem
-            chat={chat}
-            onSelect={vi.fn()}
-            onRename={vi.fn()}
-            onDelete={vi.fn()}
-          />
-        </DropdownMenuContent>
-      </DropdownMenu>,
-    );
+    renderItem(createChat());
 
     fireEvent.click(screen.getByRole("button", { name: "Chat options" }));
 
@@ -72,4 +49,53 @@ describe("ChatHistoryItem", () => {
     expect(screen.getByRole("menuitem", { name: /rename/i })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: /delete/i })).toBeTruthy();
   });
+
+  it("shows the description under the title", () => {
+    renderItem(
+      createChat({ description: "Review the Q4 rollout plan with the team." }),
+    );
+
+    expect(screen.getByText("Project update")).toBeTruthy();
+    expect(
+      screen.getByText("Review the Q4 rollout plan with the team."),
+    ).toBeTruthy();
+  });
+
+  it("renders only the title when there is no description", () => {
+    renderItem(createChat({ description: null }));
+
+    expect(screen.getByText("Project update")).toBeTruthy();
+    expect(screen.queryByText(/rollout/)).toBeNull();
+  });
 });
+
+function renderItem(chat: ChatHistoryEntry) {
+  return render(
+    <DropdownMenu open={true}>
+      <DropdownMenuContent>
+        <ChatHistoryItem
+          chat={chat}
+          onSelect={vi.fn()}
+          onRename={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>,
+  );
+}
+
+function createChat(overrides: Partial<ChatHistoryEntry> = {}) {
+  return {
+    id: "chat-1",
+    name: "Project update",
+    description: null,
+    createdAt: new Date("2026-05-23T00:00:00.000Z"),
+    updatedAt: new Date("2026-05-23T00:00:00.000Z"),
+    lastMessageAt: new Date("2026-05-23T00:00:00.000Z"),
+    deletedAt: null,
+    compactionCount: 0,
+    lastSeenRulesRevision: null,
+    emailAccountId: "email-account-1",
+    ...overrides,
+  } satisfies ChatHistoryEntry;
+}

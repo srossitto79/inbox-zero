@@ -1140,6 +1140,7 @@ function getRule(): Rule {
     enabled: true,
     automate: true,
     runOnThreads: true,
+    showInQueuesSidebar: false,
     emailAccountId: "emailAccountId",
     organizationRuleId: null,
     organizationRuleMemberEnabled: null,

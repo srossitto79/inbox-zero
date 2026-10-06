@@ -45,6 +45,7 @@ import {
   getCategoryAction,
   getActionTypesForCategoryAction,
   isOptInSystemType,
+  QUEUE_SYSTEM_TYPES,
   STANDARD_CATEGORY_SYSTEM_TYPES,
 } from "@/utils/rule/consts";
 import { actionClient, actionClientUser } from "@/utils/actions/safe-action";
@@ -73,6 +74,7 @@ export const createRuleAction = actionClient
       parsedInput: {
         name,
         runOnThreads,
+        showInQueuesSidebar,
         actions,
         conditions: conditionsInput,
         conditionalOperator,
@@ -107,6 +109,7 @@ export const createRuleAction = actionClient
           emailAccountId,
           provider,
           runOnThreads: runOnThreads ?? true,
+          showInQueuesSidebar: showInQueuesSidebar ?? false,
           logger,
         });
 
@@ -127,6 +130,7 @@ export const updateRuleAction = actionClient
         id,
         name,
         runOnThreads,
+        showInQueuesSidebar,
         actions,
         conditions: conditionsInput,
         conditionalOperator,
@@ -170,6 +174,7 @@ export const updateRuleAction = actionClient
           provider,
           logger,
           runOnThreads: runOnThreads ?? undefined,
+          showInQueuesSidebar: showInQueuesSidebar ?? undefined,
         });
 
         return { rule };
@@ -393,6 +398,7 @@ export const createRulesOnboardingAction = actionClient
             emailAccountId,
             systemType,
             runOnThreads,
+            showInQueuesSidebar: QUEUE_SYSTEM_TYPES.includes(systemType),
             enabled: true,
             logger,
           });
@@ -814,6 +820,7 @@ async function toggleRule({
     emailAccountId,
     systemType,
     runOnThreads: ruleConfig.runOnThreads,
+    showInQueuesSidebar: QUEUE_SYSTEM_TYPES.includes(systemType),
     enabled,
     logger,
   });
@@ -1209,6 +1216,7 @@ export const importRulesAction = actionClient
                 enabled: rule.enabled ?? true,
                 automate: rule.automate ?? true,
                 runOnThreads: rule.runOnThreads ?? false,
+                showInQueuesSidebar: rule.showInQueuesSidebar ?? false,
                 conditionalOperator: rule.conditionalOperator,
                 categoryFilterType: rule.categoryFilterType,
                 from: rule.from,
@@ -1230,6 +1238,7 @@ export const importRulesAction = actionClient
                 enabled: rule.enabled ?? true,
                 automate: rule.automate ?? true,
                 runOnThreads: rule.runOnThreads ?? false,
+                showInQueuesSidebar: rule.showInQueuesSidebar ?? false,
                 conditionalOperator: rule.conditionalOperator,
                 categoryFilterType: rule.categoryFilterType,
                 from: rule.from,

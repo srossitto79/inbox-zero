@@ -251,6 +251,11 @@ export function getMessagingChatSdkBot(): MessagingChatSdkContext {
   return global.inboxZeroMessagingChatSdk;
 }
 
+/** Forces the next call to rebuild from the current adapter registry. */
+export function resetMessagingChatSdkBot() {
+  global.inboxZeroMessagingChatSdk = undefined;
+}
+
 export function withMessagingRequestLogger<T>({
   logger,
   fn,
@@ -262,8 +267,14 @@ export function withMessagingRequestLogger<T>({
 }
 
 export function hasMessagingAdapter(platform: SupportedPlatform): boolean {
-  const context = getMessagingChatSdkBot();
-  return Boolean(context.adapters[platform]);
+  try {
+    const context = getMessagingChatSdkBot();
+    return Boolean(context.adapters[platform]);
+  } catch {
+    // Registry construction throws when nothing is configured; that is an
+    // "unavailable" state for callers, not an error they should crash on.
+    return false;
+  }
 }
 
 export function extractSlackTeamIdFromWebhook(

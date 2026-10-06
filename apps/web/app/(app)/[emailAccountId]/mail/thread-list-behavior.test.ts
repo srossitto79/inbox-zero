@@ -4,6 +4,7 @@ import {
   getSearchFocus,
   groupThreadsByDate,
   getNextThreadAfterRemoval,
+  partitionCollapsedGroups,
   resolveThreadActionTargets,
   scrollElementIntoContainer,
   shouldPrefetchMoreThreads,
@@ -433,6 +434,102 @@ describe("getSearchFocus", () => {
         orderedIds: ["cached", "new"],
       }).key,
     ).toBe("new");
+  });
+});
+
+describe("partitionCollapsedGroups", () => {
+  const labelOf = (item: { label: string | null }) => item.label;
+  const thread = (label: string | null, id: number) => ({ label, id });
+
+  it("returns the same list when nothing is collapsed", () => {
+    const items = [thread("a", 1), thread("b", 2)];
+    const result = partitionCollapsedGroups(items, labelOf, new Set());
+
+    expect(result.visibleItems).toBe(items);
+    expect(result.collapsedHeaders).toEqual([]);
+  });
+
+  it("drops a collapsed run and reports its header before the next visible item", () => {
+    const items = [
+      thread("To reply", 1),
+      thread("To reply", 2),
+      thread("FYI", 3),
+    ];
+    const result = partitionCollapsedGroups(
+      items,
+      labelOf,
+      new Set(["To reply"]),
+    );
+
+    expect(result.visibleItems.map((item) => item.id)).toEqual([3]);
+    expect(result.collapsedHeaders).toEqual([
+      { label: "To reply", count: 2, beforeIndex: 0 },
+    ]);
+  });
+
+  it("places each collapsed run by how many visible items precede it", () => {
+    const items = [
+      thread("FYI", 1),
+      thread("Newsletters", 2),
+      thread("Newsletters", 3),
+      thread("To reply", 4),
+      thread("Receipts", 5),
+    ];
+    const result = partitionCollapsedGroups(
+      items,
+      labelOf,
+      new Set(["Newsletters", "Receipts"]),
+    );
+
+    expect(result.visibleItems.map((item) => item.id)).toEqual([1, 4]);
+    expect(result.collapsedHeaders).toEqual([
+      { label: "Newsletters", count: 2, beforeIndex: 1 },
+      { label: "Receipts", count: 1, beforeIndex: 2 },
+    ]);
+  });
+
+  it("starts a new header when the same label reappears after a visible run", () => {
+    const items = [
+      thread("FYI", 1),
+      thread("Receipts", 2),
+      thread("FYI", 3),
+      thread("Receipts", 4),
+    ];
+    const result = partitionCollapsedGroups(
+      items,
+      labelOf,
+      new Set(["Receipts"]),
+    );
+
+    expect(result.visibleItems.map((item) => item.id)).toEqual([1, 3]);
+    expect(result.collapsedHeaders).toEqual([
+      { label: "Receipts", count: 1, beforeIndex: 1 },
+      { label: "Receipts", count: 1, beforeIndex: 2 },
+    ]);
+  });
+
+  it("keeps unlabelled items visible even while a group is collapsed", () => {
+    const items = [thread(null, 1), thread("FYI", 2), thread(null, 3)];
+    const result = partitionCollapsedGroups(items, labelOf, new Set(["FYI"]));
+
+    expect(result.visibleItems.map((item) => item.id)).toEqual([1, 3]);
+    expect(result.collapsedHeaders).toEqual([
+      { label: "FYI", count: 1, beforeIndex: 1 },
+    ]);
+  });
+
+  it("hides every collapsed item at the end of the list", () => {
+    const items = [thread("FYI", 1), thread("Receipts", 2)];
+    const result = partitionCollapsedGroups(
+      items,
+      labelOf,
+      new Set(["Receipts"]),
+    );
+
+    expect(result.visibleItems.map((item) => item.id)).toEqual([1]);
+    expect(result.collapsedHeaders).toEqual([
+      { label: "Receipts", count: 1, beforeIndex: 1 },
+    ]);
   });
 });
 

@@ -1,7 +1,7 @@
-import { QUEUES } from "@/components/shell/nav-config";
 import type { EmailLabels } from "@/providers/email-label-types";
+import type { MailQueue, QueueColorVar } from "@/utils/queues";
 
-export type QueueId = (typeof QUEUES)[number]["id"];
+export type QueueId = MailQueue["id"];
 
 export type QueueViewMode = "queues" | "timeline";
 
@@ -10,27 +10,33 @@ export const OTHER_GROUP_NAME = "Everything else";
 const VIEW_MODE_STORAGE_KEY = "mail-list-view-mode";
 
 /** Full class names, so Tailwind can see them. */
-export const QUEUE_DOT_CLASS: Record<QueueId, string> = {
-  reply: "bg-queue-reply",
-  waiting: "bg-queue-waiting",
-  fyi: "bg-queue-fyi",
-  newsletter: "bg-queue-newsletter",
-  receipt: "bg-queue-receipt",
-  calendar: "bg-queue-calendar",
+export const QUEUE_DOT_CLASS: Record<QueueColorVar, string> = {
+  "queue-reply": "bg-queue-reply",
+  "queue-waiting": "bg-queue-waiting",
+  "queue-fyi": "bg-queue-fyi",
+  "queue-newsletter": "bg-queue-newsletter",
+  "queue-receipt": "bg-queue-receipt",
+  "queue-calendar": "bg-queue-calendar",
 };
 
-export function getQueueName(queueId: QueueId | null) {
+export function getQueueName(
+  queues: readonly MailQueue[],
+  queueId: QueueId | null,
+) {
   if (!queueId) return OTHER_GROUP_NAME;
-  return QUEUES.find((queue) => queue.id === queueId)?.name ?? OTHER_GROUP_NAME;
+  return queues.find((queue) => queue.id === queueId)?.name ?? OTHER_GROUP_NAME;
 }
 
 /** Maps label ids to the queue their name belongs to. */
-export function buildQueueLabelLookup(labels: EmailLabels) {
+export function buildQueueLabelLookup(
+  queues: readonly MailQueue[],
+  labels: EmailLabels,
+) {
   const lookup = new Map<string, QueueId>();
   for (const label of Object.values(labels)) {
     const name = label.name.trim().toLowerCase();
-    const queue = QUEUES.find((candidate) =>
-      (candidate.labels as readonly string[]).includes(name),
+    const queue = queues.find((candidate) =>
+      candidate.labelNames.includes(name),
     );
     if (queue) lookup.set(label.id, queue.id);
   }
@@ -41,6 +47,7 @@ export function buildQueueLabelLookup(labels: EmailLabels) {
 export function getThreadQueueId(
   messages: { labelIds?: string[] }[],
   lookup: Map<string, QueueId>,
+  queues: readonly MailQueue[],
 ): QueueId | null {
   const found = new Set<QueueId>();
   for (const message of messages) {
@@ -49,7 +56,7 @@ export function getThreadQueueId(
       if (queueId) found.add(queueId);
     }
   }
-  return QUEUES.find((queue) => found.has(queue.id))?.id ?? null;
+  return queues.find((queue) => found.has(queue.id))?.id ?? null;
 }
 
 /**
@@ -59,11 +66,13 @@ export function getThreadQueueId(
 export function orderThreadsByQueue<T>(
   threads: T[],
   getQueueIdOf: (thread: T) => QueueId | null,
+  queues: readonly MailQueue[],
 ): T[] {
   const rank = (thread: T) => {
     const queueId = getQueueIdOf(thread);
-    if (!queueId) return QUEUES.length;
-    return QUEUES.findIndex((queue) => queue.id === queueId);
+    if (!queueId) return queues.length;
+    const index = queues.findIndex((queue) => queue.id === queueId);
+    return index === -1 ? queues.length : index;
   };
   return threads
     .map((thread, position) => ({ thread, position, rank: rank(thread) }))
@@ -101,6 +110,31 @@ export function writeQueueViewMode(mode: QueueViewMode) {
   }
 }
 
-export function getQueueIdByName(name: string): QueueId | null {
-  return QUEUES.find((queue) => queue.name === name)?.id ?? null;
+const COLLAPSED_QUEUE_STORAGE_KEY = "mail-collapsed-queues";
+
+/** Queue labels the user hid from the list; session-stable, per browser. */
+export function readCollapsedQueueLabels(): Set<string> {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_QUEUE_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(
+      parsed.filter((label): label is string => typeof label === "string"),
+    );
+  } catch {
+    // Storage can be blocked; queues then start expanded every session.
+    return new Set();
+  }
+}
+
+export function writeCollapsedQueueLabels(labels: ReadonlySet<string>) {
+  try {
+    localStorage.setItem(
+      COLLAPSED_QUEUE_STORAGE_KEY,
+      JSON.stringify([...labels]),
+    );
+  } catch {
+    // Storage can be blocked; the choice then lasts for the session only.
+  }
 }

@@ -83,6 +83,7 @@ const createRule = (
   updatedAt: new Date(),
   actions,
   runOnThreads: false,
+  showInQueuesSidebar: false,
   from: null,
   to: null,
   subject: null,

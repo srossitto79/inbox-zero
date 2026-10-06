@@ -224,6 +224,8 @@ function runPlaywright(args, extraEnv) {
   const result = spawnSync(pnpmExecutable, pnpmArgs, {
     env: { ...process.env, ...extraEnv },
     stdio: "inherit",
+    // Node refuses to spawn .cmd shims directly (since 18.20/20.12).
+    shell: process.platform === "win32",
   });
 
   if (result.error) throw result.error;

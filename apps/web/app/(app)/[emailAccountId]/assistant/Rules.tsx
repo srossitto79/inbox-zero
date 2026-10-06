@@ -150,6 +150,7 @@ export function Rules({
           instructions: ruleConfiguration.instructions,
           enabled: false,
           runOnThreads: false,
+          showInQueuesSidebar: false,
           automate: true,
           actions: getDefaultActions(systemType, provider).map((action) => ({
             ...action,

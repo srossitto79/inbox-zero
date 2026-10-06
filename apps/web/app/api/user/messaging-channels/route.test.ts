@@ -125,7 +125,9 @@ describe("GET /api/user/messaging-channels", () => {
       },
     ]);
 
-    const response = await GET(createRequest());
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({}),
+    });
     const body = await response.json();
 
     expect(body.channels).toEqual([
@@ -189,10 +191,47 @@ describe("GET /api/user/messaging-channels", () => {
 
     prisma.messagingChannel.findMany.mockResolvedValue([]);
 
-    const response = await GET(createRequest());
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({}),
+    });
     const body = await response.json();
 
     expect(body.availableProviders).toEqual(["SLACK", "TEAMS"]);
+  });
+
+  it("exposes in-app configured providers and setup state for org admins", async () => {
+    mockEnv.SLACK_CLIENT_ID = undefined;
+    mockEnv.SLACK_CLIENT_SECRET = undefined;
+    prisma.messagingChannel.findMany.mockResolvedValue([]);
+    prisma.member.findFirst.mockImplementation((async (args: any) => {
+      if (args?.where?.emailAccountId) return { organizationId: "org-1" };
+      if (args?.where?.role) return { role: "admin" };
+      return null;
+    }) as never);
+    prisma.messagingAppConfig.findMany.mockResolvedValue([
+      {
+        provider: "TELEGRAM",
+        botToken: "db-token",
+        botSecretToken: "db-secret",
+      },
+    ] as never);
+
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({}),
+    });
+    const body = await response.json();
+
+    expect(body.availableProviders).toEqual(["TELEGRAM"]);
+    expect(body.appSetup).toEqual({
+      organizationId: "org-1",
+      canEdit: true,
+      envProviders: [],
+      storedProviders: ["TELEGRAM"],
+    });
+    expect(prisma.messagingAppConfig.findMany).toHaveBeenCalledWith({
+      where: { organizationId: "org-1" },
+      select: { provider: true },
+    });
   });
 
   it("labels saved Slack channel routes as unavailable when the bot can no longer access the target", async () => {
@@ -225,7 +264,9 @@ describe("GET /api/user/messaging-channels", () => {
       },
     ]);
 
-    const response = await GET(createRequest());
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({}),
+    });
     const body = await response.json();
 
     expect(body.channels[0].destinations.ruleNotifications).toEqual({
@@ -283,7 +324,9 @@ describe("GET /api/user/messaging-channels", () => {
       },
     ]);
 
-    const response = await GET(createRequest());
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({}),
+    });
     const body = await response.json();
 
     expect(createSlackClient).toHaveBeenCalledTimes(1);
@@ -401,7 +444,9 @@ describe("GET /api/user/messaging-channels", () => {
     ] satisfies MessagingChannelRecord[];
     prisma.messagingChannel.findMany.mockResolvedValue(channels);
 
-    const response = await GET(createRequest());
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({}),
+    });
     const body = await response.json();
 
     expect(createSlackClient).not.toHaveBeenCalled();

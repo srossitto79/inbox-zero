@@ -24,6 +24,10 @@ export function ChatHistoryItem({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const tooltip = [chat.description, new Date(chat.createdAt).toLocaleString()]
+    .filter(Boolean)
+    .join("\n");
+
   return (
     <div className="group/chat-row relative flex items-center">
       <DropdownMenuItem
@@ -33,7 +37,14 @@ export function ChatHistoryItem({
           if (menuOpen) e.preventDefault();
         }}
       >
-        <span className="truncate">{getChatHistoryLabel(chat)}</span>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5" title={tooltip}>
+          <span className="truncate">{getChatHistoryLabel(chat)}</span>
+          {chat.description ? (
+            <span className="truncate text-xs text-muted-foreground">
+              {chat.description}
+            </span>
+          ) : null}
+        </span>
       </DropdownMenuItem>
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen} modal={false}>
         <DropdownMenuTrigger asChild>

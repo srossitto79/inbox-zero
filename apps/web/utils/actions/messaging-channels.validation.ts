@@ -59,3 +59,29 @@ export const toggleRuleChannelBody = z.object({
   enabled: z.boolean(),
   actionType: messagingActionTypeEnum.optional(),
 });
+
+export const messagingAppProviderEnum = z.enum(["SLACK", "TEAMS", "TELEGRAM"]);
+
+export type MessagingAppProvider = z.infer<typeof messagingAppProviderEnum>;
+
+// Which fields are required per provider is enforced in the action against the
+// merged stored config, so partial updates of a saved config stay valid.
+export const saveMessagingAppConfigBody = z.object({
+  provider: messagingAppProviderEnum,
+  clientId: z.string().trim().min(1).max(256).optional(),
+  clientSecret: z.string().trim().min(1).max(512).optional(),
+  signingSecret: z.string().trim().min(1).max(512).optional(),
+  appId: z.string().trim().min(1).max(256).optional(),
+  appPassword: z.string().trim().min(1).max(512).optional(),
+  tenantId: z.string().trim().min(1).max(256).optional(),
+  botToken: z.string().trim().min(1).max(1024).optional(),
+  botSecretToken: z.string().trim().min(1).max(1024).optional(),
+});
+
+export const deleteMessagingAppConfigBody = z.object({
+  provider: messagingAppProviderEnum,
+});
+
+export type SaveMessagingAppConfigBody = z.infer<
+  typeof saveMessagingAppConfigBody
+>;

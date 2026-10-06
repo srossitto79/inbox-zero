@@ -14,10 +14,10 @@ import { CalendarPanel } from "@/components/shell/CalendarPanel";
 import {
   getActiveSection,
   MAIL_VIEWS,
-  QUEUES,
   SHELL_SECTIONS,
   type ShellItem,
 } from "@/components/shell/nav-config";
+import { useQueues } from "@/hooks/useQueues";
 import { Sidebar, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import {
   useCleanerEnabled,
@@ -200,17 +200,20 @@ function MailPanel() {
   const activeLabelId = searchParams.get("labelId");
   const onMail = pathname.includes("/mail");
 
-  const queues = useMemo(
+  // Queues come from the account's rules; only those whose label actually
+  // exists in this mailbox get a link.
+  const queues = useQueues();
+  const queueLinks = useMemo(
     () =>
-      QUEUES.map((queue) => ({
-        ...queue,
-        label: userLabels.find((label) =>
-          (queue.labels as readonly string[]).includes(
-            label.name.toLowerCase(),
+      queues
+        .map((queue) => ({
+          ...queue,
+          label: userLabels.find((label) =>
+            queue.labelNames.includes(label.name.trim().toLowerCase()),
           ),
-        ),
-      })).filter((queue) => queue.label),
-    [userLabels],
+        }))
+        .filter((queue) => queue.label),
+    [queues, userLabels],
   );
 
   return (
@@ -227,10 +230,10 @@ function MailPanel() {
           </PanelLink>
         ))}
       </div>
-      {queues.length > 0 ? (
+      {queueLinks.length > 0 ? (
         <div className="flex flex-col gap-0.5">
           <PanelHeading>Queues</PanelHeading>
-          {queues.map((queue) => (
+          {queueLinks.map((queue) => (
             <PanelLink
               key={queue.id}
               href={prefixPath(
@@ -239,7 +242,7 @@ function MailPanel() {
               )}
               active={onMail && activeLabelId === queue.label?.id}
               count={displayCount(countsById.get(queue.label?.id ?? ""))}
-              dot={`hsl(var(--queue-${queue.id}))`}
+              dot={`hsl(var(--${queue.colorVar}))`}
             >
               {queue.name}
             </PanelLink>

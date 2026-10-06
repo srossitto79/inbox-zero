@@ -111,6 +111,7 @@ type RuleRecordData = {
   enabled?: boolean;
   automate?: boolean;
   runOnThreads?: boolean;
+  showInQueuesSidebar?: boolean;
   conditionalOperator?: Rule["conditionalOperator"] | null;
   categoryFilterType?: Rule["categoryFilterType"] | null;
   from?: string | null;
@@ -259,6 +260,7 @@ export async function createRuleWithResolvedActions({
       enabled: data.enabled ?? undefined,
       automate: data.automate ?? undefined,
       runOnThreads: data.runOnThreads ?? undefined,
+      showInQueuesSidebar: data.showInQueuesSidebar ?? undefined,
       conditionalOperator: data.conditionalOperator ?? undefined,
       categoryFilterType: data.categoryFilterType ?? undefined,
       from: data.from ?? undefined,
@@ -322,6 +324,7 @@ export async function replaceRuleWithResolvedActions({
       enabled: data.enabled,
       automate: data.automate,
       runOnThreads: data.runOnThreads,
+      showInQueuesSidebar: data.showInQueuesSidebar,
       conditionalOperator: data.conditionalOperator ?? undefined,
       categoryFilterType: data.categoryFilterType,
       from: data.from,
@@ -354,6 +357,7 @@ export async function createRule({
   systemType,
   provider,
   runOnThreads,
+  showInQueuesSidebar,
   logger,
 }: {
   result: CreateOrUpdateRuleSchema;
@@ -361,6 +365,7 @@ export async function createRule({
   systemType?: SystemType | null;
   provider: string;
   runOnThreads: boolean;
+  showInQueuesSidebar?: boolean;
   logger: Logger;
 }) {
   try {
@@ -398,6 +403,7 @@ export async function createRule({
         systemType,
         enabled: true,
         runOnThreads,
+        showInQueuesSidebar: showInQueuesSidebar ?? false,
         conditionalOperator: result.condition.conditionalOperator ?? undefined,
         instructions: result.condition.aiInstructions,
         from: result.condition.static?.from,
@@ -424,6 +430,7 @@ export async function updateRule({
   provider,
   logger,
   runOnThreads,
+  showInQueuesSidebar,
 }: {
   ruleId: string;
   result: CreateOrUpdateRuleSchema;
@@ -431,6 +438,7 @@ export async function updateRule({
   provider: string;
   logger: Logger;
   runOnThreads?: boolean;
+  showInQueuesSidebar?: boolean;
 }) {
   try {
     logger.info("Updating rule", {
@@ -461,6 +469,7 @@ export async function updateRule({
         to: result.condition.static?.to,
         subject: result.condition.static?.subject,
         ...(runOnThreads !== undefined && { runOnThreads }),
+        ...(showInQueuesSidebar !== undefined && { showInQueuesSidebar }),
       },
       actions: mappedActions,
     });
@@ -481,6 +490,7 @@ export async function upsertSystemRule({
   emailAccountId,
   systemType,
   runOnThreads,
+  showInQueuesSidebar,
   enabled,
   logger,
 }: {
@@ -490,6 +500,7 @@ export async function upsertSystemRule({
   emailAccountId: string;
   systemType: SystemType;
   runOnThreads: boolean;
+  showInQueuesSidebar: boolean;
   enabled: boolean;
   logger: Logger;
 }) {
@@ -508,6 +519,7 @@ export async function upsertSystemRule({
     instructions,
     systemType,
     runOnThreads,
+    showInQueuesSidebar,
     enabled,
   };
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { LEGACY_QUEUES } from "@/utils/queues";
 import {
   type QueueId,
   buildQueueLabelLookup,
@@ -6,7 +7,9 @@ import {
   getQueueName,
   getThreadQueueId,
   orderThreadsByQueue,
+  readCollapsedQueueLabels,
   readQueueViewMode,
+  writeCollapsedQueueLabels,
   writeQueueViewMode,
 } from "./queue-grouping";
 
@@ -16,21 +19,29 @@ const labels = {
   c: { id: "c", name: "Newsletter" },
   d: { id: "d", name: "Personal" },
 };
-const lookup = buildQueueLabelLookup(labels);
+const lookup = buildQueueLabelLookup(LEGACY_QUEUES, labels);
 
 describe("getThreadQueueId", () => {
   it("matches label names case-insensitively", () => {
-    expect(getThreadQueueId([{ labelIds: ["b"] }], lookup)).toBe("waiting");
+    expect(getThreadQueueId([{ labelIds: ["b"] }], lookup, LEGACY_QUEUES)).toBe(
+      "waiting",
+    );
   });
 
   it("prefers the earlier queue when several apply", () => {
     expect(
-      getThreadQueueId([{ labelIds: ["c"] }, { labelIds: ["a"] }], lookup),
+      getThreadQueueId(
+        [{ labelIds: ["c"] }, { labelIds: ["a"] }],
+        lookup,
+        LEGACY_QUEUES,
+      ),
     ).toBe("reply");
   });
 
   it("returns null without a queue label", () => {
-    expect(getThreadQueueId([{ labelIds: ["d"] }, {}], lookup)).toBeNull();
+    expect(
+      getThreadQueueId([{ labelIds: ["d"] }, {}], lookup, LEGACY_QUEUES),
+    ).toBeNull();
   });
 });
 
@@ -43,7 +54,7 @@ describe("orderThreadsByQueue", () => {
       { id: 4, q: "newsletter" },
       { id: 5, q: "reply" },
     ];
-    const ordered = orderThreadsByQueue(threads, (t) => t.q);
+    const ordered = orderThreadsByQueue(threads, (t) => t.q, LEGACY_QUEUES);
     expect(ordered.map((t) => t.id)).toEqual([3, 5, 2, 4, 1]);
   });
 });
@@ -61,8 +72,11 @@ describe("countThreadsByQueue", () => {
 
 describe("getQueueName", () => {
   it("names the fallback group", () => {
-    expect(getQueueName(null)).toBe("Everything else");
-    expect(getQueueName("waiting")).toBe("Waiting on others");
+    expect(getQueueName(LEGACY_QUEUES, null)).toBe("Everything else");
+    expect(getQueueName(LEGACY_QUEUES, "waiting")).toBe("Awaiting Reply");
+    expect(getQueueName(LEGACY_QUEUES, "no-such-queue")).toBe(
+      "Everything else",
+    );
   });
 });
 
@@ -78,5 +92,33 @@ describe("view mode storage", () => {
     expect(readQueueViewMode()).toBe("queues");
     writeQueueViewMode("timeline");
     expect(readQueueViewMode()).toBe("timeline");
+  });
+});
+
+describe("collapsed queue storage", () => {
+  it("round-trips the set of hidden queue labels", () => {
+    const store = new Map<string, string>();
+    globalThis.localStorage = {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        store.set(key, value);
+      },
+    } as Storage;
+
+    expect(readCollapsedQueueLabels()).toEqual(new Set());
+    writeCollapsedQueueLabels(new Set(["Newsletters", "Receipts"]));
+    expect(readCollapsedQueueLabels()).toEqual(
+      new Set(["Newsletters", "Receipts"]),
+    );
+  });
+
+  it("ignores corrupt storage instead of throwing", () => {
+    globalThis.localStorage = {
+      getItem: (key: string): string | null =>
+        key === "mail-collapsed-queues" ? '"not an array"' : null,
+      setItem: (_key: string, _value: string) => {},
+    } as Storage;
+
+    expect(readCollapsedQueueLabels()).toEqual(new Set());
   });
 });

@@ -226,6 +226,7 @@ export const createRuleBody = z.object({
   instructions: z.string().nullish(),
   groupId: z.string().nullish(),
   runOnThreads: z.boolean().nullish(),
+  showInQueuesSidebar: z.boolean().nullish(),
   digest: z.boolean().nullish(),
   notifyMessagingChannelId: z.string().nullish(),
   actions: z.array(zodAction).min(1, "You must have at least one action"),
@@ -446,6 +447,7 @@ const importedRule = z
     enabled: z.boolean().optional().default(true),
     automate: z.boolean().optional().default(true),
     runOnThreads: z.boolean().optional().default(false),
+    showInQueuesSidebar: z.boolean().optional().default(false),
     systemType: zodSystemRule.nullish(),
     conditionalOperator: z
       .enum([LogicalOperator.AND, LogicalOperator.OR])

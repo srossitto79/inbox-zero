@@ -22,6 +22,20 @@ export const DEFAULT_MAIL_SPLIT_SYSTEM_TYPES = [
 /** Owned prompts we do not seed, placeholder, or leave as disabled Rules rows. */
 export const OPT_IN_SYSTEM_TYPES = [SystemType.OTP] as const;
 
+/**
+ * System rules whose labels the mail sidebar has always shown as queues; they
+ * default to "Show in queues sidebar" on creation (the migration backfills
+ * existing rows the same way).
+ */
+export const QUEUE_SYSTEM_TYPES: readonly SystemType[] = [
+  SystemType.TO_REPLY,
+  SystemType.AWAITING_REPLY,
+  SystemType.FYI,
+  SystemType.NEWSLETTER,
+  SystemType.RECEIPT,
+  SystemType.CALENDAR,
+];
+
 const ruleConfig: Record<
   SystemType,
   {

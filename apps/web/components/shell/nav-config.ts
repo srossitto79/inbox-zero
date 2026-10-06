@@ -112,16 +112,6 @@ export const MAIL_VIEWS = [
   { name: "Archive", type: "archive" },
 ] as const;
 
-/** Queues are the labels the assistant already applies, matched by name. */
-export const QUEUES = [
-  { id: "reply", name: "To reply", labels: ["to reply"] },
-  { id: "waiting", name: "Waiting on others", labels: ["awaiting reply"] },
-  { id: "fyi", name: "FYI", labels: ["fyi"] },
-  { id: "newsletter", name: "Newsletters", labels: ["newsletter"] },
-  { id: "receipt", name: "Receipts", labels: ["receipt"] },
-  { id: "calendar", name: "Calendar", labels: ["calendar"] },
-] as const;
-
 export function getActiveSection(pathname: string): ShellSection {
   const segment = pathname.split("/").filter(Boolean)[1];
   return (

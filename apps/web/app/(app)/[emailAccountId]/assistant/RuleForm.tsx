@@ -573,6 +573,23 @@ export function RuleForm({
                     </AdvancedRow>
                   )}
 
+                  {watch("actions")?.some(
+                    (action) => action.type === ActionType.LABEL,
+                  ) ? (
+                    <AdvancedRow
+                      title="Show in queues sidebar"
+                      description="Surface this rule's label as a queue in the mail sidebar and list headings."
+                    >
+                      <Toggle
+                        name="showInQueuesSidebar"
+                        enabled={watch("showInQueuesSidebar") || false}
+                        onChange={(enabled) => {
+                          setValue("showInQueuesSidebar", enabled);
+                        }}
+                      />
+                    </AdvancedRow>
+                  ) : null}
+
                   <NotifyChannelRow
                     channels={messagingChannelsData?.channels ?? []}
                     availableProviders={

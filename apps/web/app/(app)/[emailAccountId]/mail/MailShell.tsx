@@ -17,9 +17,13 @@ import { parseAsString, useQueryState, useQueryStates } from "nuqs";
 import { toast } from "sonner";
 import {
   buildQueueLabelLookup,
+  getQueueName,
   getThreadQueueId,
   orderThreadsByQueue,
 } from "@/app/(app)/[emailAccountId]/mail/queue-grouping";
+import { partitionCollapsedGroups } from "@/app/(app)/[emailAccountId]/mail/thread-list-behavior";
+import { useCollapsedGroups } from "@/app/(app)/[emailAccountId]/mail/use-collapsed-groups";
+import { useQueues } from "@/hooks/useQueues";
 import { useQueueViewMode } from "@/app/(app)/[emailAccountId]/mail/use-queue-view-mode";
 import { getSwipeNavigation } from "@/app/(app)/[emailAccountId]/mail/reader-swipe";
 import { ListToolbar } from "@/app/(app)/[emailAccountId]/mail/ListToolbar";
@@ -39,6 +43,10 @@ import { ScheduledEmailList } from "@/app/(app)/[emailAccountId]/mail/ScheduledE
 import type { MailboxItem } from "@/app/(app)/[emailAccountId]/mail/MailboxItemContextMenu";
 import { ListSenderCommands } from "@/app/(app)/[emailAccountId]/mail/ListSenderCommands";
 import { extractEmailAddress } from "@/utils/email";
+import { formatDateGroupLabel } from "@/utils/date";
+import { getThreadTimestamp } from "@/utils/threads/sort";
+import { addDays } from "date-fns/addDays";
+import { startOfDay } from "date-fns/startOfDay";
 import { LabelPickerDialog } from "@/app/(app)/[emailAccountId]/mail/LabelPickerDialog";
 import { ThreadList } from "@/app/(app)/[emailAccountId]/mail/ThreadList";
 import { useStableCallback } from "@/app/(app)/[emailAccountId]/mail/use-stable-callback";
@@ -424,19 +432,20 @@ export function MailShell() {
   const canGroupByQueue =
     uiVariant === "next" && !isScoped && !searchQuery && !isScheduledView;
   const groupByQueue = canGroupByQueue && queueViewMode === "queues";
+  const queues = useQueues();
   const queueLookups = useMemo(() => {
     const byAccount = new Map<
       string,
       ReturnType<typeof buildQueueLabelLookup>
     >();
     for (const [accountId, labels] of Object.entries(labelsByAccount ?? {})) {
-      byAccount.set(accountId, buildQueueLabelLookup(labels));
+      byAccount.set(accountId, buildQueueLabelLookup(queues, labels));
     }
     return {
       byAccount,
-      current: buildQueueLabelLookup(isAllAccounts ? {} : userLabels),
+      current: buildQueueLabelLookup(queues, isAllAccounts ? {} : userLabels),
     };
-  }, [isAllAccounts, labelsByAccount, userLabels]);
+  }, [isAllAccounts, labelsByAccount, queues, userLabels]);
   const getQueueId = useCallback(
     (thread: ListThread) =>
       getThreadQueueId(
@@ -445,15 +454,38 @@ export function MailShell() {
           ? (queueLookups.byAccount.get(thread.account.id) ??
               queueLookups.current)
           : queueLookups.current,
+        queues,
       ),
-    [queueLookups],
+    [queueLookups, queues],
   );
-  const threads = useMemo(
+  // Group labels live here so the collapse filter and the list headers share
+  // one definition; ThreadList receives the result.
+  const dayStart = useDayStart();
+  const getGroupLabel = useCallback(
+    (thread: ListThread) => {
+      if (groupByQueue) return getQueueName(queues, getQueueId(thread));
+      const timestamp = getThreadTimestamp(thread);
+      return timestamp
+        ? formatDateGroupLabel(new Date(timestamp), new Date(dayStart))
+        : null;
+    },
+    [dayStart, getQueueId, groupByQueue, queues],
+  );
+  const orderedThreads = useMemo(
     () =>
       groupByQueue
-        ? orderThreadsByQueue(providerThreads, getQueueId)
+        ? orderThreadsByQueue(providerThreads, getQueueId, queues)
         : providerThreads,
-    [getQueueId, groupByQueue, providerThreads],
+    [getQueueId, groupByQueue, providerThreads, queues],
+  );
+  // Queue grouping reorders the list and collapsing removes runs from it, so
+  // in both cases selection, J/K and reader navigation follow what is shown.
+  const { collapsedLabels, toggle: toggleCollapsedLabel } =
+    useCollapsedGroups(groupByQueue);
+  const { visibleItems: threads, collapsedHeaders } = useMemo(
+    () =>
+      partitionCollapsedGroups(orderedThreads, getGroupLabel, collapsedLabels),
+    [collapsedLabels, getGroupLabel, orderedThreads],
   );
   const searchViewIdentity = JSON.stringify([
     emailAccountId,
@@ -461,6 +493,42 @@ export function MailShell() {
     searchQuery,
   ]);
   const orderedIds = useStableOrderedIds(threads);
+  const toggleGroup = useCallback(
+    (label: string) => {
+      const focusedKey = orderedIds[focusedIndex];
+      const nextCollapsed = toggleCollapsedLabel(label, collapsedLabels);
+      const { visibleItems: nextVisible } = partitionCollapsedGroups(
+        orderedThreads,
+        getGroupLabel,
+        nextCollapsed,
+      );
+
+      let nextIndex = focusedKey
+        ? nextVisible.findIndex(
+            (thread) => getListThreadKey(thread) === focusedKey,
+          )
+        : -1;
+      if (nextIndex < 0 && focusedKey) {
+        // The focused row's group was hidden: park the cursor where the run
+        // started, which is now the first row after the collapsed header.
+        let runStart = focusedIndex;
+        while (runStart > 0 && getGroupLabel(threads[runStart - 1]) === label) {
+          runStart--;
+        }
+        nextIndex = Math.min(runStart, Math.max(0, nextVisible.length - 1));
+      }
+      if (nextIndex >= 0) setFocusedIndex(nextIndex);
+    },
+    [
+      collapsedLabels,
+      focusedIndex,
+      getGroupLabel,
+      orderedIds,
+      orderedThreads,
+      threads,
+      toggleCollapsedLabel,
+    ],
+  );
   const previousSearchFocus = useRef<
     ReturnType<typeof getSearchFocus> | undefined
   >(undefined);
@@ -513,8 +581,12 @@ export function MailShell() {
     openThreadId: openThreadKey,
   });
   const focusedThread = threads[clampedIndex];
+  // The open conversation is looked up in the full list: collapsing its group
+  // hides the row but must not blank the reader.
   const openThread = openThreadKey
-    ? threads.find((thread) => getListThreadKey(thread) === openThreadKey)
+    ? orderedThreads.find(
+        (thread) => getListThreadKey(thread) === openThreadKey,
+      )
     : undefined;
   const readAttemptedForOpenThread = useRef<string | null>(null);
   useWarmNeighbourThreads({ threads, openThreadKey, emailAccountId });
@@ -588,7 +660,7 @@ export function MailShell() {
       !selection.hasSelection
     )
       return [];
-    const listTargets = threads.map((thread) => ({
+    const listTargets = orderedThreads.map((thread) => ({
       key: getListThreadKey(thread),
       messages: thread.messages,
       selection: getListThreadSelection(thread, emailAccountId),
@@ -620,7 +692,7 @@ export function MailShell() {
     openThreadSelection,
     readerTarget,
     selection.selectedIds,
-    threads,
+    orderedThreads,
   ]);
   const {
     archive,
@@ -634,7 +706,7 @@ export function MailShell() {
   } = useThreadActions({
     emailAccountId,
     readerTarget,
-    threads,
+    threads: orderedThreads,
   });
   const markRead = useCallback(
     (threadKeys: string[]) => setReadState(threadKeys, true, false),
@@ -802,7 +874,9 @@ export function MailShell() {
 
   const readerPosition = useMemo(
     () =>
-      threads.length > 1
+      // -1 means the open thread isn't in the visible list (hidden group or
+      // filtered out); there is no position to show for it.
+      threads.length > 1 && clampedIndex >= 0
         ? {
             current: clampedIndex + 1,
             total: threads.length,
@@ -1225,10 +1299,11 @@ export function MailShell() {
   useShortcuts(handlers, { isDesktopApp });
 
   // Senders the reader actually corresponds with, so "Describe it" can turn a
-  // person's name into an address instead of guessing a domain.
+  // person's name into an address instead of guessing a domain. The full list
+  // feeds it so hiding a group doesn't shrink the context.
   const getSplitSenders = useStableCallback(() => {
     const seen = new Set<string>();
-    for (const thread of threads) {
+    for (const thread of orderedThreads) {
       const from = thread.messages.at(-1)?.headers.from;
       const address = from ? extractEmailAddress(from) : null;
       if (address && address !== userEmail) seen.add(address);
@@ -1527,7 +1602,11 @@ export function MailShell() {
                   >
                     <ThreadList
                       threads={threads}
-                      getQueueId={groupByQueue ? getQueueId : undefined}
+                      getGroupLabel={getGroupLabel}
+                      groupByQueue={groupByQueue}
+                      queues={queues}
+                      collapsedHeaders={collapsedHeaders}
+                      onToggleGroup={toggleGroup}
                       emptyMessage={emptySearchMessage}
                       layout={layout}
                       expandedPreview={expandedPreview}
@@ -1662,6 +1741,30 @@ function useStableOrderedIds(threads: ListThread[]) {
     if (!unchanged) previous.current = ids;
     return previous.current;
   }, [threads]);
+}
+
+/** Refreshes group labels at midnight and when a suspended tab becomes active. */
+function useDayStart() {
+  const [, setDayStart] = useState(() => startOfDay(new Date()).getTime());
+  // Read the clock on every render, even if a background timer has not fired yet.
+  const dayStart = startOfDay(new Date()).getTime();
+
+  useEffect(() => {
+    const refresh = () => setDayStart(startOfDay(new Date()).getTime());
+    const timeout = setTimeout(
+      refresh,
+      Math.max(0, addDays(new Date(dayStart), 1).getTime() - Date.now()),
+    );
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [dayStart]);
+
+  return dayStart;
 }
 
 const EMPTY_SEARCH_THREADS: ListThread[] = [];

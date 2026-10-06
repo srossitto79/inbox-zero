@@ -17,6 +17,7 @@ const {
   mockGetToolFailureWarning,
   mockCreateUIMessageStream,
   mockCreateUIMessageStreamResponse,
+  mockLabelChat,
   streamState,
 } = vi.hoisted(() => ({
   mockAiProcessAssistantChat: vi.fn(),
@@ -31,6 +32,7 @@ const {
   mockGetToolFailureWarning: vi.fn(),
   mockCreateUIMessageStream: vi.fn(),
   mockCreateUIMessageStreamResponse: vi.fn(),
+  mockLabelChat: vi.fn(),
   streamState: {
     finishMessages: [] as Array<{
       id: string;
@@ -109,6 +111,10 @@ vi.mock("@/utils/ai/assistant/inline-email-actions", async (importActual) => {
 
 vi.mock("@/utils/ai/assistant/chat-response-guard", () => ({
   getToolFailureWarning: mockGetToolFailureWarning,
+}));
+
+vi.mock("@/utils/ai/assistant/chat-title", () => ({
+  labelChat: mockLabelChat,
 }));
 
 import { POST } from "./route";
@@ -207,6 +213,28 @@ describe("chat route rule freshness persistence", () => {
       data: {
         lastSeenRulesRevision: 6,
       },
+    });
+  });
+
+  it("schedules auto-labeling from the chat's current name and description", async () => {
+    prisma.chat.findUnique.mockResolvedValueOnce({
+      id: "chat-1",
+      emailAccountId: "email-account-id",
+      name: null,
+      description: null,
+      lastSeenRulesRevision: 2,
+      messages: [],
+      compactions: [],
+    } as never);
+
+    await POST(createRequest(), { params: Promise.resolve({}) });
+
+    expect(mockLabelChat).toHaveBeenCalledWith({
+      chatId: "chat-1",
+      user: expect.anything(),
+      currentName: null,
+      currentDescription: null,
+      logger: expect.anything(),
     });
   });
 

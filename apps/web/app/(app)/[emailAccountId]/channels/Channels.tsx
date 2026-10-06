@@ -26,6 +26,9 @@ import { Toggle } from "@/components/Toggle";
 import { MutedText } from "@/components/Typography";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useForm, type SubmitHandler } from "react-hook-form";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +62,8 @@ import {
   toggleRuleChannelAction,
   createMessagingLinkCodeAction,
   disconnectChannelAction,
+  saveMessagingAppConfigAction,
+  deleteMessagingAppConfigAction,
 } from "@/utils/actions/messaging-channels";
 import { useSlackNotifications } from "@/app/(app)/[emailAccountId]/settings/ConnectedAppsSection";
 import { ProactiveUpdatesSetting } from "@/app/(app)/[emailAccountId]/assistant/settings/ProactiveUpdatesSetting";
@@ -76,7 +81,11 @@ import {
 } from "@/generated/prisma/enums";
 import type { GetMessagingChannelsResponse } from "@/app/api/user/messaging-channels/route";
 import type { RulesResponse } from "@/app/api/user/rules/route";
-import type { MessagingActionType } from "@/utils/actions/messaging-channels.validation";
+import type {
+  MessagingActionType,
+  MessagingAppProvider,
+  SaveMessagingAppConfigBody,
+} from "@/utils/actions/messaging-channels.validation";
 import { prefixPath } from "@/utils/path";
 import { useProductAnalytics } from "@/hooks/useProductAnalytics";
 import { usePremium } from "@/hooks/usePremium";
@@ -164,6 +173,7 @@ export function Channels() {
   const availableProviders = (channelsData?.availableProviders ?? []).filter(
     (provider) => provider !== "TEAMS" || teamsEnabled,
   );
+  const appSetup = channelsData?.appSetup;
   const visibleRules = useMemo(
     () => (rulesData ?? []).filter((rule) => rule.enabled),
     [rulesData],
@@ -232,6 +242,14 @@ export function Channels() {
 
             return null;
           })}
+
+          {appSetup?.canEdit && (
+            <MessagingAppSetupSection
+              appSetup={appSetup}
+              emailAccountId={emailAccountId}
+              onUpdated={onUpdate}
+            />
+          )}
 
           {connectedChannels.length === 0 &&
             unconnectedProviders.length === 0 && (
@@ -905,6 +923,225 @@ function FeatureRouteAction({
       </Dialog>
     </>
   );
+}
+
+type AppConfigValues = {
+  clientId?: string;
+  clientSecret?: string;
+  signingSecret?: string;
+  appId?: string;
+  appPassword?: string;
+  tenantId?: string;
+  botToken?: string;
+  botSecretToken?: string;
+};
+
+const APP_CONFIG_FIELDS: Record<
+  MessagingAppProvider,
+  Array<{ name: keyof AppConfigValues; label: string; secret?: boolean }>
+> = {
+  SLACK: [
+    { name: "clientId", label: "Client ID" },
+    { name: "clientSecret", label: "Client secret", secret: true },
+    { name: "signingSecret", label: "Signing secret", secret: true },
+  ],
+  TEAMS: [
+    { name: "appId", label: "App ID" },
+    { name: "appPassword", label: "App password", secret: true },
+    { name: "tenantId", label: "Tenant ID" },
+  ],
+  TELEGRAM: [
+    { name: "botToken", label: "Bot token", secret: true },
+    { name: "botSecretToken", label: "Secret token", secret: true },
+  ],
+};
+
+function MessagingAppSetupSection({
+  appSetup,
+  emailAccountId,
+  onUpdated,
+}: {
+  appSetup: GetMessagingChannelsResponse["appSetup"];
+  emailAccountId: string;
+  onUpdated: () => void;
+}) {
+  const teamsEnabled = useTeamsEnabled();
+
+  return (
+    <SectionGroup icon={<Settings2Icon className="size-5" />} title="App setup">
+      <ItemCard>
+        <Item size="sm">
+          <ItemContent>
+            <ItemTitle>Messaging app credentials</ItemTitle>
+            <ItemDescription>
+              Configure the chat apps your organization connects to. Values set
+              in the server environment take precedence over saved values.
+            </ItemDescription>
+          </ItemContent>
+        </Item>
+      </ItemCard>
+
+      {PROVIDER_ORDER.filter(
+        (provider) => provider !== "TEAMS" || teamsEnabled,
+      ).map((provider) => (
+        <AppConfigCard
+          key={provider}
+          provider={provider}
+          appSetup={appSetup}
+          emailAccountId={emailAccountId}
+          onUpdated={onUpdated}
+        />
+      ))}
+    </SectionGroup>
+  );
+}
+
+function AppConfigCard({
+  provider,
+  appSetup,
+  emailAccountId,
+  onUpdated,
+}: {
+  provider: MessagingAppProvider;
+  appSetup: GetMessagingChannelsResponse["appSetup"];
+  emailAccountId: string;
+  onUpdated: () => void;
+}) {
+  const config = PROVIDER_CONFIG[provider];
+  const isStored = appSetup.storedProviders.includes(provider);
+  const isEnv = appSetup.envProviders.includes(provider);
+  const fields = APP_CONFIG_FIELDS[provider];
+  const [editing, setEditing] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { isDirty },
+  } = useForm<AppConfigValues>();
+
+  const { execute: executeSave, status: saveStatus } = useAction(
+    saveMessagingAppConfigAction.bind(null, emailAccountId),
+    {
+      onSuccess: () => {
+        toastSuccess({
+          description: `${config.name} app configuration saved`,
+        });
+        reset();
+        setEditing(false);
+        onUpdated();
+      },
+      onError: (error) => {
+        toastError({
+          description:
+            getActionErrorMessage(error.error) ??
+            "Failed to save configuration",
+        });
+      },
+    },
+  );
+
+  const { execute: executeDelete, status: deleteStatus } = useAction(
+    deleteMessagingAppConfigAction.bind(null, emailAccountId),
+    {
+      onSuccess: () => {
+        toastSuccess({
+          description: `${config.name} app configuration removed`,
+        });
+        reset();
+        setEditing(false);
+        onUpdated();
+      },
+      onError: (error) => {
+        toastError({
+          description:
+            getActionErrorMessage(error.error) ??
+            "Failed to remove configuration",
+        });
+      },
+    },
+  );
+
+  const isSaving = saveStatus === "executing";
+  const isDeleting = deleteStatus === "executing";
+
+  const onSubmit: SubmitHandler<AppConfigValues> = (values) => {
+    const trimmed = Object.fromEntries(
+      Object.entries(values)
+        .filter(
+          ([, value]) => typeof value === "string" && value.trim().length > 0,
+        )
+        .map(([key, value]) => [key, (value as string).trim()]),
+    );
+    executeSave({ provider, ...trimmed } as SaveMessagingAppConfigBody);
+  };
+
+  return (
+    <ItemCard>
+      <Item size="sm">
+        <ItemContent>
+          <ItemTitle>{config.name}</ItemTitle>
+          <ItemDescription>
+            {getAppConfigStatus(isStored, isEnv)}
+          </ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setEditing((value) => !value)}
+          >
+            {editing ? "Close" : "Configure"}
+          </Button>
+          {isStored && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isDeleting}
+              onClick={() => executeDelete({ provider })}
+            >
+              Remove
+            </Button>
+          )}
+        </ItemActions>
+      </Item>
+
+      {editing && (
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-4 border-t px-4 py-4 sm:px-6"
+        >
+          {isStored && (
+            <MutedText>
+              Leave a field blank to keep its current value.
+            </MutedText>
+          )}
+          {fields.map((field) => (
+            <div key={field.name} className="space-y-1">
+              <Label htmlFor={`${provider}-${field.name}`}>{field.label}</Label>
+              <Input
+                id={`${provider}-${field.name}`}
+                type={field.secret ? "password" : "text"}
+                autoComplete="off"
+                {...register(field.name)}
+              />
+            </div>
+          ))}
+          <div className="flex justify-end">
+            <Button type="submit" size="sm" disabled={isSaving || !isDirty}>
+              {isSaving ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </form>
+      )}
+    </ItemCard>
+  );
+}
+
+function getAppConfigStatus(isStored: boolean, isEnv: boolean) {
+  if (isStored) return "Configured in-app";
+  if (isEnv) return "Configured via server environment";
+  return "Not configured";
 }
 
 function sortChannelsByProvider(channels: ChannelFromResponse[]) {

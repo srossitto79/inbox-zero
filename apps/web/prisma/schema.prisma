@@ -87,16 +87,16 @@ model User {
   surveyImprovements String? // open text: what user wants to improve
 
   // settings
-  mcpServerEnabled  Boolean  @default(false)
-  mcpTokenVersion   Int      @default(0)
-  emailOtpEnabled   Boolean  @default(false)
-  emailOtpVersion   Int      @default(0)
-  aiProvider        String?
-  aiModel           String?
-  aiApiKey          String?
-  aiBaseUrl         String?
+  mcpServerEnabled     Boolean  @default(false)
+  mcpTokenVersion      Int      @default(0)
+  emailOtpEnabled      Boolean  @default(false)
+  emailOtpVersion      Int      @default(0)
+  aiProvider           String?
+  aiModel              String?
+  aiApiKey             String?
+  aiBaseUrl            String?
   decisionModelEnabled Boolean? // null follows DEFAULT_DECISION_MODEL_ENABLED
-  webhookSecret     String?
+  webhookSecret        String?
 
   // referral system
   referralCode String? @unique // User's own referral code
@@ -307,18 +307,19 @@ model MailSplitFilter {
 }
 
 model Organization {
-  id          String             @id @default(cuid())
-  name        String
-  slug        String             @unique
-  logo        String?
-  metadata    Json?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  members     Member[]
-  SsoProvider SsoProvider?
-  sessions    Session[]
-  invitations Invitation[]
-  rules       OrganizationRule[]
+  id                  String               @id @default(cuid())
+  name                String
+  slug                String               @unique
+  logo                String?
+  metadata            Json?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  members             Member[]
+  SsoProvider         SsoProvider?
+  sessions            Session[]
+  invitations         Invitation[]
+  rules               OrganizationRule[]
+  messagingAppConfigs MessagingAppConfig[]
 }
 
 // Org-managed rule, materialized into a normal member Rule (+ Action) copy per
@@ -601,15 +602,16 @@ model Label {
 }
 
 model Rule {
-  id                String             @id @default(cuid())
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  name              String
-  actions           Action[]
-  attachmentSources AttachmentSource[]
-  enabled           Boolean            @default(true)
-  automate          Boolean            @default(true) // @deprecated - No longer used. All rules are now automated. Kept for historical data only.
-  runOnThreads      Boolean            @default(false) // if disabled, only runs on individual emails
+  id                  String             @id @default(cuid())
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  name                String
+  actions             Action[]
+  attachmentSources   AttachmentSource[]
+  enabled             Boolean            @default(true)
+  automate            Boolean            @default(true) // @deprecated - No longer used. All rules are now automated. Kept for historical data only.
+  runOnThreads        Boolean            @default(false) // if disabled, only runs on individual emails
+  showInQueuesSidebar Boolean            @default(false) // surface this rule's label as a queue in the mail sidebar and list headings
 
   emailAccountId String
   emailAccount   EmailAccount @relation(fields: [emailAccountId], references: [id], onDelete: Cascade)
@@ -1344,7 +1346,8 @@ model Chat {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  name String?
+  name        String?
+  description String? @db.Text
 
   compactionCount       Int  @default(0)
   lastSeenRulesRevision Int?
@@ -1455,16 +1458,16 @@ model Calendar {
 
   // Event sync state. syncCursor is the Google syncToken or the Microsoft
   // deltaLink; syncPageToken resumes an interrupted full sync.
-  syncStatus           CalendarSyncStatus @default(IDLE)
-  syncCursor           String?
-  syncPageToken        String?
-  fullSyncStartedAt    DateTime?
-  syncStartedAt        DateTime?
-  lastSyncedAt         DateTime?
-  syncWindowStart      DateTime?
-  syncWindowEnd        DateTime?
-  syncError            String?
-  syncRetryAt          DateTime?
+  syncStatus        CalendarSyncStatus @default(IDLE)
+  syncCursor        String?
+  syncPageToken     String?
+  fullSyncStartedAt DateTime?
+  syncStartedAt     DateTime?
+  lastSyncedAt      DateTime?
+  syncWindowStart   DateTime?
+  syncWindowEnd     DateTime?
+  syncError         String?
+  syncRetryAt       DateTime?
 
   connectionId String
   connection   CalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
@@ -1817,6 +1820,35 @@ model MessagingChannel {
   @@unique([id, emailAccountId])
   @@index([emailAccountId])
   @@index([provider, teamId])
+}
+
+// Provider app credentials configured in-app by an org admin instead of
+// server env vars. One row per provider per organization; only one bot/app
+// per provider is active per deployment (the adapter registry is a singleton).
+model MessagingAppConfig {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  provider       MessagingProvider
+
+  // Slack
+  clientId      String?
+  clientSecret  String?
+  signingSecret String?
+
+  // Teams
+  appId       String?
+  appPassword String?
+  tenantId    String?
+
+  // Telegram
+  botToken       String?
+  botSecretToken String?
+
+  @@unique([organizationId, provider])
 }
 
 model MessagingRoute {
